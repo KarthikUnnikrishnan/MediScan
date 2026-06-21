@@ -1,0 +1,50 @@
+# ── Virtual Environment ──────────────────────────────────────────────
+venv/
+env/
+.env
+
+# ── Python cache ─────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# ── Django ───────────────────────────────────────────────────────────
+db.sqlite3
+media/
+*.log
+
+# ── Datasets (too large — available on Kaggle/HuggingFace) ──────────
+Datasets/
+
+# ── Training artifacts (generated — not source code) ─────────────────
+training/augmented_yolo/
+training/roboflow_extracted/
+training/roboflow_upload/
+training/final_dataset/
+training/yolo_runs/
+training/htr_runs/
+training/htr_runs_v2/
+training/htr_runs_v3/
+training/*.zip
+
+# ── Model weights (hosted on HuggingFace Hub instead) ────────────────
+saved_models/
+
+# ── SQLite databases (rebuilt by build scripts) ───────────────────────
+db_cache/
+
+# ── OS files ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE files ─────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+
+# ── Root level YOLO weight files (unused) ────────────────────────────
+yolo26n.pt
+yolov8s.pt
