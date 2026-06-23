@@ -1,7 +1,5 @@
 # MediScan — Visual Medicine Finder
 
-Final year deep learning project | Nirmal College of Science and Commerce
-
 ## Setup Instructions
 
 ### 1. Clone and install
