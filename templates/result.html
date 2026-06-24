@@ -1,0 +1,1053 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MediScan — Scan Result</title>
+  <meta name="description"
+    content="View your MediScan result — generic alternatives, side effects, and drug interaction checks." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400&family=DM+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+  <style>
+    :root {
+      --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.13'/%3E%3C/svg%3E");
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      background-color: #e5e6e8;
+      background-image: var(--noise);
+      background-size: 200px 200px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 24px 16px 48px;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      color: #1c1c1c;
+    }
+
+    /* PAGE CARD */
+    .page-wrap {
+      width: 90%;
+      max-width: 1400px;
+      background-color: #fafafa;
+      background-image: var(--noise);
+      background-size: 200px 200px;
+      border-radius: 36px;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05), 0 25px 80px rgba(0, 0, 0, 0.07);
+      display: flex;
+      flex-direction: column;
+      min-height: calc(100vh - 48px);
+      overflow: hidden;
+    }
+
+    /* NAV */
+    .page-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 36px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.09);
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .nav-icon {
+      width: 30px;
+      height: 30px;
+      background: #1c1c1c;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .nav-name {
+      font-weight: 800;
+      font-size: 16px;
+      color: #1c1c1c;
+      letter-spacing: -0.3px;
+    }
+
+    .nav-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: #888;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .nav-back:hover {
+      color: #1c1c1c;
+    }
+
+    /* PAGE BODY */
+    .page-body {
+      flex: 1;
+      padding: 40px 36px 0;
+    }
+
+    /* ── Hero result band ───────────────────────────────────── */
+    .result-hero {
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+      margin-bottom: 36px;
+    }
+
+    .result-orb {
+      width: 52px;
+      height: 52px;
+      flex-shrink: 0;
+      background: rgba(0, 0, 0, 0.07);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      margin-top: 4px;
+    }
+
+    .result-hero-text {
+      flex: 1;
+    }
+
+    .result-eyebrow {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      color: #aaa;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .result-med-name {
+      font-weight: 800;
+      font-size: 32px;
+      letter-spacing: -1.2px;
+      color: #1c1c1c;
+      line-height: 1.1;
+      margin-bottom: 8px;
+    }
+
+    .result-med-name .thin {
+      font-weight: 300;
+      font-style: italic;
+    }
+
+    .result-salt {
+      display: inline-block;
+      background: rgba(0, 0, 0, 0.07);
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      color: #555;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      border-radius: 99px;
+      padding: 4px 12px;
+      margin-bottom: 14px;
+    }
+
+    /* Confidence bar */
+    .conf-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 0;
+    }
+
+    .conf-track {
+      flex: 1;
+      height: 3px;
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .conf-fill {
+      height: 100%;
+      background: #1c1c1c;
+      border-radius: 99px;
+      transition: width 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      width: 0%;
+    }
+
+    .conf-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: #888;
+      white-space: nowrap;
+    }
+
+    /* Stats row */
+    .stats-row {
+      display: flex;
+      gap: 0;
+      border: 1px solid rgba(0, 0, 0, 0.09);
+      border-radius: 16px;
+      background: #fff;
+      overflow: hidden;
+      margin-bottom: 36px;
+    }
+
+    .stat-item {
+      flex: 1;
+      padding: 18px 20px;
+      border-right: 1px solid rgba(0, 0, 0, 0.07);
+      text-align: center;
+    }
+
+    .stat-item:last-child {
+      border-right: none;
+    }
+
+    .stat-val {
+      font-weight: 800;
+      font-size: 22px;
+      letter-spacing: -0.8px;
+      color: #1c1c1c;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .stat-val.green {
+      color: #2a7a50;
+    }
+
+    .stat-val.red {
+      color: #c0392b;
+    }
+
+    .stat-desc {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    /* Divider label */
+    .div-row {
+      display: flex;
+      align-items: center;
+      margin: 0 0 24px;
+    }
+
+    .div-line {
+      flex: 1;
+      height: 1px;
+      background: rgba(0, 0, 0, 0.11);
+    }
+
+    .div-pill {
+      font-size: 12px;
+      font-weight: 500;
+      color: #666;
+      background: #e0e0e0;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      border-radius: 99px;
+      padding: 5px 16px;
+      margin: 0 14px;
+      white-space: nowrap;
+    }
+
+    /* Multi-medicine selector */
+    .med-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 28px;
+    }
+
+    .med-tab-btn {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 20px;
+      border-radius: 99px;
+      border: 1.5px solid rgba(0, 0, 0, 0.12);
+      background: transparent;
+      color: #888;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .med-tab-btn.active {
+      background: #1c1c1c;
+      color: #fff;
+      border-color: #1c1c1c;
+    }
+
+    .med-tab-btn:hover:not(.active) {
+      border-color: rgba(0, 0, 0, 0.25);
+      color: #555;
+    }
+
+    /* Tabs */
+    .tabs-bar {
+      display: flex;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+      margin-bottom: 24px;
+      position: relative;
+    }
+
+    .tab-btn {
+      padding: 10px 16px;
+      border: none;
+      background: transparent;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      color: #aaa;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color 0.15s;
+    }
+
+    .tab-btn.active {
+      color: #1c1c1c;
+      font-weight: 700;
+      border-bottom-color: #1c1c1c;
+    }
+
+    .tab-ul {
+      position: absolute;
+      bottom: -1px;
+      height: 2px;
+      background: #1c1c1c;
+      border-radius: 1px;
+      pointer-events: none;
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    /* Alternatives table */
+    .alt-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 40px;
+    }
+
+    .alt-table thead th {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.07em;
+      color: #aaa;
+      text-transform: uppercase;
+      padding: 0 6px 10px 0;
+      text-align: left;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.09);
+    }
+
+    .alt-table tbody tr {
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      transition: background 0.15s;
+    }
+
+    .alt-table tbody tr:last-child {
+      border-bottom: none;
+    }
+
+    .alt-table tbody tr:hover td {
+      background: rgba(0, 0, 0, 0.02);
+    }
+
+    .alt-table tbody tr.cheapest {
+      border-left: 3px solid rgba(0, 0, 0, 0.35);
+    }
+
+    .alt-table td {
+      padding: 13px 8px 13px 0;
+      vertical-align: middle;
+    }
+
+    .td-n {
+      font-size: 14px;
+      color: #1c1c1c;
+      font-weight: 500;
+    }
+
+    .td-p {
+      font-family: 'DM Mono', monospace;
+      font-size: 14px;
+      font-weight: 500;
+      color: #2a7a50;
+      white-space: nowrap;
+    }
+
+    .td-m {
+      font-size: 13px;
+      color: #aaa;
+    }
+
+    .no-data {
+      font-size: 14px;
+      color: #bbb;
+      text-align: center;
+      padding: 36px 16px;
+      font-style: italic;
+    }
+
+    /* Side effects */
+    .se-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 40px;
+    }
+
+    .se-badge {
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 99px;
+      padding: 6px 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border: 1px solid;
+    }
+
+    .se-common {
+      background: #f0faf4;
+      color: #2a7a50;
+      border-color: rgba(42, 122, 80, 0.2);
+    }
+
+    .se-uncommon {
+      background: #fefaec;
+      color: #8a5e00;
+      border-color: rgba(138, 94, 0, 0.2);
+    }
+
+    .se-rare {
+      background: #fff0ef;
+      color: #991b1b;
+      border-color: rgba(153, 27, 27, 0.2);
+    }
+
+    .se-unknown {
+      background: rgba(0, 0, 0, 0.04);
+      color: #888;
+      border-color: rgba(0, 0, 0, 0.1);
+    }
+
+    .se-freq {
+      font-size: 10px;
+      opacity: 0.55;
+    }
+
+    /* Interactions */
+    .ix-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 40px;
+    }
+
+    .ix-card {
+      border-left: 3px solid rgba(0, 0, 0, 0.18);
+      background: rgba(0, 0, 0, 0.03);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+
+    .ix-card.danger {
+      border-left-color: #c0392b;
+      background: #fff0ef;
+    }
+
+    .ix-drugs-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+    }
+
+    .ix-drug {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: #1c1c1c;
+      font-weight: 500;
+    }
+
+    .ix-sep {
+      color: #bbb;
+      font-size: 13px;
+    }
+
+    .ix-sev {
+      margin-left: auto;
+      font-size: 10px;
+      font-weight: 700;
+      border-radius: 99px;
+      padding: 3px 10px;
+      border: 1px solid;
+    }
+
+    .ix-sev.high {
+      color: #991b1b;
+      border-color: rgba(153, 27, 27, 0.3);
+      background: #fff0ef;
+    }
+
+    .ix-sev.moderate {
+      color: #8a5e00;
+      border-color: rgba(138, 94, 0, 0.3);
+      background: #fefaec;
+    }
+
+    .ix-sev.low {
+      color: #666;
+      border-color: rgba(0, 0, 0, 0.15);
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .ix-desc {
+      font-size: 13px;
+      color: #777;
+      line-height: 1.55;
+    }
+
+    .no-ix {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 36px 16px;
+    }
+
+    .no-ix-check {
+      font-size: 32px;
+      color: #2a7a50;
+    }
+
+    .no-ix-text {
+      font-size: 15px;
+      font-weight: 700;
+      color: #2a7a50;
+    }
+
+    /* FOOTER CTA CARD */
+    .footer-card {
+      background: #fff;
+      border-radius: 20px;
+      padding: 48px 32px;
+      text-align: center;
+      margin: 0 0 24px;
+      border: 1px solid rgba(0, 0, 0, 0.07);
+    }
+
+    .footer-card-orb {
+      width: 52px;
+      height: 52px;
+      background: #f0f0f0;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      margin: 0 auto 22px;
+    }
+
+    .footer-h2 {
+      font-weight: 800;
+      font-size: 24px;
+      letter-spacing: -0.8px;
+      color: #1c1c1c;
+      line-height: 1.2;
+      margin-bottom: 6px;
+    }
+
+    .footer-h2 .thin {
+      font-weight: 300;
+    }
+
+    .footer-sub {
+      font-size: 14px;
+      color: #999;
+      margin-bottom: 24px;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-dark {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #1c1c1c;
+      color: #fff;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      border: none;
+      border-radius: 99px;
+      padding: 12px 26px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform 0.15s, box-shadow 0.2s;
+    }
+
+    .btn-dark:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
+    }
+
+    .btn-light {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #fff;
+      color: #1c1c1c;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      border: 1.5px solid rgba(0, 0, 0, 0.15);
+      border-radius: 99px;
+      padding: 12px 26px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.15s;
+    }
+
+    .btn-light:hover {
+      background: #f4f4f4;
+      transform: translateY(-1px);
+    }
+
+    /* PAGE FOOTER */
+    .page-footer-bar {
+      padding: 16px 36px;
+      border-top: 1px solid rgba(0, 0, 0, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .page-footer-bar span {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: #aaa;
+    }
+
+    /* MISC */
+    button:focus-visible {
+      outline: 2px solid #1c1c1c;
+      outline-offset: 2px;
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 8px 8px 24px;
+      }
+
+      .page-wrap {
+        border-radius: 20px;
+        min-height: calc(100vh - 16px);
+      }
+
+      .page-nav {
+        padding: 16px 20px;
+      }
+
+      .page-body {
+        padding: 28px 20px 0;
+      }
+
+      .result-med-name {
+        font-size: 24px;
+      }
+
+      .stats-row {
+        flex-wrap: wrap;
+      }
+
+      .stat-item {
+        flex: 1 1 50%;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+      }
+
+      .stat-item:nth-child(even) {
+        border-right: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="page-wrap" id="page-wrap">
+
+    <!-- NAV -->
+    <nav class="page-nav" aria-label="Site navigation">
+      <a href="/" class="nav-brand" aria-label="MediScan home">
+        <div class="nav-icon" aria-hidden="true">💊</div>
+        <span class="nav-name">MediScan</span>
+      </a>
+      <a href="/" class="nav-back" aria-label="Back to scanner">
+        ← Scan another
+      </a>
+    </nav>
+
+    <!-- BODY -->
+    <main class="page-body" id="main-body">
+
+      {% for med in medicines %}
+      {% if forloop.first %}
+
+      <!-- RESULT HERO -->
+      <div class="result-hero">
+        <div class="result-orb" aria-hidden="true">💊</div>
+        <div class="result-hero-text">
+          <div class="result-eyebrow">Detected Medicine</div>
+          <h1 class="result-med-name">
+            {{ med.matched_name|default:med.name }}
+          </h1>
+          {% if med.salt %}
+          <span class="result-salt" aria-label="Salt composition: {{ med.salt }}">{{ med.salt }}</span>
+          {% endif %}
+          {% if ocr_confidence is not None %}
+          <div class="conf-row">
+            <div class="conf-track" aria-hidden="true">
+              <div class="conf-fill" id="conf-fill" style="width:0%"></div>
+            </div>
+            <span class="conf-label" aria-label="OCR confidence {{ ocr_confidence|floatformat:0 }}%">
+              {{ ocr_confidence|floatformat:0 }}% confidence
+            </span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- STATS ROW -->
+      <div class="stats-row" role="list">
+        <div class="stat-item" role="listitem">
+          <div class="stat-val">{{ medicines|length }}</div>
+          <div class="stat-desc">Medicine{% if medicines|length != 1 %}s{% endif %} found</div>
+        </div>
+        <div class="stat-item" role="listitem">
+          <div class="stat-val green">{{ med.alternatives|length }}</div>
+          <div class="stat-desc">Alternatives</div>
+        </div>
+        <div class="stat-item" role="listitem">
+          {% if interactions %}
+          <div class="stat-val red">{{ interactions|length }}</div>
+          {% else %}
+          <div class="stat-val">0</div>
+          {% endif %}
+          <div class="stat-desc">Interactions</div>
+        </div>
+        <div class="stat-item" role="listitem">
+          {% if med.side_effects %}
+          <div class="stat-val">{{ med.side_effects|length }}</div>
+          {% else %}
+          <div class="stat-val">—</div>
+          {% endif %}
+          <div class="stat-desc">Side Effects</div>
+        </div>
+      </div>
+
+      {% endif %}
+      {% endfor %}
+
+      <!-- MEDICINE SWITCHER (if multiple meds) -->
+      {% if medicines|length > 1 %}
+      <div class="div-row" aria-hidden="true">
+        <div class="div-line"></div>
+        <span class="div-pill">Medicines Found</span>
+        <div class="div-line"></div>
+      </div>
+      <div class="med-tabs" role="group" aria-label="Switch medicine">
+        {% for med in medicines %}
+        <button class="med-tab-btn {% if forloop.first %}active{% endif %}" onclick="switchMed({{ forloop.counter0 }})"
+          id="med-btn-{{ forloop.counter0 }}" aria-pressed="{{ forloop.first|yesno:'true,false' }}">
+          {{ med.matched_name|default:med.name }}
+        </button>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- RESULTS TABS -->
+      <div class="div-row" aria-hidden="true">
+        <div class="div-line"></div>
+        <span class="div-pill">Results</span>
+        <div class="div-line"></div>
+      </div>
+
+      <div class="tabs-bar" role="tablist" aria-label="Result sections">
+        <button class="tab-btn active" id="tab-btn-alt" onclick="switchTab('alt')" role="tab" aria-selected="true"
+          aria-controls="tab-alt">Alternatives</button>
+        <button class="tab-btn" id="tab-btn-se" onclick="switchTab('se')" role="tab" aria-selected="false"
+          aria-controls="tab-se">Side Effects</button>
+        <button class="tab-btn" id="tab-btn-ix" onclick="switchTab('ix')" role="tab" aria-selected="false"
+          aria-controls="tab-ix">Interactions</button>
+        <div class="tab-ul" id="tab-ul" aria-hidden="true"></div>
+      </div>
+
+      <!-- TAB: ALTERNATIVES -->
+      <div id="tab-alt" class="tab-panel active" role="tabpanel" aria-labelledby="tab-btn-alt">
+        {% for med in medicines %}
+        <div class="med-panel" id="panel-alt-{{ forloop.counter0 }}" {% if not forloop.first %}style="display:none"{% endif %}>
+          {% if med.alternatives %}
+          <table class="alt-table" aria-label="Generic alternatives for {{ med.matched_name|default:med.name }}">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Manufacturer</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for alt in med.alternatives %}
+              <tr {% if forloop.first %}class="cheapest" {% endif %}>
+                <td class="td-n">{{ alt.name }}</td>
+                <td class="td-p">₹{{ alt.price|floatformat:2 }}</td>
+                <td class="td-m">{{ alt.manufacturer|default:"—" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <p class="no-data">No alternatives found in database for this salt composition.</p>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- TAB: SIDE EFFECTS -->
+      <div id="tab-se" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-se">
+        {% for med in medicines %}
+        <div class="med-panel" id="panel-se-{{ forloop.counter0 }}" {% if not forloop.first %}style="display:none"{% endif %}>
+          {% if med.side_effects %}
+          <div class="se-wrap" role="list">
+            {% for se in med.side_effects %}
+            <span class="se-badge
+              {% with freq=se.frequency|lower %}
+                {% if freq == 'common' %}se-common
+                {% elif freq == 'uncommon' %}se-uncommon
+                {% elif freq == 'rare' %}se-rare
+                {% else %}se-unknown{% endif %}
+              {% endwith %}" role="listitem"
+              aria-label="{{ se.name }}, {{ se.frequency|default:'unknown' }} frequency">
+              <span class="se-freq" aria-hidden="true">
+                {% with freq=se.frequency|lower %}
+                {% if freq == 'common' %}●●●
+                {% elif freq == 'uncommon' %}●●○
+                {% elif freq == 'rare' %}●○○
+                {% else %}●{% endif %}
+                {% endwith %}
+              </span>
+              {{ se.name }}
+            </span>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="no-data">No side effect data available for this medicine.</p>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- TAB: INTERACTIONS -->
+      <div id="tab-ix" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-ix">
+        {% if interactions %}
+        <div class="ix-list" role="list">
+          {% for ix in interactions %}
+          <div class="ix-card {% if ix.severity|lower == 'high' %}danger{% endif %}" role="listitem">
+            <div class="ix-drugs-row">
+              <span class="ix-drug">{{ ix.drug1 }}</span>
+              <span class="ix-sep" aria-hidden="true">×</span>
+              <span class="ix-drug">{{ ix.drug2 }}</span>
+              {% if ix.severity %}
+              <span
+                class="ix-sev {% if ix.severity|lower == 'high' %}high{% elif ix.severity|lower == 'moderate' %}moderate{% else %}low{% endif %}"
+                aria-label="Severity: {{ ix.severity }}">
+                {{ ix.severity }}
+              </span>
+              {% endif %}
+            </div>
+            {% if ix.description %}
+            <p class="ix-desc">{{ ix.description }}</p>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="no-ix" role="status">
+          <span class="no-ix-check" aria-hidden="true">✓</span>
+          <span class="no-ix-text">No known interactions</span>
+        </div>
+        {% endif %}
+      </div>
+
+    </main><!-- /page-body -->
+
+    <!-- FOOTER CTA CARD -->
+    <div class="footer-card" style="margin: 0 24px 24px;">
+      <div class="footer-card-orb" aria-hidden="true">💊</div>
+      <h2 class="footer-h2">Scan <span class="thin">another</span> medicine?</h2>
+      <p class="footer-sub">No sign-up. No fees. Results in seconds.</p>
+      <div class="btn-row">
+        <a href="/" class="btn-dark">Scan again ↗</a>
+        <a href="/" class="btn-light">Go to scanner</a>
+      </div>
+    </div>
+
+    <!-- PAGE FOOTER -->
+    <div class="page-footer-bar">
+      <span>© 2025 MediScan</span>
+      <span>Always consult your doctor before switching medicines</span>
+    </div>
+
+  </div><!-- /page-wrap -->
+
+  <script>
+    'use strict';
+
+    /* ── State ──────────────────────────────────────────────── */
+    let activeMedIdx = 0;
+    let activeTab = 'alt';
+    const medCount = {{ medicines| length }};
+
+    /* ── Init ───────────────────────────────────────────────── */
+    document.addEventListener('DOMContentLoaded', () => {
+      // Page entrance
+      gsap.from('#page-wrap', { opacity: 0, y: 14, duration: 0.55, ease: 'power2.out' });
+
+      // Confidence bar animation
+      const fill = document.getElementById('conf-fill');
+      if (fill) {
+        const target = fill.dataset.pct || '{% if ocr_confidence is not None %}{{ ocr_confidence|floatformat:0 }}{% else %}0{% endif %}';
+        setTimeout(() => { fill.style.width = target + '%'; }, 400);
+      }
+
+      // Init tab underline
+      initUnderline();
+
+      // Stagger alternatives rows in
+      const rows = document.querySelectorAll('#tab-alt .alt-table tbody tr');
+      if (rows.length) {
+        gsap.from(rows, { y: 10, opacity: 0, duration: 0.3, stagger: 0.06, delay: 0.3, ease: 'power2.out' });
+      }
+
+      // Stagger stats in
+      const stats = document.querySelectorAll('.stat-item');
+      if (stats.length) {
+        gsap.from(stats, { y: 8, opacity: 0, duration: 0.35, stagger: 0.06, delay: 0.1, ease: 'power2.out' });
+      }
+    });
+
+    /* ── Medicine switcher ──────────────────────────────────── */
+    function switchMed(idx) {
+      activeMedIdx = idx;
+      // Update med tab buttons
+      for (let i = 0; i < medCount; i++) {
+        const b = document.getElementById('med-btn-' + i);
+        if (b) {
+          b.classList.toggle('active', i === idx);
+          b.setAttribute('aria-pressed', String(i === idx));
+        }
+      }
+      // Show/hide panels for current tab
+      showMedPanel(activeTab, idx);
+    }
+
+    function showMedPanel(tabName, medIdx) {
+      const allPanels = document.querySelectorAll(`#tab-${tabName} .med-panel`);
+      allPanels.forEach((p, i) => {
+        p.style.display = i === medIdx ? '' : 'none';
+      });
+      // Stagger
+      if (tabName === 'alt') {
+        const rows = document.querySelectorAll(`#panel-alt-${medIdx} tbody tr`);
+        if (rows.length) gsap.from(rows, { y: 10, opacity: 0, duration: 0.3, stagger: 0.06, ease: 'power2.out' });
+      } else if (tabName === 'se') {
+        const badges = document.querySelectorAll(`#panel-se-${medIdx} .se-badge`);
+        if (badges.length) gsap.from(badges, { scale: 0.8, opacity: 0, duration: 0.25, stagger: 0.04, ease: 'back.out(1.5)' });
+      }
+    }
+
+    /* ── Tabs ───────────────────────────────────────────────── */
+    function initUnderline() {
+      const btn = document.getElementById('tab-btn-alt'); if (!btn) return;
+      const ul = document.getElementById('tab-ul');
+      ul.style.left = btn.offsetLeft + 'px';
+      ul.style.width = btn.offsetWidth + 'px';
+    }
+
+    function switchTab(name) {
+      activeTab = name;
+      ['alt', 'se', 'ix'].forEach(t => {
+        const b = document.getElementById('tab-btn-' + t);
+        const p = document.getElementById('tab-' + t);
+        b.classList.toggle('active', t === name);
+        b.setAttribute('aria-selected', String(t === name));
+        p.classList.toggle('active', t === name);
+      });
+      // Slide underline
+      const ab = document.getElementById('tab-btn-' + name);
+      const ul = document.getElementById('tab-ul');
+      gsap.to(ul, { left: ab.offsetLeft, width: ab.offsetWidth, duration: 0.2, ease: 'power2.out' });
+
+      // Show correct med panel if multi-medicine
+      if (name !== 'ix') showMedPanel(name, activeMedIdx);
+
+      // Stagger interactions
+      if (name === 'ix') {
+        const cards = document.querySelectorAll('#tab-ix .ix-card');
+        if (cards.length) gsap.from(cards, { y: 8, opacity: 0, duration: 0.3, stagger: 0.07, ease: 'power2.out' });
+      } else if (name === 'se') {
+        const badges = document.querySelectorAll(`#panel-se-${activeMedIdx} .se-badge`);
+        if (badges.length) gsap.from(badges, { scale: 0.8, opacity: 0, duration: 0.25, stagger: 0.04, ease: 'back.out(1.5)' });
+      }
+    }
+  </script>
+
+</body>
+
+</html>

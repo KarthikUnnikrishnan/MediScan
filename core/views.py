@@ -123,9 +123,12 @@ def result(request, pk):
     """Show a saved scan result by ID."""
     try:
         scan_obj = ScanResult.objects.get(pk=pk)
-        return render(request, 'result.html', {
+        context = {
+            'scan': scan_obj,
             'result': scan_obj.result_json,
-            'scan'  : scan_obj,
-        })
+        }
+        if isinstance(scan_obj.result_json, dict):
+            context.update(scan_obj.result_json)
+        return render(request, 'result.html', context)
     except ScanResult.DoesNotExist:
         return render(request, 'result.html', {'error': 'Result not found.'})
