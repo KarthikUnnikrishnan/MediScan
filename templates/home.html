@@ -72,14 +72,55 @@
       padding: 64px 48px 80px;
       min-height: 90vh;
       display: flex; align-items: center;
+      position: relative;
+      overflow: hidden;
+      z-index: 1;
     }
     .hero-inner {
       display: flex; gap: 56px; align-items: flex-start;
       width: 100%; max-width: 1280px; margin: 0 auto;
+      position: relative;
+      z-index: 2;
     }
 
     /* LEFT — copy */
     .hero-left { width: 44%; flex-shrink: 0; padding-top: 16px; }
+
+    /* ── BACKGROUND ILLUSTRATIONS ────────────────────────────────── */
+    .bg-illustrations {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 0;
+    }
+    .bg-svg {
+      position: absolute;
+      fill: none;
+      stroke: var(--forest);
+      opacity: 0.045;
+      filter: blur(0.3px);
+    }
+    @keyframes float-slow-1 {
+      0% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-15px) rotate(4deg); }
+      100% { transform: translateY(0) rotate(0deg); }
+    }
+    @keyframes float-slow-2 {
+      0% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(12px) rotate(-5deg); }
+      100% { transform: translateY(0) rotate(0deg); }
+    }
+    @keyframes float-slow-3 {
+      0% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-10px) scale(1.04); }
+      100% { transform: translateY(0) scale(1); }
+    }
+    .svg-ekg { width: 180px; height: 180px; top: 10%; left: -2%; animation: float-slow-1 12s ease-in-out infinite; }
+    .svg-pill { width: 130px; height: 130px; top: 55%; left: 3%; animation: float-slow-2 15s ease-in-out infinite; }
+    .svg-steth { width: 190px; height: 190px; top: 6%; right: -2%; animation: float-slow-3 14s ease-in-out infinite; }
+    .svg-dna { width: 140px; height: 140px; top: 52%; right: 4%; animation: float-slow-1 18s ease-in-out infinite; }
+    .svg-shield { width: 120px; height: 120px; top: 78%; left: 38%; animation: float-slow-2 16s ease-in-out infinite; }
 
     .hero-eyebrow {
       display: inline-block; font-size:12px; color:var(--forest);
@@ -347,10 +388,24 @@
     .rtab-panel { display:none; }
     .rtab-panel.active { display:block; }
 
-    /* ── TAB 1 — ALTERNATIVES ──── */
-    .alts-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
+     /* ── TAB 1 — ALTERNATIVES ──── */
+     .alts-trust-banner {
+       display: flex; gap: 16px; background: rgba(77, 122, 98, 0.06);
+       border: 1px solid rgba(77, 122, 98, 0.15); border-radius: 16px;
+       padding: 18px 24px; margin-bottom: 24px; align-items: flex-start;
+     }
+     .alt-trust-icon { color: var(--forest); flex-shrink: 0; margin-top: 2px; }
+     .alt-trust-title { font-size: 16px; font-weight: 600; color: var(--olive); margin-bottom: 4px; }
+     .alt-trust-desc { font-size: 13px; line-height: 1.5; color: var(--olive-mid); }
+     .alt-trust-match {
+       display: inline-flex; align-items: center; gap: 4px;
+       font-size: 11px; font-weight: 500; color: var(--forest);
+       margin-top: 6px;
+     }
 
-    .alt-card {
+     .alts-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
+
+     .alt-card {
       background:var(--surface); border:1px solid var(--border);
       border-radius:20px; padding:22px 22px 18px;
       display:flex; flex-direction:column; gap:6px;
@@ -589,21 +644,57 @@
 
 <!-- ================================================================ NAVBAR -->
 <nav id="navbar">
-  <a href="#hero" class="nav-logo">
+  <a href="/" class="nav-logo">
     <span class="nav-logo-name">MediScan</span>
     <span class="nav-logo-sub">MEDICINE</span>
   </a>
   <ul class="nav-links">
-    <li><a href="#hero">Scanner</a></li>
+    <li><a href="/">Scanner</a></li>
     <li><a href="#how-it-works">How It Works</a></li>
     <li><a href="#features">Features</a></li>
   </ul>
-  <a href="#hero" class="nav-cta">Scan Now</a>
+  <a href="/" class="nav-cta">Scan Now</a>
 </nav>
 
 
 <!-- ================================================================ HERO + SCANNER -->
 <section id="hero">
+  <!-- Background Illustrations -->
+  <div class="bg-illustrations" aria-hidden="true">
+    <!-- EKG Heartbeat -->
+    <svg class="bg-svg svg-ekg" viewBox="0 0 100 100" fill="none" stroke="currentColor">
+      <path d="M10 50 L30 50 L35 40 L40 60 L45 30 L50 70 L55 50 L60 50 L65 45 L70 55 L75 50 L90 50" stroke-width="1.5" />
+    </svg>
+    <!-- Pill -->
+    <svg class="bg-svg svg-pill" viewBox="0 0 100 100" fill="none" stroke="currentColor">
+      <rect x="25" y="40" width="50" height="20" rx="10" transform="rotate(-45 50 50)" stroke-width="1.5" />
+      <line x1="38" y1="62" x2="62" y2="38" stroke-width="1.5" />
+      <circle cx="43" cy="57" r="1.5" fill="currentColor" />
+      <circle cx="57" cy="43" r="1.5" fill="currentColor" />
+    </svg>
+    <!-- Stethoscope -->
+    <svg class="bg-svg svg-steth" viewBox="0 0 100 100" fill="none" stroke="currentColor">
+      <path d="M30 20 C30 50, 70 50, 70 20" stroke-width="1.5" />
+      <path d="M50 42 C50 70, 35 80, 50 90 C65 80, 50 70, 50 42" stroke-width="1.5" />
+      <circle cx="50" cy="90" r="5" stroke-width="1.5" />
+      <path d="M26 20 L34 20 M66 20 L74 20" stroke-width="1.5" />
+    </svg>
+    <!-- DNA Helix -->
+    <svg class="bg-svg svg-dna" viewBox="0 0 100 100" fill="none" stroke="currentColor">
+      <path d="M30 10 Q50 30 70 10 T70 90" stroke-width="1.5" />
+      <path d="M70 10 Q50 30 30 10 T30 90" stroke-width="1.5" />
+      <line x1="38" y1="20" x2="62" y2="20" stroke-width="1.2" />
+      <line x1="48" y1="35" x2="52" y2="35" stroke-width="1.2" />
+      <line x1="38" y1="50" x2="62" y2="50" stroke-width="1.2" />
+      <line x1="32" y1="65" x2="68" y2="65" stroke-width="1.2" />
+      <line x1="38" y1="80" x2="62" y2="80" stroke-width="1.2" />
+    </svg>
+    <!-- Medical Shield/Cross -->
+    <svg class="bg-svg svg-shield" viewBox="0 0 100 100" fill="none" stroke="currentColor">
+      <circle cx="50" cy="50" r="40" stroke-width="1.5" />
+      <path d="M50 30 L50 70 M30 50 L70 50" stroke-width="2.5" />
+    </svg>
+  </div>
   <div class="hero-inner">
 
     <!-- LEFT: COPY -->
@@ -768,6 +859,22 @@
 
     <!-- ALTERNATIVES panel -->
     <div class="rtab-panel active" id="rpanel-alts">
+      <!-- Trust Info Banner -->
+      <div class="alts-trust-banner" id="alts-trust-banner" style="display: none;">
+        <div class="alt-trust-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="m9 11 2 2 4-4"/>
+          </svg>
+        </div>
+        <div class="alt-trust-content">
+          <h4 class="alt-trust-title">Why are these alternatives safe to switch?</h4>
+          <p class="alt-trust-desc">
+            These generic alternatives contain the <strong>exact same active ingredient (salt)</strong> and strength as your scanned medicine. 
+            They are clinically equivalent, CDSCO/FDA approved, and work identically, but cost significantly less because they don't include branding and marketing markups.
+          </p>
+        </div>
+      </div>
       <div class="alts-grid" id="alts-grid"></div>
     </div>
 
@@ -789,7 +896,7 @@
 
     <!-- Reset -->
     <div class="results-reset-row">
-      <button class="btn-scan-another" onclick="resetScan()">Scan Another Medicine</button>
+      <button class="btn-scan-another" onclick="window.location.reload()">Scan Another Medicine</button>
       <p class="results-disclaimer">Always consult your doctor before switching medicines. MediScan provides information only, not medical advice.</p>
     </div>
 
@@ -877,7 +984,7 @@
       <h2 class="features-headline">Everything you need from one scan</h2>
       <p class="features-sub">MediScan searches Indian medicine databases to give you the most complete picture of your medicine.</p>
     </div>
-    <a href="#hero" class="btn-outline-white">Try Scanner</a>
+    <a href="/" class="btn-outline-white">Try Scanner</a>
   </div>
   <div class="feature-cards">
     <div class="feature-card" data-aos="fade-up" data-aos-delay="0">
@@ -889,7 +996,7 @@
       </svg>
       <h3 class="feature-card-title">Generic Alternatives</h3>
       <p class="feature-card-desc">Find identical salt-composition medicines at a fraction of the price. See savings displayed clearly as price cards.</p>
-      <a href="#hero" class="feature-view-link"><span class="arrow-circle"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2 6h8M7 3l3 3-3 3" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Try Scanner</a>
+      <a href="/" class="feature-view-link"><span class="arrow-circle"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2 6h8M7 3l3 3-3 3" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Try Scanner</a>
     </div>
     <div class="feature-card" data-aos="fade-up" data-aos-delay="100">
       <svg width="56" height="56" viewBox="0 0 60 60" aria-hidden="true">
@@ -901,7 +1008,7 @@
       </svg>
       <h3 class="feature-card-title">Drug Interaction Check</h3>
       <p class="feature-card-desc">Cross-referenced against DrugBank and 42 million TWOSIDES polypharmacy data pairs for dangerous combination warnings.</p>
-      <a href="#hero" class="feature-view-link"><span class="arrow-circle"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2 6h8M7 3l3 3-3 3" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Try Scanner</a>
+      <a href="/" class="feature-view-link"><span class="arrow-circle"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2 6h8M7 3l3 3-3 3" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Try Scanner</a>
     </div>
     <div class="feature-card" data-aos="fade-up" data-aos-delay="200">
       <svg width="56" height="56" viewBox="0 0 60 60" aria-hidden="true">
@@ -911,7 +1018,7 @@
       </svg>
       <h3 class="feature-card-title">Side Effect Profiles</h3>
       <p class="feature-card-desc">FDA SIDER 4.1 data classifies each side effect as Common, Uncommon, or Rare so you know exactly what to expect.</p>
-      <a href="#hero" class="feature-view-link"><span class="arrow-circle"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2 6h8M7 3l3 3-3 3" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Try Scanner</a>
+      <a href="/" class="feature-view-link"><span class="arrow-circle"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2 6h8M7 3l3 3-3 3" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Try Scanner</a>
     </div>
   </div>
 </section>
@@ -927,7 +1034,7 @@
     </div>
     <div></div>
     <div class="footer-cta-stack">
-      <a href="#hero" class="btn-outline-white">Scan Now</a>
+      <a href="/" class="btn-outline-white">Scan Now</a>
       <a href="#how-it-works" class="btn-outline-white">How It Works</a>
     </div>
     <div class="footer-disclaimer">
@@ -939,7 +1046,7 @@
   <div class="footer-bottom">
     <span class="footer-copy">&copy; 2025 MediScan</span>
     <nav class="footer-nav" aria-label="Footer">
-      <a href="#hero">Scanner</a>
+      <a href="/">Scanner</a>
       <a href="#how-it-works">How It Works</a>
       <a href="#features">Features</a>
     </nav>
@@ -968,6 +1075,7 @@ var selectedType = 'strip';
 var selectedFile = null;
 var stageTimers  = [];
 var beamTween    = null;
+var imageTween   = null;
 var dotTweens    = [];
 var stageIv      = null;
 
@@ -1089,13 +1197,19 @@ function startInlineScan(dataUrl) {
   gsap.to(stateUpload, { opacity:0, duration:.2, onComplete: function() {
     stateUpload.style.display = 'none';
     stateScanning.style.display = 'block';
-    gsap.from(stateScanning, { opacity:0, duration:.3 });
+    gsap.fromTo(stateScanning, { opacity: 0 }, { opacity: 1, duration: .3 });
   }});
 
   /* Beam animation */
   beamTween = gsap.fromTo('#scan-beam',
     { top: 0 },
     { top: '196px', duration: 1.6, ease: 'none', repeat: -1 }
+  );
+
+  /* Image breathing/scanning animation */
+  imageTween = gsap.fromTo('#scan-preview-img',
+    { scale: 1.0, filter: 'brightness(0.92) saturate(0.85)' },
+    { scale: 1.08, filter: 'brightness(1.05) saturate(1.05)', duration: 2.0, ease: 'sine.inOut', yoyo: true, repeat: -1 }
   );
 
   /* Bouncing dots */
@@ -1122,6 +1236,8 @@ function startInlineScan(dataUrl) {
 function stopInlineScan() {
   clearInterval(stageIv); stageIv = null;
   if (beamTween) { beamTween.kill(); beamTween = null; }
+  if (imageTween) { imageTween.kill(); imageTween = null; }
+  gsap.set('#scan-preview-img', { scale: 1.0, filter: 'brightness(0.92) saturate(0.85)' });
   dotTweens.forEach(function(t){ t.kill(); }); dotTweens = [];
   document.getElementById('scan-progress-fill').style.width = '100%';
 }
@@ -1141,6 +1257,9 @@ function submitScan() {
   fd.append('image', selectedFile);
   fd.append('scan_type', selectedType);
 
+  // Clear input value to ensure change event fires if user uploads same file later
+  document.getElementById('file-input').value = '';
+
   fetch('/scan/', {
     method: 'POST',
     headers: { 'X-CSRFToken': getCsrfToken() },
@@ -1154,11 +1273,13 @@ function submitScan() {
     var stateScanning = document.getElementById('state-scanning');
     gsap.to(stateScanning, { opacity:0, duration:.25, onComplete: function() {
       stateScanning.style.display = 'none';
+      stateScanning.style.opacity = '';
       stateUpload.style.display = 'block';
       stateUpload.style.opacity = '1';
     }});
 
     if (data.success) {
+      clearImage();
       showResults(data);
     } else {
       showError(data.error || 'Could not read the image. Please try a clearer photo.');
@@ -1170,6 +1291,7 @@ function submitScan() {
     var stateUpload   = document.getElementById('state-upload');
     gsap.to(stateScanning, { opacity:0, duration:.25, onComplete: function() {
       stateScanning.style.display = 'none';
+      stateScanning.style.opacity = '';
       stateUpload.style.display = 'block';
       stateUpload.style.opacity = '1';
     }});
@@ -1241,11 +1363,15 @@ function showResults(data) {
 function buildAlternatives(alts) {
   var grid = document.getElementById('alts-grid');
   grid.innerHTML = '';
+  var banner = document.getElementById('alts-trust-banner');
 
   if (alts.length === 0) {
+    if (banner) banner.style.display = 'none';
     grid.innerHTML = '<div class="no-data-state">No generic alternatives found for this medicine.</div>';
     return;
   }
+
+  if (banner) banner.style.display = 'flex';
 
   /* Sort by price ascending */
   var sorted = alts.slice().sort(function(a, b) {
@@ -1275,12 +1401,19 @@ function buildAlternatives(alts) {
       savingsHtml = '<div class="alt-savings">Lowest price option</div>';
     }
 
+    var trustMatchHtml = '<div class="alt-trust-match">' +
+      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;">' +
+        '<path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '</svg>' +
+      '100% active ingredient match' +
+      '</div>';
+
     var mfrHtml = alt.manufacturer ? '<div class="alt-mfr">' + escHtml(alt.manufacturer) + '</div>' : '';
     var saltHtml = alt.salt ? '<div class="alt-salt-match">Salt: ' + escHtml(alt.salt) + '</div>' : '';
 
     card.innerHTML = bestBadge +
       '<div class="alt-name">' + escHtml(alt.name || '') + '</div>' +
-      mfrHtml + priceHtml + savingsHtml + saltHtml;
+      mfrHtml + priceHtml + savingsHtml + trustMatchHtml + saltHtml;
 
     grid.appendChild(card);
   });
