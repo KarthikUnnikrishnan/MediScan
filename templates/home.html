@@ -77,14 +77,14 @@
       z-index: 1;
     }
     .hero-inner {
-      display: flex; gap: 56px; align-items: flex-start;
+      display: flex; gap: 56px; align-items: center;
       width: 100%; max-width: 1280px; margin: 0 auto;
       position: relative;
       z-index: 2;
     }
 
     /* LEFT — copy */
-    .hero-left { width: 44%; flex-shrink: 0; padding-top: 16px; }
+    .hero-left { width: 44%; flex-shrink: 0; }
 
     /* ── BACKGROUND ILLUSTRATIONS ────────────────────────────────── */
     .bg-illustrations {
@@ -373,17 +373,17 @@
 
     /* Results tabs */
     .results-tabs {
-      display:flex; gap:0; border-bottom:2px solid var(--border);
+      display:flex; gap:0; border-bottom:3px solid var(--border);
       margin-bottom:28px;
     }
     .rtab {
       font-family:'Cormorant Garamond',serif; font-weight:500; font-size:18px;
       color:var(--olive-light); padding:12px 28px 10px;
       border:none; background:none; cursor:pointer;
-      border-bottom:2px solid transparent; margin-bottom:-2px;
-      transition:color .2s;
+      border-bottom:3px solid transparent; margin-bottom:-3px;
+      transition:color .2s, border-bottom-color .2s;
     }
-    .rtab.active { color:var(--forest); border-bottom-color:var(--forest); }
+    .rtab.active { color:var(--olive); font-weight:600; border-bottom-color:var(--forest); }
 
     .rtab-panel { display:none; }
     .rtab-panel.active { display:block; }
@@ -447,6 +447,7 @@
     .alt-salt-match {
       font-family:'DM Mono',monospace; font-size:10px; color:var(--olive-light);
       margin-top:8px; padding-top:10px; border-top:1px solid var(--border);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
 
     /* No alts state */
@@ -545,7 +546,7 @@
     @media(max-width:640px){ .stats-inner{grid-template-columns:repeat(2,1fr);gap:20px;} .stat-item+.stat-item::before{display:none;} #stats{padding:40px 20px;} }
 
     /* ── HOW IT WORKS ────────────────────────────────────────────── */
-    #how-it-works { background:var(--cream-dark); padding:88px 48px; }
+    #how-it-works { background:var(--cream-dark); padding:88px 48px 120px; }
     .section-head { text-align:center; }
     .section-headline { font-family:'Cormorant Garamond',serif; font-weight:600; font-size:46px; color:var(--olive); }
     .section-sub { font-weight:300; font-size:16px; color:var(--olive-mid); margin-top:10px; }
@@ -871,7 +872,7 @@
           <h4 class="alt-trust-title">Why are these alternatives safe to switch?</h4>
           <p class="alt-trust-desc">
             These generic alternatives contain the <strong>exact same active ingredient (salt)</strong> and strength as your scanned medicine. 
-            They are clinically equivalent, CDSCO/FDA approved, and work identically, but cost significantly less because they don't include branding and marketing markups.
+            They are clinically equivalent and work identically, but cost significantly less.
           </p>
         </div>
       </div>
@@ -937,7 +938,7 @@
     <div class="step-col" data-aos="fade-up" data-aos-delay="0">
       <span class="step-mark">01</span>
       <div class="step-icon">
-        <svg width="56" height="56" viewBox="0 0 60 60" aria-hidden="true">
+        <svg width="80" height="80" viewBox="0 0 60 60" aria-hidden="true">
           <circle cx="30" cy="30" r="26" stroke="rgba(77,122,98,0.3)" stroke-width="1" fill="none"/>
           <circle cx="30" cy="30" r="18" stroke="rgba(77,122,98,0.5)" stroke-width="1" fill="none"/>
           <circle cx="30" cy="30" r="10" stroke="rgba(77,122,98,0.7)" stroke-width="1" fill="none"/>
@@ -950,7 +951,7 @@
     <div class="step-col" data-aos="fade-up" data-aos-delay="100">
       <span class="step-mark">02</span>
       <div class="step-icon">
-        <svg width="56" height="56" viewBox="0 0 60 60" aria-hidden="true">
+        <svg width="80" height="80" viewBox="0 0 60 60" aria-hidden="true">
           <rect x="8" y="8" width="44" height="44" rx="4" stroke="rgba(77,122,98,0.3)" stroke-width="1" fill="none"/>
           <rect x="16" y="16" width="28" height="28" rx="3" stroke="rgba(77,122,98,0.5)" stroke-width="1" fill="none"/>
           <rect x="24" y="24" width="12" height="12" rx="2" fill="rgba(77,122,98,0.6)"/>
@@ -964,7 +965,7 @@
     <div class="step-col" data-aos="fade-up" data-aos-delay="200">
       <span class="step-mark">03</span>
       <div class="step-icon">
-        <svg width="56" height="56" viewBox="0 0 60 60" aria-hidden="true">
+        <svg width="80" height="80" viewBox="0 0 60 60" aria-hidden="true">
           <polygon points="30,6 54,50 6,50" stroke="rgba(77,122,98,0.3)" stroke-width="1" fill="none"/>
           <polygon points="30,18 46,44 14,44" stroke="rgba(77,122,98,0.5)" stroke-width="1" fill="none"/>
           <polygon points="30,28 40,44 20,44" fill="rgba(77,122,98,0.5)"/>
@@ -1110,9 +1111,9 @@ function animateCounter(el, target, duration) {
   function update(now) {
     var p = Math.min((now - start) / (duration * 1000), 1);
     var e = 1 - Math.pow(1 - p, 3);
-    el.textContent = Math.round(e * target).toLocaleString('en-IN');
+    el.textContent = Math.round(e * target).toLocaleString('en-US');
     if (p < 1) requestAnimationFrame(update);
-    else el.textContent = target.toLocaleString('en-IN') + '+';
+    else el.textContent = target.toLocaleString('en-US') + '+';
   }
   requestAnimationFrame(update);
 }
@@ -1178,15 +1179,13 @@ function getCsrfToken() {
 
 /* ── INLINE SCAN ANIMATION ────────────────────────────────────── */
 var STAGES = [
-  'Locating medicine strip in image...',
-  'Running OCR text detection...',
-  'Extracting medicine name...',
-  'Searching 352,183 medicines...',
-  'Matching salt composition...',
-  'Loading side effect data...',
-  'Finalising your results...',
+  'Locating medicine strip...',
+  'Reading text from image...',
+  'Searching medicine database...',
+  'Finding generic alternatives...',
+  'Checking drug interactions...'
 ];
-var STAGE_PROGRESS = [8, 20, 36, 52, 68, 84, 96];
+var STAGE_PROGRESS = [15, 35, 65, 85, 96];
 
 function startInlineScan(dataUrl) {
   /* Show scanning state */
@@ -1230,7 +1229,7 @@ function startInlineScan(dataUrl) {
     idx = Math.min(idx + 1, STAGES.length - 1);
     document.getElementById('scan-stage-text').textContent = STAGES[idx];
     document.getElementById('scan-progress-fill').style.width = STAGE_PROGRESS[idx] + '%';
-  }, 1600);
+  }, 2000);
 }
 
 function stopInlineScan() {
@@ -1311,7 +1310,8 @@ function showResults(data) {
   document.getElementById('res-med-name').textContent = med.name || 'Unknown Medicine';
   document.getElementById('res-matched').textContent = med.matched_name ? 'Matched: ' + med.matched_name : '';
   var saltEl = document.getElementById('res-salt');
-  saltEl.innerHTML = med.salt ? '<span class="results-salt">' + escHtml(med.salt) + '</span>' : '';
+  var cleanSalt = cleanSaltText(med.salt);
+  saltEl.innerHTML = cleanSalt ? '<span class="results-salt">' + escHtml(cleanSalt) + '</span>' : '';
   var confPct = confidence ? Math.round(confidence * 100) : 0;
   document.getElementById('res-conf-num').textContent = confPct ? confPct + '%' : '--';
 
@@ -1378,6 +1378,8 @@ function buildAlternatives(alts) {
     return (parseFloat(a.price) || 9999) - (parseFloat(b.price) || 9999);
   });
 
+  sorted = sorted.slice(0, 4);
+
   sorted.forEach(function(alt, i) {
     var card = document.createElement('div');
     card.className = 'alt-card' + (i === 0 ? ' best' : '');
@@ -1408,8 +1410,11 @@ function buildAlternatives(alts) {
       '100% active ingredient match' +
       '</div>';
 
-    var mfrHtml = alt.manufacturer ? '<div class="alt-mfr">' + escHtml(alt.manufacturer) + '</div>' : '';
-    var saltHtml = alt.salt ? '<div class="alt-salt-match">Salt: ' + escHtml(alt.salt) + '</div>' : '';
+    var cleanMfr = (alt.manufacturer && alt.manufacturer.toLowerCase() !== 'unknown') ? alt.manufacturer : '';
+    var mfrHtml = cleanMfr ? '<div class="alt-mfr">' + escHtml(cleanMfr) + '</div>' : '';
+    
+    var cleanAltSalt = cleanSaltText(alt.salt);
+    var saltHtml = cleanAltSalt ? '<div class="alt-salt-match">Active ingredients: ' + escHtml(cleanAltSalt) + '</div>' : '';
 
     card.innerHTML = bestBadge +
       '<div class="alt-name">' + escHtml(alt.name || '') + '</div>' +
@@ -1524,6 +1529,11 @@ function showError(msg) {
 }
 
 /* ── XSS ESCAPE ───────────────────────────────────────────────── */
+function cleanSaltText(text) {
+  if (typeof text !== 'string') return '';
+  return text.replace(/\s*\(\s*(na|NA|n\/a|N\/A|nan|NaN|none|None)\s*\)/ig, '').trim();
+}
+
 function escHtml(s) {
   if (typeof s !== 'string') return String(s == null ? '' : s);
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
