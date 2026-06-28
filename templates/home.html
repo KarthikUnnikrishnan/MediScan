@@ -378,10 +378,15 @@
     }
     /* Horizontal scan beam */
     .scan-beam-line {
-      position:absolute; left:0; right:0; height:2px;
-      background:linear-gradient(90deg,transparent 0%,var(--forest) 30%,rgba(77,122,98,.9) 50%,var(--forest) 70%,transparent 100%);
-      box-shadow:0 0 12px rgba(77,122,98,.6);
-      top:0; pointer-events:none;
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent 0%, var(--forest) 30%, rgba(255,255,255,0.8) 50%, var(--forest) 70%, transparent 100%);
+      box-shadow: 0 0 15px var(--forest), 0 0 5px rgba(255,255,255,0.8);
+      top: 0;
+      pointer-events: none;
+      z-index: 5;
     }
     /* Corner reticles on image */
     .scan-reticle { position:absolute; inset:0; pointer-events:none; }
@@ -396,11 +401,35 @@
       border:1px solid var(--border); margin-top:16px;
       display:flex; align-items:center; gap:16px;
     }
-    .scan-dots { display:flex; gap:6px; flex-shrink:0; }
-    .scan-dot { width:7px; height:7px; border-radius:50%; background:var(--sage); }
+    .scan-ai-icon-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--forest);
+      flex-shrink: 0;
+    }
+    .scan-ai-icon {
+      animation: scan-rotate 3s linear infinite, scan-pulse-icon 2s ease-in-out infinite;
+    }
+    @keyframes scan-rotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    @keyframes scan-pulse-icon {
+      0% { opacity: 0.7; transform: scale(0.95); }
+      50% { opacity: 1; transform: scale(1.15); }
+      100% { opacity: 0.7; transform: scale(0.95); }
+    }
     .scan-stage-text {
       font-family:'DM Mono',monospace; font-size:12px; color:var(--olive-mid);
       flex:1; min-width:0;
+    }
+    .scan-percentage {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--forest);
+      flex-shrink: 0;
     }
     .scan-progress-bar {
       height:3px; background:rgba(43,42,34,.08); border-radius:99px;
@@ -408,7 +437,7 @@
     }
     .scan-progress-fill {
       height:100%; background:linear-gradient(90deg,var(--forest),var(--sage));
-      border-radius:99px; width:0%; transition:width .4s ease;
+      border-radius:99px; width:0%; transition:width 0.4s ease;
     }
 
     @media(max-width:900px){
@@ -957,12 +986,13 @@
             </div>
 
             <div class="scan-stage-wrap">
-              <div class="scan-dots">
-                <div class="scan-dot" id="sdot1"></div>
-                <div class="scan-dot" id="sdot2"></div>
-                <div class="scan-dot" id="sdot3"></div>
+              <div class="scan-ai-icon-wrap">
+                <svg class="scan-ai-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+                </svg>
               </div>
-              <div class="scan-stage-text" id="scan-stage-text">Initialising scan...</div>
+              <div class="scan-stage-text" id="scan-stage-text">Detecting medicine…</div>
+              <div class="scan-percentage" id="scan-percentage">0%</div>
             </div>
             <div class="scan-progress-bar">
               <div class="scan-progress-fill" id="scan-progress-fill"></div>
@@ -1242,6 +1272,8 @@ var beamTween    = null;
 var imageTween   = null;
 var dotTweens    = [];
 var stageIv      = null;
+var progressTween = null;
+var progressValue = { val: 0 };
 
 /* ── NAVBAR ───────────────────────────────────────────────────── */
 window.addEventListener('scroll', function() {
@@ -1346,13 +1378,25 @@ function getCsrfToken() {
 
 /* ── INLINE SCAN ANIMATION ────────────────────────────────────── */
 var STAGES = [
-  'Locating medicine strip...',
-  'Reading text from image...',
-  'Searching medicine database...',
-  'Finding generic alternatives...',
-  'Checking drug interactions...'
+  'Detecting medicine…',
+  'Reading text…',
+  'Finding alternatives…',
+  'Checking interactions…'
 ];
-var STAGE_PROGRESS = [15, 35, 65, 85, 96];
+
+function updateProgress(targetVal, duration) {
+  if (progressTween) progressTween.kill();
+  progressTween = gsap.to(progressValue, {
+    val: targetVal,
+    duration: duration,
+    ease: 'power1.out',
+    onUpdate: function() {
+      var rounded = Math.round(progressValue.val);
+      document.getElementById('scan-percentage').textContent = rounded + '%';
+      document.getElementById('scan-progress-fill').style.width = rounded + '%';
+    }
+  });
+}
 
 function startInlineScan(dataUrl) {
   /* Show scanning state */
@@ -1366,46 +1410,64 @@ function startInlineScan(dataUrl) {
     gsap.fromTo(stateScanning, { opacity: 0 }, { opacity: 1, duration: .3 });
   }});
 
+  // Reset progress state
+  progressValue.val = 0;
+  document.getElementById('scan-percentage').textContent = '0%';
+  document.getElementById('scan-progress-fill').style.width = '0%';
+
   /* Beam animation */
   beamTween = gsap.fromTo('#scan-beam',
     { top: 0 },
-    { top: '196px', duration: 1.6, ease: 'none', repeat: -1 }
+    { top: '196px', duration: 1.8, ease: 'sine.inOut', yoyo: true, repeat: -1 }
   );
 
   /* Image breathing/scanning animation */
   imageTween = gsap.fromTo('#scan-preview-img',
     { scale: 1.0, filter: 'brightness(0.92) saturate(0.85)' },
-    { scale: 1.08, filter: 'brightness(1.05) saturate(1.05)', duration: 2.0, ease: 'sine.inOut', yoyo: true, repeat: -1 }
+    { scale: 1.06, filter: 'brightness(1.03) saturate(1.02)', duration: 1.8, ease: 'sine.inOut', yoyo: true, repeat: -1 }
   );
 
-  /* Bouncing dots */
-  [1,2,3].forEach(function(n, i) {
-    var t = gsap.to('#sdot' + n, {
-      scaleY:1.4, scaleX:1.4, duration:.45,
-      ease:'power1.inOut', yoyo:true, repeat:-1, delay: i * 0.18
-    });
-    dotTweens.push(t);
-  });
-
   /* Stage cycling with progress bar */
-  var idx = 0;
+  var stageIndex = 0;
   document.getElementById('scan-stage-text').textContent = STAGES[0];
-  document.getElementById('scan-progress-fill').style.width = STAGE_PROGRESS[0] + '%';
+  updateProgress(25, 2.0);
 
   stageIv = setInterval(function() {
-    idx = Math.min(idx + 1, STAGES.length - 1);
-    document.getElementById('scan-stage-text').textContent = STAGES[idx];
-    document.getElementById('scan-progress-fill').style.width = STAGE_PROGRESS[idx] + '%';
+    stageIndex++;
+    if (stageIndex < STAGES.length) {
+      document.getElementById('scan-stage-text').textContent = STAGES[stageIndex];
+      var targets = [25, 55, 80, 96];
+      updateProgress(targets[stageIndex], 2.0);
+    } else {
+      var current = progressValue.val;
+      if (current < 98) {
+        updateProgress(Math.min(current + 1, 98), 1.0);
+      }
+    }
   }, 2000);
 }
 
-function stopInlineScan() {
+function stopInlineScan(callback) {
   clearInterval(stageIv); stageIv = null;
   if (beamTween) { beamTween.kill(); beamTween = null; }
   if (imageTween) { imageTween.kill(); imageTween = null; }
   gsap.set('#scan-preview-img', { scale: 1.0, filter: 'brightness(0.92) saturate(0.85)' });
-  dotTweens.forEach(function(t){ t.kill(); }); dotTweens = [];
-  document.getElementById('scan-progress-fill').style.width = '100%';
+  
+  if (progressTween) progressTween.kill();
+  
+  gsap.to(progressValue, {
+    val: 100,
+    duration: 0.5,
+    ease: 'power2.out',
+    onUpdate: function() {
+      var rounded = Math.round(progressValue.val);
+      document.getElementById('scan-percentage').textContent = rounded + '%';
+      document.getElementById('scan-progress-fill').style.width = rounded + '%';
+    },
+    onComplete: function() {
+      if (callback) callback();
+    }
+  });
 }
 
 /* ── SUBMIT ───────────────────────────────────────────────────── */
@@ -1433,35 +1495,37 @@ function submitScan() {
   })
   .then(function(r) { return r.json(); })
   .then(function(data) {
-    stopInlineScan();
-    /* Restore upload state */
-    var stateUpload   = document.getElementById('state-upload');
-    var stateScanning = document.getElementById('state-scanning');
-    gsap.to(stateScanning, { opacity:0, duration:.25, onComplete: function() {
-      stateScanning.style.display = 'none';
-      stateScanning.style.opacity = '';
-      stateUpload.style.display = 'block';
-      stateUpload.style.opacity = '1';
-    }});
-
-    if (data.success) {
-      clearImage();
-      showResults(data);
-    } else {
-      showError(data.error || 'Could not read the image. Please try a clearer photo.');
-    }
+    stopInlineScan(function() {
+      /* Restore upload state */
+      var stateUpload   = document.getElementById('state-upload');
+      var stateScanning = document.getElementById('state-scanning');
+      gsap.to(stateScanning, { opacity:0, duration:.25, onComplete: function() {
+        stateScanning.style.display = 'none';
+        stateScanning.style.opacity = '';
+        stateUpload.style.display = 'block';
+        stateUpload.style.opacity = '1';
+        
+        if (data.success) {
+          clearImage();
+          showResults(data);
+        } else {
+          showError(data.error || 'Could not read the image. Please try a clearer photo.');
+        }
+      }});
+    });
   })
   .catch(function() {
-    stopInlineScan();
-    var stateScanning = document.getElementById('state-scanning');
-    var stateUpload   = document.getElementById('state-upload');
-    gsap.to(stateScanning, { opacity:0, duration:.25, onComplete: function() {
-      stateScanning.style.display = 'none';
-      stateScanning.style.opacity = '';
-      stateUpload.style.display = 'block';
-      stateUpload.style.opacity = '1';
-    }});
-    showError('Network error. Please check your connection.');
+    stopInlineScan(function() {
+      var stateScanning = document.getElementById('state-scanning');
+      var stateUpload   = document.getElementById('state-upload');
+      gsap.to(stateScanning, { opacity:0, duration:.25, onComplete: function() {
+        stateScanning.style.display = 'none';
+        stateScanning.style.opacity = '';
+        stateUpload.style.display = 'block';
+        stateUpload.style.opacity = '1';
+        showError('Network error. Please check your connection.');
+      }});
+    });
   });
 }
 
