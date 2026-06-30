@@ -100,9 +100,8 @@
       transition: box-shadow .3s;
     }
     #navbar.scrolled { box-shadow: 0 2px 20px rgba(43,42,34,.08); }
-    .nav-logo { display: flex; align-items: baseline; gap: 8px; }
-    .nav-logo-name { font-family: var(--serif); font-size: 22px; font-weight: 600; color: var(--ink); }
-    .nav-logo-sub { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; color: var(--ink-faint); text-transform: uppercase; transform: translateY(1px); }
+    .nav-logo { display: flex; align-items: center; text-decoration: none; }
+    .nav-logo-img { height: 38px; width: auto; object-fit: contain; display: block; }
     .nav-links { display: flex; gap: 36px; list-style: none; align-items: center; }
     .nav-links a { font-size: 14.5px; color: var(--ink-soft); font-weight: 500; transition: color .15s ease; text-decoration: none; }
     .nav-links a:hover { color: var(--ink); }
@@ -567,6 +566,7 @@
     }
     .matched-med-row .label {
       color: var(--ink-faint);
+    }
     /* Clinical Substance Analysis report rows */
     .report-item-group {
       display: flex;
@@ -770,7 +770,9 @@
       font-size: 13.5px;
       font-weight: 600;
       color: var(--sage-deep);
-       /* Conclusion Status Banner */
+    }
+
+    /* Conclusion Status Banner */
     .r-conclusion-banner {
       display: flex;
       align-items: center;
@@ -1567,8 +1569,8 @@
     .footer { background: var(--moss-deep); padding: 48px 48px 32px; border-top: 1px solid rgba(250,247,240,0.08); position: relative; }
     .footer-inner { max-width: 1180px; margin: 0 auto; }
     .footer-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 36px; gap: 32px; }
-    .footer-logo { font-family: var(--serif); font-size: 20px; color: var(--paper); }
-    .footer-logo .sub { font-family: var(--mono); font-size: 10px; color: rgba(250,247,240,0.4); letter-spacing: 0.12em; display: block; margin-top: 4px; }
+    .footer-logo { display: flex; align-items: center; }
+    .footer-logo-img { height: 32px; width: auto; object-fit: contain; display: block; filter: brightness(0) invert(1) opacity(0.85); }
     .footer-disclaimer { max-width: 320px; font-size: 12.5px; color: rgba(250,247,240,0.45); text-align: right; line-height: 1.6; }
     .footer-bottom {
       display: flex; justify-content: space-between; align-items: center;
@@ -1598,8 +1600,7 @@
 <!-- ================================================================ NAVBAR -->
 <nav id="navbar">
   <a href="/" class="nav-logo">
-    <span class="nav-logo-name">MediScan</span>
-    <span class="nav-logo-sub">MEDICINE</span>
+    <img src="/static/Mediscan_logo.png" alt="MediScan Logo" class="nav-logo-img">
   </a>
   <ul class="nav-links">
     <li><a href="/">Scanner</a></li>
@@ -2123,7 +2124,7 @@
 <footer class="footer">
   <div class="wrap">
     <div class="footer-top">
-      <div class="footer-logo">MediScan<span class="sub">Medicine</span></div>
+      <div class="footer-logo"><img src="/static/Mediscan_logo.png" alt="MediScan Logo" class="footer-logo-img"></div>
       <div class="footer-disclaimer">Always consult your doctor before switching medicines. MediScan provides information only, not medical advice.</div>
     </div>
     <div class="footer-bottom">
@@ -2689,9 +2690,10 @@ function buildAlternatives(alts, brandPrice) {
   });
 
   /* Stagger in */
-  gsap.from(grid.querySelectorAll('.alt-card'), {
-    opacity:0, y:20, stagger:.06, duration:.4, ease:'power2.out', delay:.1
-  });
+  gsap.fromTo(grid.querySelectorAll('.alt-card'), 
+    { opacity: 0, y: 20 },
+    { opacity: 1, y: 0, stagger: 0.06, duration: 0.4, ease: 'power2.out', delay: 0.1 }
+  );
 }
 
 /* ── BUILD SIDE EFFECTS ───────────────────────────────────────── */
