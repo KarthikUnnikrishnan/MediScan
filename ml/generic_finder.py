@@ -245,9 +245,9 @@ def find_generics(medicine_name: str, max_results: int = 5) -> dict:
             "error"       : f"No match found for '{medicine_name}' in database.",
         }
 
-    # ── Step 2: Get salt of matched medicine ───────────────────────────
+    # ── Step 2: Get salt, price, and manufacturer of matched medicine ──
     row = _conn.execute(
-        "SELECT salt FROM medicines WHERE name = ? LIMIT 1",
+        "SELECT salt, price, manufacturer FROM medicines WHERE name = ? LIMIT 1",
         (best_match,)
     ).fetchone()
 
@@ -261,6 +261,8 @@ def find_generics(medicine_name: str, max_results: int = 5) -> dict:
         }
 
     salt = row['salt'].strip().lower()
+    matched_price = round(row['price'], 2) if row['price'] is not None else None
+    matched_mfr = row['manufacturer'] or "Unknown"
 
     # ── Step 3: Extract active ingredient keyword from salt ────────────
     # "levocetirizine hydrochloride (5mg)" → "levocetirizine hydrochloride"
@@ -304,6 +306,8 @@ def find_generics(medicine_name: str, max_results: int = 5) -> dict:
         "input_name"   : medicine_name,
         "matched_name" : best_match,
         "match_score"  : round(best_score, 1),
+        "price"        : matched_price,
+        "manufacturer" : matched_mfr,
         "salt"         : salt,
         "drug_keyword" : drug_keyword,
         "alternatives" : alternatives,

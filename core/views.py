@@ -79,6 +79,8 @@ def scan(request):
             medicines_data.append({
                 'name'        : name,
                 'matched_name': generic_result.get('matched_name', name),
+                'price'       : generic_result.get('price'),
+                'manufacturer': generic_result.get('manufacturer'),
                 'salt'        : generic_result.get('salt', ''),
                 'alternatives': generic_result.get('alternatives', []),
                 'side_effects': se_result.get('side_effects', []),
