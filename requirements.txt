@@ -1,0 +1,12 @@
+django>=4.2
+python-dotenv
+pillow
+torch
+torchvision
+ultralytics
+transformers
+accelerate
+sentencepiece
+tiktoken
+rapidfuzz
+msvc-runtime; sys_platform == 'win32'

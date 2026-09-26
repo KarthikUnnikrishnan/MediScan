@@ -1,0 +1,391 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load mediscan_tags %}
+
+{% block title %}
+  {% if medicine %}Scan Report: {{ medicine.name }} — MediScan{% else %}Scan Analysis — MediScan{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="result-standalone-wrapper">
+  <div class="container">
+    
+    <!-- 1. TOP RESULT & SCAN STATUS BANNER -->
+    <div class="result-top-banner">
+      <div class="result-banner-left">
+        {% if status == 'verified' and medicine %}
+          <div class="result-check-avatar" style="background:#143d2b; color:#fff;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+          <div class="result-banner-info">
+            <h2 class="result-banner-title">Medication Verified & Matched</h2>
+            <div class="result-banner-pills">
+              <span class="result-pill-mode">
+                {% if mode == 'medicine_package' %}Package / Strip Verification
+                {% elif mode == 'prescription' %}Prescription Regimen
+                {% else %}Automated Scan{% endif %}
+              </span>
+              {% if timestamp %}
+              <span class="result-pill-time">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                {{ timestamp|slice:":16"|replace_char:"T, " }}
+              </span>
+              {% endif %}
+              <span class="result-pill-count" style="background:rgba(20,61,43,0.08); color:#143d2b; font-weight:700;">
+                {{ confidence_breakdown.overall|default:medicine.confidence|floatformat:1 }}% Overall Confidence
+              </span>
+            </div>
+          </div>
+        {% else %}
+          <div class="result-check-avatar" style="background:#e07a5f; color:#fff;">?</div>
+          <div class="result-banner-info">
+            <h2 class="result-banner-title">Could Not Confidently Verify</h2>
+            <div class="result-banner-pills">
+              <span class="result-pill-mode" style="background:rgba(224,122,95,0.15); color:#c45535;">
+                Verification Paused
+              </span>
+              <span class="result-pill-count" style="background:rgba(0,0,0,0.05); color:#444;">
+                Better to return unverified than incorrect
+              </span>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="result-banner-right">
+        <a href="{% url 'index' %}#scanner-terminal" class="btn-action-ghost">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          <span>Scan Another</span>
+        </a>
+        <button type="button" class="btn-action-print" onclick="window.print()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+          </svg>
+          <span>Print Clinical Report</span>
+        </button>
+      </div>
+    </div>
+
+    {% if status == 'verified' and medicine %}
+    <!-- ========================================================
+         VERIFIED REPORT LAYOUT
+         ======================================================== -->
+    <div class="results-main-grid">
+      
+      <!-- LEFT COLUMN: Detected Medicine & Clinical Specs -->
+      <div class="result-card primary-drug-card">
+        
+        <!-- 2. DETECTED MEDICINE HEADER -->
+        <div class="drug-card-top">
+          <span class="drug-badge-tag">DETECTED MEDICINE</span>
+          <span class="confidence-badge">
+            <span class="dot-green"></span> {{ confidence_breakdown.overall|default:medicine.confidence|floatformat:1 }}% Match
+          </span>
+        </div>
+
+        {% if image_url %}
+        <div class="scan-image-preview-wrap">
+          <img src="{{ image_url }}" alt="Scanned medicine package" class="scan-result-image" />
+          <div class="scan-image-tag">Scanned Strip Image</div>
+        </div>
+        {% endif %}
+
+        <!-- Large heading: Active chemical moieties -->
+        <div class="detected-medicine-headings" style="margin: 1.25rem 0 1rem 0;">
+          <h2 style="font-family:var(--font-display); font-size: 1.85rem; font-weight:800; letter-spacing:-0.03em; color:#143d2b; margin:0 0 0.35rem 0; line-height: 1.2;">
+            {% if ingredients %}
+              {% for ing in ingredients %}{{ ing.name }}{% if not forloop.last %} + {% endif %}{% endfor %}
+            {% else %}
+              {{ medicine.name }}
+            {% endif %}
+          </h2>
+          <div style="font-size: 1.15rem; font-weight: 700; color: #2d6a4f; margin-bottom: 0.5rem;">
+            {% if ingredients %}
+              {% for ing in ingredients %}{{ ing.strength }} {{ ing.unit }}{% if not forloop.last %} + {% endif %}{% endfor %}
+            {% endif %}
+          </div>
+          <div style="font-size: 0.92rem; color: #555;">
+            Sold commercially as <strong>{{ medicine.brand|default:medicine.name }}</strong> &bull; {{ medicine.manufacturer|default:"Registered Manufacturer" }}
+            <span class="verified-pill" style="display:inline-flex; align-items:center; gap:4px; margin-left:0.5rem; padding: 2px 8px; border-radius: 999px; background:#ebf5ee; color:#143d2b; font-size:0.75rem; font-weight:700;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Verified</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- 3. ACTIVE INGREDIENTS (Breakdown per line) -->
+        <div class="active-ingredients-section" style="margin: 1.5rem 0; padding: 1rem; border-radius: 12px; background: #f7faf7; border: 1px solid rgba(20,61,43,0.1);">
+          <div style="font-size: 0.75rem; font-weight: 800; letter-spacing: 0.08em; color: #143d2b; text-transform: uppercase; margin-bottom: 0.75rem;">
+            Active Pharmaceutical Ingredients
+          </div>
+          <div class="ingredient-rows-list">
+            {% if ingredients %}
+              {% for ing in ingredients %}
+              <div class="ing-item-line" style="display:flex; justify-content:space-between; align-items:center; padding: 0.5rem 0; border-bottom: 1px dashed rgba(0,0,0,0.08);">
+                <div style="font-weight: 600; color: #1a1a1a; display:flex; align-items:center; gap:6px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2d6a4f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"></path><path d="m8.5 8.5 7 7"></path></svg>
+                  <span>{{ ing.name }}</span>
+                </div>
+                <div style="font-weight: 700; color: #143d2b; background:#fff; padding: 2px 8px; border-radius: 6px; border: 1px solid #d8e8dd;">
+                  {{ ing.strength }} {{ ing.unit }}
+                </div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <div class="ing-item-line" style="display:flex; justify-content:space-between;">
+                <span>{{ medicine.salt }}</span>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- 4. MEDICINE INFORMATION -->
+        <div class="medicine-info-specs" style="margin: 1.25rem 0;">
+          <div style="font-size: 0.75rem; font-weight: 800; letter-spacing: 0.08em; color: #666; text-transform: uppercase; margin-bottom: 0.6rem;">
+            Clinical Specifications
+          </div>
+          <div class="drug-specs-grid">
+            <div class="spec-tile">
+              <span class="spec-label">DOSAGE FORM</span>
+              <span class="spec-val" style="font-weight:700;">{{ medicine.dosage_form|default:"Tablet" }}</span>
+            </div>
+            <div class="spec-tile">
+              <span class="spec-label">BRAND NAME</span>
+              <span class="spec-val" style="font-weight:700;">{{ medicine.brand|default:medicine.name }}</span>
+            </div>
+            <div class="spec-tile">
+              <span class="spec-label">MANUFACTURER</span>
+              <span class="spec-val">{{ medicine.manufacturer|default:"Registered Lab" }}</span>
+            </div>
+            <div class="spec-tile">
+              <span class="spec-label">CLINICAL SCHEDULE</span>
+              <span class="spec-val" style="color:#d9534f; font-weight:700;">{{ medicine.schedule|default:"Schedule H" }}</span>
+            </div>
+            <div class="spec-tile price-tile" style="grid-column: 1 / -1;">
+              <span class="spec-label">REGISTERED MRP (BRANDED)</span>
+              <span class="spec-val price-val">
+                {% if medicine.price %}&#8377; {{ medicine.price }}{% else %}Price not registered{% endif %}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Real Confidence Breakdown -->
+        {% if confidence_breakdown %}
+        <div class="confidence-meters" style="margin-top: 1.25rem; padding: 0.85rem; border-radius: 10px; background: #fff; border: 1px solid #eee;">
+          <div style="font-size: 0.72rem; font-weight: 800; color: #777; text-transform: uppercase; margin-bottom: 0.5rem;">
+            Verification Confidence Breakdown
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; font-size: 0.8rem;">
+            <div>Brand: <strong>{{ confidence_breakdown.brand|floatformat:0 }}%</strong></div>
+            <div>Ingredients: <strong>{{ confidence_breakdown.ingredients|floatformat:0 }}%</strong></div>
+            <div>Strength: <strong>{{ confidence_breakdown.strength|floatformat:0 }}%</strong></div>
+            <div>Manufacturer: <strong>{{ confidence_breakdown.manufacturer|floatformat:0 }}%</strong></div>
+            <div>Dosage Form: <strong>{{ confidence_breakdown.dosage_form|floatformat:0 }}%</strong></div>
+            <div>Overall: <strong style="color:#143d2b;">{{ confidence_breakdown.overall|floatformat:0 }}%</strong></div>
+          </div>
+        </div>
+        {% endif %}
+
+      </div>
+
+      <!-- RIGHT COLUMN: 5. TOP 5 CHEAPER ALTERNATIVES -->
+      <div class="result-card alternatives-card">
+        
+        <div class="alt-header-row">
+          <div>
+            <h3 class="alt-card-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:6px;"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"></path><path d="m8.5 8.5 7 7"></path></svg>
+              Top 5 Cheaper Equivalent Medicines
+            </h3>
+            <p class="alt-card-subtitle">Identical chemical composition &bull; Matching strength &bull; Bioequivalent</p>
+          </div>
+        </div>
+
+        {% if alternatives and max_savings and max_savings > 0 %}
+        <div class="savings-highlight-box">
+          <div class="savings-highlight-icon">&#8377;</div>
+          <div class="savings-highlight-text">
+            <strong>Save up to &#8377;{{ max_savings }}</strong>
+            {% if max_savings_percent %}<span>({{ max_savings_percent }}% cheaper than scanned brand price)</span>{% endif %}
+          </div>
+        </div>
+        {% endif %}
+
+        {% if alternatives %}
+          <div class="alternatives-list">
+            {% for alt in alternatives %}
+            <div class="alt-item-row{% if forloop.first %} rank-cheapest{% endif %}" style="margin-bottom: 0.85rem;">
+              
+              <div class="alt-item-left">
+                <div class="alt-index-badge">#{{ forloop.counter }}</div>
+                <div class="alt-details">
+                  <div class="alt-name-wrapper">
+                    <span class="alt-medicine-name">{{ alt.name }}</span>
+                    {% if forloop.first %}
+                    <span class="badge-cheapest-choice">BEST PRICE</span>
+                    {% endif %}
+                    <span class="badge-bioequiv" style="font-size:0.68rem; background:#ebf5ee; color:#143d2b; padding:2px 6px; border-radius:4px; font-weight:700; margin-left:6px;">
+                      Same Composition
+                    </span>
+                  </div>
+                  <div class="alt-manufacturer">{{ alt.manufacturer|default:"Generic Manufacturer" }}</div>
+                  {% if alt.salt %}
+                  <div class="alt-salt-tag" style="font-size:0.75rem; color:#555; margin-top:3px; display:flex; align-items:center; gap:4px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.31"></path><path d="M14 9.3V2"></path><path d="M8.5 2h7"></path><path d="M14 9.3a6.5 6.5 0 1 1-4 0"></path><path d="M5.52 16h12.96"></path></svg>
+                    <span>{{ alt.salt }}</span>
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+
+              <div class="alt-item-right">
+                <div class="alt-price-number" style="font-size:1.25rem; font-weight:800; color:#143d2b;">
+                  {% if alt.price %}&#8377; {{ alt.price }}{% else %}N/A{% endif %}
+                </div>
+                {% if alt.saving_amount and alt.saving_amount > 0 %}
+                <div class="alt-savings-chip">
+                  Save &#8377;{{ alt.saving_amount }} ({{ alt.saving_percent }}%)
+                </div>
+                {% elif medicine.price and alt.price and alt.price < medicine.price %}
+                <div class="alt-savings-chip">
+                  vs &#8377;{{ medicine.price }}
+                </div>
+                {% endif %}
+              </div>
+
+            </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-alternatives-notice" style="padding: 2rem; text-align: center; background: #fdfdfd; border-radius: 12px; border: 1px dashed #ddd;">
+            <p style="color:#666; font-size: 0.95rem; margin:0;">
+              No cheaper bioequivalent alternatives with matching strength are currently recorded in the local database for this specific formulation.
+            </p>
+          </div>
+        {% endif %}
+
+      </div>
+
+    </div>
+
+    <!-- 6. SIDE EFFECTS & 7. DRUG INTERACTIONS -->
+    <div class="clinical-safety-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem;">
+      
+      <!-- SIDE EFFECTS CARD -->
+      <div class="result-card" style="padding: 1.5rem;">
+        <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom: 1rem;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#143d2b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"></path><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"></path><circle cx="20" cy="10" r="2"></circle></svg>
+          <h3 style="font-family:'Fraunces', serif; margin:0; color:#143d2b; font-size:1.2rem;">
+            Documented Side Effects
+          </h3>
+        </div>
+        {% if side_effects %}
+          <ul style="list-style:none; padding:0; margin:0; display:grid; grid-template-columns: 1fr; gap:0.5rem;">
+            {% for se in side_effects %}
+            <li style="display:flex; justify-content:space-between; align-items:center; padding: 0.4rem 0.6rem; border-radius: 6px; background:#f9fbf9; border:1px solid #edf3ed; font-size: 0.88rem;">
+              <span style="color:#222; font-weight:500;">{{ se.name }}</span>
+              <span style="font-size:0.72rem; padding: 2px 6px; border-radius:4px; background:#fff; color:#666; border:1px solid #e0e0e0;">
+                {{ se.frequency }}
+              </span>
+            </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p style="color:#777; font-size:0.9rem;">No specific severe side effects registered in standard STITCH safety records for this active formulation.</p>
+        {% endif %}
+      </div>
+
+      <!-- DRUG INTERACTIONS CARD -->
+      <div class="result-card" style="padding: 1.5rem;">
+        <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom: 1rem;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#143d2b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          <h3 style="font-family:'Fraunces', serif; margin:0; color:#143d2b; font-size:1.2rem;">
+            Drug Interactions & Warnings
+          </h3>
+        </div>
+        {% if interactions %}
+          <div style="display:flex; flex-direction:column; gap:0.65rem;">
+            {% for inter in interactions %}
+            <div style="padding: 0.65rem 0.85rem; border-radius: 8px; background:#fff; border: 1px solid {% if inter.severity == 'HIGH' %}#f8d7da{% elif inter.severity == 'MODERATE' %}#fff3cd{% else %}#e2e3e5{% endif %};">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.25rem;">
+                <strong style="font-size:0.85rem; color:#111;">{{ inter.drug1 }} + {{ inter.drug2 }}</strong>
+                <span style="font-size:0.7rem; font-weight:800; padding:2px 6px; border-radius:4px; {% if inter.severity == 'HIGH' %}background:#dc3545; color:#fff;{% elif inter.severity == 'MODERATE' %}background:#ffc107; color:#212529;{% else %}background:#6c757d; color:#fff;{% endif %}">
+                  {{ inter.severity }} RISK
+                </span>
+              </div>
+              <p style="margin:0; font-size:0.8rem; color:#444; line-height:1.4;">
+                {{ inter.description }}
+              </p>
+            </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p style="color:#777; font-size:0.9rem;">No common severe combination contraindications detected for this formulation in the safety index.</p>
+        {% endif %}
+      </div>
+
+    </div>
+
+    <!-- 8. SAFETY DISCLAIMER -->
+    <div class="safety-disclaimer-box" style="margin-top: 1.75rem; padding: 1rem 1.25rem; border-radius: 10px; background: #faf9f6; border-left: 4px solid #143d2b; font-size: 0.85rem; color: #555; line-height: 1.5; display: flex; align-items: flex-start; gap: 8px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#143d2b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:2px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+      <div>
+        <strong>Medical Disclaimer:</strong> MediScan is an informational decision-support and cost-transparency tool powered by computer vision and pharmacological databases. Never stop, start, or substitute any prescription medication without the explicit direction and supervision of a licensed physician or registered pharmacist.
+      </div>
+    </div>
+
+    {% else %}
+    <!-- ========================================================
+         UNVERIFIED OR NO-MATCH STATE
+         ======================================================== -->
+    <div class="result-card no-match-state-card" style="padding: 3rem 2rem; text-align:center; max-width: 680px; margin: 2rem auto;">
+      <div style="width: 64px; height: 64px; border-radius: 50%; background: #fee2e2; color: #dc2626; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 1.5rem auto;">
+        ?
+      </div>
+      <h3 style="font-family:'Fraunces', serif; font-size: 1.75rem; color:#1f2937; margin-bottom: 0.75rem;">
+        Unable to Confidently Verify This Medicine
+      </h3>
+      <p style="color:#4b5563; font-size: 1rem; line-height: 1.5; margin-bottom: 1.5rem;">
+        MediScan operates on a strict zero-guessing safety policy: <em>It is better to return "Could not verify" than to return an incorrect medication.</em>
+      </p>
+
+      {% if rejection_reasons %}
+      <div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius: 8px; padding: 1rem; text-align: left; margin-bottom: 1.5rem;">
+        <div style="font-size: 0.8rem; font-weight: 700; color: #374151; margin-bottom: 0.5rem; text-transform: uppercase;">
+          Verification Notes:
+        </div>
+        <ul style="margin: 0; padding-left: 1.25rem; font-size: 0.88rem; color: #4b5563;">
+          {% for reason in rejection_reasons %}
+          <li>{{ reason }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      {% if raw_ocr %}
+      <div style="background:#f3f4f6; border-radius: 6px; padding: 0.75rem; font-family: monospace; font-size: 0.8rem; color: #374151; margin-bottom: 1.5rem; word-break: break-all;">
+        Raw Detected Text: "{{ raw_ocr }}"
+      </div>
+      {% endif %}
+
+      <div style="display:flex; justify-content:center; gap: 1rem;">
+        <a href="{% url 'index' %}#scanner-terminal" class="btn-hero-primary" style="display:inline-flex; align-items:center; gap:0.5rem;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+          <span>Retake Photo</span>
+        </a>
+        <a href="{% url 'index' %}" class="btn-hero-secondary">
+          <span>Return Home</span>
+        </a>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}

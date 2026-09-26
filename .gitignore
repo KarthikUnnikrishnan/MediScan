@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Static collected
+staticfiles/
+
+# Uploaded user media
+media/uploads/*
+!media/uploads/.gitkeep
+
+# Heavy Model Weights & Datasets & Pickles (>100MB GitHub limit)
+*.pt
+*.safetensors
+*.bin
+*.pth
+*.pkl
+Datasets/*/raw/
+Datasets/*/images/
+saved_models/*.pt
+saved_models/*.safetensors
+saved_models/*.sqlite
+saved_models/*.pkl
+!saved_models/.gitkeep
+
+# Environments & OS
+.env
+.DS_Store
+Thumbs.db
+
+# IDE & Editors
+.vscode/
+.idea/
+*.swp
+*~

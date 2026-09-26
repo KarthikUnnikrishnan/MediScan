@@ -1,0 +1,1 @@
+# mediscan settings package

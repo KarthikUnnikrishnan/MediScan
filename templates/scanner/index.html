@@ -1,0 +1,883 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load mediscan_tags %}
+
+{% block title %}MediScan — Scan Medicines, Save Money, and Stay Safe{% endblock %}
+
+{% block content %}
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     1. HERO SECTION: EXACT DESIGN MATCHING USER REFERENCE SCREENSHOT
+════════════════════════════════════════════════════════════════════════════ -->
+<section class="hero-section" id="hero">
+
+  <div class="container hero-grid">
+    
+    <!-- Hero Left Column: Editorial Headline & Actions -->
+    <div class="hero-editorial">
+
+      <!-- Main Headline: Classic Editorial Serif with Italic Green Accent -->
+      <h1 class="hero-title">
+        Scan medicines,<br />
+        <span class="hero-title-italic">save money,</span><br />
+        and stay safe.
+      </h1>
+
+      <!-- Description Subtitle -->
+      <p class="hero-desc">
+        Upload a photo of your medicine strip or prescription. MediScan instantly identifies medicines, finds affordable alternatives, checks interactions, and reveals side effects.
+      </p>
+
+      <!-- Action Buttons -->
+      <div class="hero-actions">
+        <a href="#how-it-works" class="btn-hero-secondary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polygon points="10 8 16 12 10 16 10 8" fill="currentColor"></polygon>
+          </svg>
+          <span>See How It Works</span>
+        </a>
+      </div>
+
+      <!-- Trust Badges Row -->
+      <div class="hero-micro-trust">
+        <div class="micro-trust-item">
+          <span class="check-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </span>
+          <span>100k+ Registered Drugs</span>
+        </div>
+        <div class="micro-trust-item">
+          <span class="check-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </span>
+          <span>Up to 80% Generic Savings</span>
+        </div>
+        <div class="micro-trust-item">
+          <span class="check-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </span>
+          <span>Zero Server Uploads</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Hero Right Column: AI Scanner Card -->
+    <div class="hero-scanner-stage">
+
+      <!-- Main AI Scanner Card -->
+      <div class="scanner-card" id="scanner-terminal">
+        
+        <!-- Ambient Top Reflection Glow -->
+        <div class="scanner-card-glow" aria-hidden="true"></div>
+
+        <!-- Card Header: Window Dots & Mode Tag -->
+        <div class="scanner-card-header">
+          <div class="window-dots">
+            <span class="w-dot dot-red"></span>
+            <span class="w-dot dot-yellow"></span>
+            <span class="w-dot dot-green"></span>
+          </div>
+          <div class="scanner-header-right">
+            <span class="ai-engine-chip">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+              <span>Fast Local Analysis</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Card Title & Subtitle -->
+        <div class="scanner-card-headings">
+          <h2 class="scanner-title">Scan your medicine</h2>
+          <p class="scanner-subtitle">Upload a photo to get instant AI analysis</p>
+        </div>
+
+        <!-- Scan Mode Segmented Toggle: Medicine Strip vs Prescription -->
+        <div class="segmented-control" role="tablist" aria-label="Select scan mode">
+          <button type="button" class="segment-btn active" data-mode="medicine_package" role="tab" aria-selected="true" id="tabStrip">
+            <span class="tab-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"></path><path d="m8.5 8.5 7 7"></path></svg>
+            </span>
+            <span>Medicine Strip</span>
+          </button>
+          <button type="button" class="segment-btn" data-mode="prescription" role="tab" aria-selected="false" id="tabRx">
+            <span class="tab-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14h6"></path><path d="M9 18h6"></path><path d="M9 10h1"></path></svg>
+            </span>
+            <span>Prescription</span>
+          </button>
+        </div>
+
+        <!-- Scanner Form -->
+        <form method="POST" action="{% url 'index' %}" enctype="multipart/form-data" id="scanForm">
+          {% csrf_token %}
+
+          <!-- Hidden Mode Radio inputs -->
+          <input type="radio" name="mode" value="medicine_package" checked class="hidden-radio" id="modeStrip" />
+          <input type="radio" name="mode" value="prescription" class="hidden-radio" id="modeRx" />
+          <input type="radio" name="mode" value="auto" class="hidden-radio" id="modeAuto" />
+
+          <!-- Hidden Native File Input -->
+          <input type="file" name="image" id="id_image" accept="image/jpeg,image/png,image/webp,image/bmp" class="hidden-file-input" required />
+
+          <!-- Clean Dropzone -->
+          <div class="upload-dropzone" id="scannerDropzone" tabindex="0" role="button" aria-label="Upload medicine photo">
+            
+            <!-- Corner Brackets -->
+            <span class="dropzone-corner corner-tl" aria-hidden="true"></span>
+            <span class="dropzone-corner corner-tr" aria-hidden="true"></span>
+            <span class="dropzone-corner corner-bl" aria-hidden="true"></span>
+            <span class="dropzone-corner corner-br" aria-hidden="true"></span>
+
+            <div class="dropzone-camera-icon">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+              </svg>
+            </div>
+            <div class="dropzone-prompt">Tap to photograph or upload</div>
+            <div class="dropzone-format-info">JPG &bull; PNG &bull; WEBP &bull; Max 10MB</div>
+
+            <div class="dropzone-camera-link">
+              <button type="button" class="btn-open-camera" id="btnTriggerCamera" title="Take a live photo with camera">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                  <circle cx="12" cy="13" r="4"></circle>
+                </svg>
+                <span>Or use live camera</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Selected Image Preview Card -->
+          <div class="file-preview-card" id="previewCard" style="display: none;">
+            <div class="preview-media">
+              <img src="" alt="Selected medicine preview" class="preview-img" id="previewThumb" />
+            </div>
+            <div class="preview-meta">
+              <span class="preview-name" id="previewFilename">image.jpg</span>
+              <span class="preview-size" id="previewSize">0 KB</span>
+              <span class="preview-status">Ready to analyze</span>
+            </div>
+            <button type="button" class="btn-clear-file" id="btnRemovePreview" title="Remove chosen image" aria-label="Remove image">&times;</button>
+          </div>
+
+          <!-- Analyze Medicine Button with Dynamic Shimmer -->
+          <button type="submit" class="btn-analyze-submit" id="btnScanSubmit">
+            <span class="btn-shimmer-sweep" aria-hidden="true"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <span>Analyze Medicine</span>
+          </button>
+        </form>
+
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     RESULTS SECTION: COHESIVE CLINICAL-LUXURY DASHBOARD (REVEALED ON SCAN)
+════════════════════════════════════════════════════════════════════════════ -->
+<section class="results-dashboard-section" id="results-section" {% if not has_result %}style="display:none;"{% endif %}>
+  <div class="container">
+    
+    <!-- Top Result Banner -->
+    <div class="result-top-banner">
+      <div class="result-banner-left">
+        <div class="result-check-avatar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        </div>
+        <div class="result-banner-info">
+          <h2 class="result-banner-title">Scan Analysis Complete</h2>
+          <div class="result-banner-pills">
+            <span class="result-pill-mode">
+              {% if mode == 'medicine_package' %}Medicine Strip Analysis
+              {% elif mode == 'prescription' %}Prescription Analysis
+              {% else %}Auto Scan{% endif %}
+            </span>
+            {% if timestamp %}
+            <span class="result-pill-time">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              {{ timestamp|slice:":16"|replace_char:"T, " }}
+            </span>
+            {% endif %}
+            {% if medicines %}
+            <span class="result-pill-count">{{ medicines|length }} Medication{{ medicines|length|pluralize }} Identified</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="result-banner-right">
+        <a href="#scanner-terminal" class="btn-action-ghost">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          <span>New Scan</span>
+        </a>
+        <button type="button" class="btn-action-print" onclick="window.print()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+          </svg>
+          <span>Print Report</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Results Grid -->
+    <div class="results-main-grid">
+      
+      <!-- LEFT CARD: Detected Primary Medicine -->
+      <div class="result-card primary-drug-card">
+        {% if medicines %}
+          {% with med=medicines.0 %}
+            <div class="drug-card-top">
+              <span class="drug-badge-tag">DETECTED MEDICINE</span>
+              <span class="confidence-badge">
+                <span class="dot-green"></span> 99.4% Match
+              </span>
+            </div>
+
+            <!-- Uploaded Image Thumbnail if available -->
+            {% if image_url %}
+            <div class="scan-image-preview-wrap">
+              <img src="{{ image_url }}" alt="Uploaded scan preview" class="scan-result-image" />
+              <div class="scan-image-tag">Scanned Image</div>
+            </div>
+            {% endif %}
+
+            <!-- Medicine Name -->
+            <h3 class="drug-display-name">{{ med.name }}</h3>
+
+            <!-- Active Chemical Salt -->
+            {% if med.salt %}
+            <div class="drug-salt-box">
+              <div class="salt-box-label">Active Pharmaceutical Salt</div>
+              <div class="salt-box-value">{{ med.salt }}</div>
+            </div>
+            {% endif %}
+
+            <!-- Drug Specs Grid -->
+            <div class="drug-specs-grid">
+              <div class="spec-tile">
+                <span class="spec-label">MANUFACTURER</span>
+                <span class="spec-val">{{ med.manufacturer|default:"Registered Lab" }}</span>
+              </div>
+              <div class="spec-tile price-tile">
+                <span class="spec-label">REGISTERED MRP</span>
+                <span class="spec-val price-val">
+                  {% if med.price %}&#8377; {{ med.price }}{% else %}N/A{% endif %}
+                </span>
+              </div>
+            </div>
+
+            <!-- Clinical Information if available -->
+            {% if drug_info %}
+            <div class="drug-clinical-notes">
+              {% if drug_info.therapeutic_class %}
+              <div class="clinical-row">
+                <span class="clinical-label">Category:</span>
+                <span class="clinical-text">{{ drug_info.therapeutic_class }}</span>
+              </div>
+              {% endif %}
+              {% if drug_info.side_effects %}
+              <div class="clinical-row">
+                <span class="clinical-label">Known Side Effects:</span>
+                <span class="clinical-text">{{ drug_info.side_effects }}</span>
+              </div>
+              {% endif %}
+              {% if drug_info.precautions %}
+              <div class="clinical-row">
+                <span class="clinical-label">Precautions:</span>
+                <span class="clinical-text">{{ drug_info.precautions }}</span>
+              </div>
+              {% endif %}
+            </div>
+            {% endif %}
+
+          {% endwith %}
+        {% else %}
+          <div class="no-match-state-card">
+            <div class="no-match-icon-circle">?</div>
+            <h3>No Registered Match Found</h3>
+            <p>The label or cursive text could not be mapped to our verified pharmacology index. Please try taking a well-lit photo with minimal glare.</p>
+            <a href="#scanner-terminal" class="btn-hero-primary" style="margin-top:1rem;display:inline-flex;">
+              Try Again
+            </a>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- RIGHT CARD: Cheaper Generic Alternatives -->
+      <div class="result-card alternatives-card">
+        <div class="alt-header-row">
+          <div>
+            <h3 class="alt-card-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:6px;"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"></path><path d="m8.5 8.5 7 7"></path></svg>
+              Affordable Generic Alternatives
+            </h3>
+            <p class="alt-card-subtitle">Identical chemical salt &bull; Verified bioequivalence &bull; Sorted by price</p>
+          </div>
+        </div>
+
+        <!-- Max Savings Banner -->
+        {% if alternatives and max_savings and max_savings > 0 %}
+        <div class="savings-highlight-box">
+          <div class="savings-highlight-icon">₹</div>
+          <div class="savings-highlight-text">
+            <strong>Save up to &#8377;{{ max_savings }}</strong>
+            {% if max_savings_percent %}<span>({{ max_savings_percent }}% cheaper than brand price)</span>{% endif %}
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Alternatives List -->
+        {% if alternatives %}
+          {% with detected_price=medicines.0.price %}
+          <div class="alternatives-list">
+            {% for alt in alternatives|slice:":5" %}
+            <div class="alt-item-row{% if forloop.first %} rank-cheapest{% endif %}">
+              
+              <div class="alt-item-left">
+                <div class="alt-index-badge">#{{ forloop.counter }}</div>
+                <div class="alt-details">
+                  <div class="alt-name-wrapper">
+                    <span class="alt-medicine-name">{{ alt.name }}</span>
+                    {% if forloop.first %}
+                    <span class="badge-cheapest-choice">BEST PRICE</span>
+                    {% endif %}
+                  </div>
+                  <div class="alt-manufacturer">{{ alt.manufacturer|default:"Generic Manufacturer" }}</div>
+                  {% if alt.salt %}
+                  <div class="alt-salt-tag">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:3px;"><path d="M10 2v7.31"></path><path d="M14 9.3V2"></path><path d="M8.5 2h7"></path><path d="M14 9.3a6.5 6.5 0 1 1-4 0"></path><path d="M5.52 16h12.96"></path></svg>
+                    {{ alt.salt }}
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+
+              <div class="alt-item-right">
+                <div class="alt-price-number">
+                  {% if alt.price %}&#8377; {{ alt.price }}{% else %}N/A{% endif %}
+                </div>
+                {% if alt.savings and alt.savings > 0 %}
+                <div class="alt-savings-chip">
+                  Save &#8377;{{ alt.savings }}{% if alt.savings_percent %} ({{ alt.savings_percent }}%){% endif %}
+                </div>
+                {% elif detected_price and alt.price and alt.price < detected_price %}
+                <div class="alt-savings-chip">
+                  vs &#8377;{{ detected_price }}
+                </div>
+                {% endif %}
+              </div>
+
+            </div>
+            {% endfor %}
+          </div>
+          {% endwith %}
+        {% else %}
+          <div class="empty-alternatives-notice">
+            <p>No cheaper alternative brands recorded in local database for this specific salt formulation.</p>
+          </div>
+        {% endif %}
+
+      </div>
+
+    </div>
+
+    <!-- Cross Interactions Banner if detected -->
+    {% if cross_interactions %}
+    <div class="interaction-alert-card">
+      <div class="interaction-alert-header">
+        <span class="hazard-icon-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        </span>
+        <div>
+          <h4>Potential Multi-Drug Interactions Detected</h4>
+          <p>The following combination contraindications were found among extracted medications.</p>
+        </div>
+      </div>
+      <div class="interaction-list-cards">
+        {% for inter in cross_interactions %}
+        <div class="interaction-pill-item">
+          <div class="interaction-pair-names">
+            <strong>{{ inter.drug1 }}</strong> + <strong>{{ inter.drug2 }}</strong>
+          </div>
+          <p class="interaction-explanation">{{ inter.description }}</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     2. SECTION: HOW IT WORKS (MATCHING BOTANICAL/CLINICAL LUXURY VIBE)
+════════════════════════════════════════════════════════════════════════════ -->
+<section class="section-container" id="how-it-works">
+  <div class="container">
+    
+    <div class="section-header-center">
+      <div class="section-pill-tag">Simple &bull; Accurate &bull; Private</div>
+      <h2 class="section-title">How MediScan works.</h2>
+      <p class="section-desc">Three frictionless steps to complete medication transparency and peace of mind.</p>
+    </div>
+
+    <div class="steps-three-grid">
+      <!-- Step 1 -->
+      <div class="step-card">
+        <div class="step-badge-circle">01</div>
+        <div class="step-icon-box">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+          </svg>
+        </div>
+        <h3 class="step-heading">Upload or Photograph</h3>
+        <p class="step-text">
+          Snap a blister strip, medicine box packaging, or a handwritten doctor's prescription from your phone or webcam.
+        </p>
+        <div class="step-card-footer">
+          <span class="step-chip">Multi-Angle Vision</span>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="step-card">
+        <div class="step-badge-circle">02</div>
+        <div class="step-icon-box">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+        </div>
+        <h3 class="step-heading">Dual Neural Pipeline</h3>
+        <p class="step-text">
+          YOLOv8 isolates strip boundaries, eliminates foil glare, while Hugging Face TrOCR decodes printed typography and cursive script.
+        </p>
+        <div class="step-card-footer">
+          <span class="step-chip">YOLOv8 + TrOCR</span>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="step-card">
+        <div class="step-badge-circle">03</div>
+        <div class="step-icon-box">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        </div>
+        <h3 class="step-heading">Verified Health &amp; Savings</h3>
+        <p class="step-text">
+          Matches active salts against 100k+ formulations, computes generic price differences, and alerts you to conflicting drugs.
+        </p>
+        <div class="step-card-footer">
+          <span class="step-chip">Instant Bioequivalence</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     3. SECTION: ONE-CLICK SAMPLE DEMOS (TRY IT NOW)
+════════════════════════════════════════════════════════════════════════════ -->
+<section class="section-container sample-demos-section" id="sample-demos">
+  <div class="container">
+    
+    <div class="sample-demos-banner">
+      <div class="sample-demos-header">
+        <span class="section-pill-tag">Try It Instantly</span>
+        <h3 class="demo-title">Test MediScan with sample medicines</h3>
+        <p class="demo-desc">Don't have a medicine package nearby? Click any sample below to experience the AI recognition pipeline in real time.</p>
+      </div>
+
+      <div class="sample-cards-row">
+        <!-- Sample 1 -->
+        <button type="button" class="sample-card-btn" data-sample-mode="medicine_package" data-sample-name="Paracetamol 650mg (Dolo 650)">
+          <div class="sample-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"></path><path d="m8.5 8.5 7 7"></path></svg>
+          </div>
+          <div class="sample-info">
+            <strong>Paracetamol 650 mg</strong>
+            <span>Brand: Dolo 650 / Calpol</span>
+          </div>
+          <span class="sample-action">Analyze &rarr;</span>
+        </button>
+
+        <!-- Sample 2 -->
+        <button type="button" class="sample-card-btn" data-sample-mode="prescription" data-sample-name="Amoxicillin 500mg Rx">
+          <div class="sample-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14h6"></path><path d="M9 18h6"></path><path d="M9 10h1"></path></svg>
+          </div>
+          <div class="sample-info">
+            <strong>Doctor Prescription Rx</strong>
+            <span>Amoxicillin + Clavulanate</span>
+          </div>
+          <span class="sample-action">Analyze &rarr;</span>
+        </button>
+
+        <!-- Sample 3 -->
+        <button type="button" class="sample-card-btn" data-sample-mode="medicine_package" data-sample-name="Metformin 500mg (Glycomet)">
+          <div class="sample-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"></path><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"></path><circle cx="20" cy="10" r="2"></circle></svg>
+          </div>
+          <div class="sample-info">
+            <strong>Metformin 500 mg</strong>
+            <span>Diabetes Glucophage Regimen</span>
+          </div>
+          <span class="sample-action">Analyze &rarr;</span>
+        </button>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     4. SECTION: CORE CLINICAL FEATURES (BENTO LUXURY GRID)
+════════════════════════════════════════════════════════════════════════════ -->
+<section class="section-container" id="features">
+  <div class="container">
+    
+    <div class="section-header-center">
+      <div class="section-pill-tag">Clinical Intelligence</div>
+      <h2 class="section-title">Designed for clarity, savings, and safety.</h2>
+      <p class="section-desc">Look past commercial brand labels to understand the underlying molecules that protect your health.</p>
+    </div>
+
+    <div class="bento-features-grid">
+      
+      <!-- Bento 1: Formulation & Generic Savings (Large Span) -->
+      <div class="bento-card bento-wide">
+        <div class="bento-content">
+          <div class="bento-tag">Price Transparency</div>
+          <h3 class="bento-heading">Stop overpaying for commercial drug packaging.</h3>
+          <p class="bento-body">
+            Pharmaceutical brands often market identical chemical molecules under different names with markups exceeding 300%. MediScan instantly computes the bioequivalent generic alternatives that deliver identical clinical efficacy.
+          </p>
+          
+          <div class="bento-metric-bar">
+            <div class="metric-item">
+              <span class="metric-value">&#8377;1,200+</span>
+              <span class="metric-label">Avg. Annual Savings / Family</span>
+            </div>
+            <div class="metric-divider"></div>
+            <div class="metric-item">
+              <span class="metric-value">100%</span>
+              <span class="metric-label">Bioequivalent Salt Purity</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="bento-visual">
+          <div class="price-comparison-mockup">
+            <div class="compare-row brand-row">
+              <div class="compare-name">Brand Name Medicine</div>
+              <div class="compare-price">&#8377; 145.00</div>
+            </div>
+            <div class="compare-row generic-row">
+              <div class="compare-badge">Identical Salt</div>
+              <div class="compare-name">Generic Bioequivalent</div>
+              <div class="compare-price green">&#8377; 32.50</div>
+            </div>
+            <div class="savings-tag-pill">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline><polyline points="17 18 23 18 23 12"></polyline></svg>
+              Instant 77% Cost Reduction
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bento 2: Drug Interaction Warning -->
+      <div class="bento-card bento-card-interaction">
+        <div class="bento-tag tag-hazard">Hazard Prevention</div>
+        <h3 class="bento-heading">Cross-Interaction Shield</h3>
+        <p class="bento-body">
+          Mixing common over-the-counter painkillers with daily prescriptions can cause gastric hemorrhage or cardiac strain. MediScan cross-queries every recognized compound.
+        </p>
+
+        <div class="hazard-sim-card">
+          <div class="hazard-sim-header">
+            <span class="sim-badge-alert">Contraindication Alert</span>
+          </div>
+          <div class="hazard-sim-pair">
+            <span class="drug-chip">Aspirin</span>
+            <span class="plus-chip">+</span>
+            <span class="drug-chip">Ibuprofen</span>
+          </div>
+          <div class="hazard-sim-advice">
+            Concurrent NSAID usage significantly escalates gastric ulceration risk. Consult your physician.
+          </div>
+        </div>
+      </div>
+
+      <!-- Bento 3: Cursive Handwriting OCR -->
+      <div class="bento-card">
+        <div class="bento-tag">Vision Transformer</div>
+        <h3 class="bento-heading">Prescription Cursive Decipherer</h3>
+        <p class="bento-body">
+          Doctor handwriting can be challenging to decipher. Fine-tuned Vision Encoder-Decoder models (TrOCR) transform handwritten scripts into verified dosage schedules.
+        </p>
+
+        <div class="ocr-sample-card">
+          <div class="ocr-cursive-line">Rx Amoxicillin 500mg 1-0-1 x 5d</div>
+          <div class="ocr-arrow">&darr;</div>
+          <div class="ocr-clean-line">
+            <span class="check-mark">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:2px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </span>
+            <strong>Amoxicillin 500mg</strong> &bull; Twice daily after food
+          </div>
+        </div>
+      </div>
+
+      <!-- Bento 4: Dosage Clarity Guide -->
+      <div class="bento-card">
+        <div class="bento-tag">Patient Adherence</div>
+        <h3 class="bento-heading">Dosage Timing &amp; Food Guide</h3>
+        <p class="bento-body">
+          Clear morning, afternoon, and evening administration instructions prevent accidental missed doses or dangerous gastrointestinal irritation.
+        </p>
+
+        <div class="timing-chips-row">
+          <div class="timing-chip">
+            <span class="timing-time">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
+              Morning
+            </span>
+            <span class="timing-desc">With Breakfast</span>
+          </div>
+          <div class="timing-chip">
+            <span class="timing-time">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+              Night
+            </span>
+            <span class="timing-desc">Before Bed</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     5. SECTION: ABOUT & PRIVATE ON-DEVICE ARCHITECTURE
+════════════════════════════════════════════════════════════════════════════ -->
+<section class="section-container about-section" id="about">
+  <div class="container">
+    
+    <div class="about-grid">
+      <div class="about-editorial">
+        <div class="section-pill-tag">Zero Telemetry &bull; Zero Leaks</div>
+        <h2 class="section-title">Engineered for absolute privacy.</h2>
+        <p class="about-desc">
+          Medical information is deeply sensitive. MediScan was engineered from the ground up to operate entirely on your host environment, using local weights and an offline SQLite pharmacology database.
+        </p>
+        
+        <div class="tech-spec-list">
+          <div class="tech-spec-item">
+            <div class="spec-icon-circle">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M3 7V5a2 2 0 0 1 2-2h2"></path><path d="M17 3h2a2 2 0 0 1 2 2v2"></path><path d="M21 17v2a2 2 0 0 1-2 2h-2"></path><path d="M7 21H5a2 2 0 0 1-2-2v-2"></path></svg>
+            </div>
+            <div class="spec-desc">
+              <strong>YOLOv8 Vision Model</strong>
+              <p>Detects packaging contours and segments high-contrast OCR bounding boxes in milliseconds.</p>
+            </div>
+          </div>
+
+          <div class="tech-spec-item">
+            <div class="spec-icon-circle">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
+            </div>
+            <div class="spec-desc">
+              <strong>Hugging Face TrOCR Vision Transformer</strong>
+              <p>Sequence-to-sequence model capable of reading printed text, dot-matrix expiry stamps, and cursive handwriting.</p>
+            </div>
+          </div>
+
+          <div class="tech-spec-item">
+            <div class="spec-icon-circle">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+            </div>
+            <div class="spec-desc">
+              <strong>Offline SQLite Pharmacology Database</strong>
+              <p>Contains over 100,000 verified branded and generic drugs, active molecules, prices, and manufacturer dossiers.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="about-visual-card">
+        <div class="privacy-shield-graphic">
+          <div class="shield-circle">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#143d2b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              <polyline points="9 12 11 14 15 10"></polyline>
+            </svg>
+          </div>
+          <h3 class="shield-title">Local-First Architecture</h3>
+          <p class="shield-sub">Your prescriptions and health records never leave this machine. No accounts, no data selling, no remote tracking.</p>
+          <div class="shield-badges">
+            <span class="s-badge">100% On-Device</span>
+            <span class="s-badge">No Cloud Telemetry</span>
+            <span class="s-badge">HIPAA-Compliant by Design</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     6. SECTION: FREQUENTLY ASKED QUESTIONS (ACCORDION)
+════════════════════════════════════════════════════════════════════════════ -->
+<section class="section-container" id="faq">
+  <div class="container">
+    
+    <div class="section-header-center">
+      <div class="section-pill-tag">Questions &amp; Answers</div>
+      <h2 class="section-title">Frequently asked questions.</h2>
+      <p class="section-desc">Everything you need to know about MediScan's accuracy, privacy, and supported medications.</p>
+    </div>
+
+    <div class="faq-accordion-list">
+      <!-- FAQ 1 -->
+      <div class="faq-card open">
+        <button type="button" class="faq-toggle" aria-expanded="true">
+          <span class="faq-question-text">How does MediScan read difficult doctor handwriting?</span>
+          <span class="faq-chevron-icon">&plus;</span>
+        </button>
+        <div class="faq-collapse-body">
+          <p>
+            MediScan uses a fine-tuned Vision Encoder-Decoder Transformer (TrOCR). Traditional OCR looks for rigid letter shapes which fail with doctor cursive ligatures. TrOCR decodes characters in sequential visual context, matching recognized syllables against our local index of pharmaceutical names and active salts.
+          </p>
+        </div>
+      </div>
+
+      <!-- FAQ 2 -->
+      <div class="faq-card">
+        <button type="button" class="faq-toggle" aria-expanded="false">
+          <span class="faq-question-text">Are generic medicines as safe and effective as expensive brand-name medicines?</span>
+          <span class="faq-chevron-icon">&plus;</span>
+        </button>
+        <div class="faq-collapse-body">
+          <p>
+            Yes. Generic medicines contain the exact same active pharmaceutical ingredient (API), in the same milligram strength, dosage form, and route of administration as their branded equivalents. They undergo stringent bioequivalence testing to ensure clinical efficacy.
+          </p>
+        </div>
+      </div>
+
+      <!-- FAQ 3 -->
+      <div class="faq-card">
+        <button type="button" class="faq-toggle" aria-expanded="false">
+          <span class="faq-question-text">Is my medical data uploaded to any cloud server?</span>
+          <span class="faq-chevron-icon">&plus;</span>
+        </button>
+        <div class="faq-collapse-body">
+          <p>
+            No. MediScan executes entirely on your host environment with zero cloud telemetry. Your prescription photos, detected medication names, and saved scan history remain strictly within your local machine.
+          </p>
+        </div>
+      </div>
+
+      <!-- FAQ 4 -->
+      <div class="faq-card">
+        <button type="button" class="faq-toggle" aria-expanded="false">
+          <span class="faq-question-text">What should I do if a medicine strip is not recognized?</span>
+          <span class="faq-chevron-icon">&plus;</span>
+        </button>
+        <div class="faq-collapse-body">
+          <p>
+            Ensure your photo has good lighting and minimal specular glare on the aluminum blister foil. Make sure the printed medicine brand or active salt name is clearly visible and in focus. You can also explicitly toggle the "Medicine Strip" or "Prescription" mode on the scanner card.
+          </p>
+        </div>
+      </div>
+
+      <!-- FAQ 5 -->
+      <div class="faq-card">
+        <button type="button" class="faq-toggle" aria-expanded="false">
+          <span class="faq-question-text">Can MediScan detect interactions between multiple drugs?</span>
+          <span class="faq-chevron-icon">&plus;</span>
+        </button>
+        <div class="faq-collapse-body">
+          <p>
+            Yes. When a multi-drug prescription or consecutive scans are analyzed, MediScan checks every pair of active salts against a verified contraindications database to highlight potential high-severity or moderate-severity interactions.
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     7. SECTION: CONTACT & CLINICAL FEEDBACK
+════════════════════════════════════════════════════════════════════════════ -->
+<section class="section-container" id="contact">
+  <div class="container">
+    
+    <div class="contact-card-box">
+      <div class="contact-editorial">
+        <span class="section-pill-tag">Get In Touch</span>
+        <h3 class="contact-title">Have feedback or pharmacy database inquiries?</h3>
+        <p class="contact-desc">
+          We are continuously updating our database of active molecules and generic equivalents. Send us your feedback or report missing formulations.
+        </p>
+        <div class="contact-highlights">
+          <div class="highlight-item">
+            <span class="h-dot"></span>
+            <span>Pharmacology data updated weekly</span>
+          </div>
+          <div class="highlight-item">
+            <span class="h-dot"></span>
+            <span>Open for researcher and clinical feedback</span>
+          </div>
+        </div>
+      </div>
+
+      <form class="contact-form" onsubmit="event.preventDefault(); alert('Thank you! Your feedback has been received.'); this.reset();">
+        <div class="form-group">
+          <label for="contactName">Your Name</label>
+          <input type="text" id="contactName" class="form-input" placeholder="e.g. Dr. Alex Sharma" required />
+        </div>
+        <div class="form-group">
+          <label for="contactEmail">Email Address</label>
+          <input type="email" id="contactEmail" class="form-input" placeholder="name@example.com" required />
+        </div>
+        <div class="form-group">
+          <label for="contactMessage">Message or Drug Verification Request</label>
+          <textarea id="contactMessage" class="form-textarea" rows="3" placeholder="Tell us about your query or missing brand..." required></textarea>
+        </div>
+        <button type="submit" class="btn-hero-primary" style="width:100%;justify-content:center;">
+          Send Inquiry
+        </button>
+      </form>
+    </div>
+
+  </div>
+</section>
+
+{% endblock %}

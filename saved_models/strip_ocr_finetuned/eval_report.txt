@@ -1,0 +1,6 @@
+Fine-tuned TrOCR — Strip Text OCR (Colab, 5.5h budget)
+Base checkpoint: microsoft/trocr-base-printed
+Training samples: 29645
+Real photos in training: 22045
+Held-out test CER (sample of 300): 0.0192
+Verification threshold: 0.15
