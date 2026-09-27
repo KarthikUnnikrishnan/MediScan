@@ -16,9 +16,10 @@ def main():
     print("Models initialized successfully!")
     print("=" * 60)
 
+    from django.conf import settings
     images = {
-        "strip.jpg": r"D:\MediScan\test_images\strip.jpg",
-        "prescription.jpg": r"D:\MediScan\test_images\prescription.jpg",
+        "strip.jpg": str(settings.BASE_DIR / "test_images" / "strip.jpg"),
+        "prescription.jpg": str(settings.BASE_DIR / "test_images" / "prescription.jpg"),
     }
 
     for name, img_path in images.items():
