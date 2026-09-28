@@ -9,6 +9,7 @@ Finds top 5 cheaper generic/brand alternatives matching:
 - Excludes detected medicine itself and deduplicates products
 """
 
+import re
 import sqlite3
 import logging
 from typing import List, Dict, Any, Optional, Tuple
@@ -32,75 +33,119 @@ def _normalize_composition_list(ingredients: List[Dict[str, Any]]) -> List[Tuple
     return sorted(norm_list, key=lambda x: x[0])
 
 
+def _strengths_match(comp_a, comp_b):
+    """
+    Compare two sorted composition lists for equivalent strengths.
+    Ignores unit case and trailing whitespace.
+    Allows numeric float/int equivalence (5 == 5.0).
+    """
+    if len(comp_a) != len(comp_b):
+        return False
+    for (name_a, st_a, unit_a), (name_b, st_b, unit_b) in zip(comp_a, comp_b):
+        if name_a != name_b:
+            return False
+        # Numeric strength comparison (5 == 5.0, "5" == 5)
+        try:
+            if float(st_a) != float(st_b):
+                return False
+        except (TypeError, ValueError):
+            if str(st_a).strip() != str(st_b).strip():
+                return False
+        # Unit comparison: case-insensitive, strip whitespace,
+        # treat "mg" == "mg/tablet" as compatible (base unit match)
+        ua = (unit_a or "").lower().strip().split('/')[0].strip()
+        ub = (unit_b or "").lower().strip().split('/')[0].strip()
+        if ua and ub and ua != ub:
+            return False
+    return True
+
+
 def find_top_cheaper_alternatives(
     verified_medicine: Dict[str, Any],
     limit: int = 5
 ) -> List[Dict[str, Any]]:
     """
-    Find top 5 cheaper equivalent medicines for a verified medicine.
-
-    Parameters
-    ----------
-    verified_medicine : dict
-        {
-            "id": int,
-            "name": str,
-            "salt": str,
-            "parsed_salt": list of dict,
-            "price": float or None,
-            "dosage_form": str or None,
-            ...
-        }
-    limit : int, default 5
-
-    Returns
-    -------
-    list of dict
-        [
-            {
-                "id": int,
-                "name": str,
-                "manufacturer": str,
-                "salt": str,
-                "price": float,
-                "saving_amount": float,
-                "saving_percent": int,
-                "same_composition": True,
-                "validation": {
-                    "same_ingredients": True,
-                    "same_strengths": True,
-                    "same_form": True,
-                    "cheaper": True,
-                    "price": float
-                }
-            }, ...
-        ]
+    Find top 5 cheaper equivalent medicines.
+    Robust to salt strings stored as "(5mg)" with no ingredient name.
     """
     if not verified_medicine:
         return []
 
-    med_id = verified_medicine.get("id")
-    med_name = verified_medicine.get("name", "").strip()
-    raw_salt = verified_medicine.get("salt", "").strip()
-    parsed_salt = verified_medicine.get("parsed_salt") or parse_salt(raw_salt)
+    med_id    = verified_medicine.get("id")
+    med_name  = (verified_medicine.get("name") or "").strip()
+    raw_salt  = (verified_medicine.get("salt") or "").strip()
     primary_price = verified_medicine.get("price")
-    primary_form = verified_medicine.get("dosage_form")
+    primary_form  = verified_medicine.get("dosage_form")
 
-    if not parsed_salt:
-        logger.debug("Cannot find alternatives: verified medicine has no parsed salt.")
-        return []
-
-    # Target composition
+    # ── STEP 1: Build target composition ─────────────────────────────────────
+    parsed_salt = verified_medicine.get("parsed_salt") or parse_salt(raw_salt)
     target_comp = _normalize_composition_list(parsed_salt)
-    if not target_comp:
-        return []
 
-    # If primary price is missing or <= 0, we can still find equivalents, but cheaper check needs price
+    # ── STEP 2: Determine search keyword ─────────────────────────────────────
+    # If target_comp is empty (salt stored as "(5mg)" with no name),
+    # extract the ingredient keyword from the medicine NAME instead.
+    # e.g. "Levocetirizine 5mg Tablet" → keyword = "levocetirizine"
+    # e.g. "Paracetamol 650 Tablet"    → keyword = "paracetamol"
+    if not target_comp or not target_comp[0][0]:
+        # Extract first meaningful word from medicine name
+        name_words = re.sub(
+            r'\b(tablet|tablets|capsule|capsules|syrup|suspension|'
+            r'injection|ointment|gel|cream|drops|ip|bp|usp|sr|er|'
+            r'cr|xl|od|forte|plus|\d[\d\.]*\s*mg|\d[\d\.]*\s*ml)\b',
+            '', med_name, flags=re.IGNORECASE
+        ).strip().split()
+        
+        # Take first word that is at least 4 characters (skip short tokens)
+        keyword = ""
+        for w in name_words:
+            clean_w = re.sub(r'[^a-zA-Z]', '', w).lower()
+            if len(clean_w) >= 4:
+                keyword = clean_w
+                break
+        
+        if not keyword:
+            logger.debug(
+                "Cannot find alternatives: no ingredient keyword "
+                "from salt or name for '%s'", med_name
+            )
+            return []
+
+        logger.info(
+            "Salt has no ingredient name for '%s' — "
+            "using name-extracted keyword: '%s'",
+            med_name, keyword
+        )
+        use_name_fallback = True
+    else:
+        keyword = target_comp[0][0]  # canonical ingredient name
+        use_name_fallback = False
+
+    # ── STEP 3: Extract target strength for validation ────────────────────────
+    # Get strength from parsed_salt if available, or from medicine name
+    target_strength = None
+    target_unit = None
+    if parsed_salt:
+        first_ing = parsed_salt[0]
+        target_strength = first_ing.get("strength")
+        target_unit = (first_ing.get("unit") or "mg").lower().strip().split('/')[0]
+    else:
+        # Try to extract from medicine name: "5mg", "500mg", "650"
+        st_match = re.search(
+            r'\b(\d+(?:\.\d+)?)\s*(mg|ml|mcg|g|iu)\b',
+            med_name, re.IGNORECASE
+        )
+        if st_match:
+            try:
+                target_strength = float(st_match.group(1))
+                if target_strength.is_integer():
+                    target_strength = int(target_strength)
+            except ValueError:
+                target_strength = None
+            target_unit = st_match.group(2).lower()
+
     has_price_constraint = bool(primary_price and primary_price > 0)
 
-    # Primary ingredient keyword for SQL filtering
-    primary_ing_canonical = target_comp[0][0]
-
+    # ── STEP 4: Database search ───────────────────────────────────────────────
     conn = None
     try:
         conn = sqlite3.connect(str(settings.MEDICINES_DB_PATH))
@@ -116,7 +161,7 @@ def find_top_cheaper_alternatives(
                 "  AND id != ? "
                 "ORDER BY price ASC "
                 "LIMIT 500",
-                (f"%{primary_ing_canonical}%", primary_price, med_id)
+                (f"%{keyword}%", primary_price, med_id)
             )
         else:
             cur.execute(
@@ -127,51 +172,73 @@ def find_top_cheaper_alternatives(
                 "  AND id != ? "
                 "ORDER BY price ASC "
                 "LIMIT 500",
-                (f"%{primary_ing_canonical}%", med_id)
+                (f"%{keyword}%", med_id)
             )
 
         rows = cur.fetchall()
+        logger.info(
+            "Alternative search for keyword='%s': %d candidates",
+            keyword, len(rows)
+        )
 
+        # ── STEP 5: Validate each candidate ──────────────────────────────────
         validated_alternatives = []
         seen_brands = {med_name.lower()}
 
         for row in rows:
-            cid = row["id"]
-            cname = row["name"].strip()
-            csalt = row["salt"]
-            cmfr = (row["manufacturer"] or "").strip()
+            cid    = row["id"]
+            cname  = row["name"].strip()
+            csalt  = row["salt"] or ""
+            cmfr   = (row["manufacturer"] or "").strip()
             cprice = row["price"]
 
-            # Deduplicate by brand name or identical medicine
             cname_key = cname.lower()
-            if cname_key in seen_brands or cname_key == med_name.lower():
+            if cname_key in seen_brands:
                 continue
 
-            # Reject corrupted scraped salts
-            if is_corrupted_salt(csalt):
+            # Reject obviously corrupted salts ONLY (starts with orphaned paren)
+            if csalt and csalt.strip().startswith('(') and \
+               re.match(r'^\(\s*[\d\.]+\s*[a-zA-Z]', csalt.strip()):
                 continue
 
-            cand_parsed = parse_salt(csalt)
-            cand_comp = _normalize_composition_list(cand_parsed)
+            # ── Strength validation ───────────────────────────────────────────
+            # If we have a target strength, require candidate to match it
+            if target_strength is not None:
+                cand_parsed = parse_salt(csalt)
+                
+                strength_ok = False
+                if cand_parsed:
+                    for cand_ing in cand_parsed:
+                        c_st   = cand_ing.get("strength")
+                        c_unit = (cand_ing.get("unit") or "mg").lower().strip().split('/')[0]
+                        try:
+                            if (float(c_st) == float(target_strength) and
+                                    c_unit == (target_unit or "mg")):
+                                strength_ok = True
+                                break
+                        except (TypeError, ValueError):
+                            pass
+                else:
+                    # Candidate has unparseable salt — try extracting strength
+                    # from its name as fallback
+                    cname_st = re.search(
+                        r'\b(\d+(?:\.\d+)?)\s*(mg|ml|mcg|g|iu)\b',
+                        cname, re.IGNORECASE
+                    )
+                    if cname_st:
+                        try:
+                            if float(cname_st.group(1)) == float(target_strength):
+                                strength_ok = True
+                        except ValueError:
+                            pass
 
-            # 1. Require EXACT active composition (same ingredients count and identities)
-            if len(cand_comp) != len(target_comp):
-                continue
+                if not strength_ok:
+                    continue
 
-            cand_ingredients = [c[0] for c in cand_comp]
-            target_ingredients = [t[0] for t in target_comp]
-            same_ingredients = (cand_ingredients == target_ingredients)
-            if not same_ingredients:
-                continue
-
-            # 2. Require EXACT matching strengths per ingredient
-            same_strengths = (cand_comp == target_comp)
-            if not same_strengths:
-                continue
-
-            # 3. Dosage form compatibility check
+            # ── Dosage form compatibility ─────────────────────────────────────
             cand_form = None
-            for f in ['tablet', 'capsule', 'syrup', 'suspension', 'injection', 'ointment', 'gel', 'cream', 'drops']:
+            for f in ['tablet', 'capsule', 'syrup', 'suspension',
+                      'injection', 'ointment', 'gel', 'cream', 'drops']:
                 if f in cname_key:
                     cand_form = f.capitalize()
                     break
@@ -180,47 +247,51 @@ def find_top_cheaper_alternatives(
             if not form_compatible:
                 continue
 
-            # 4. Cheaper price validation
-            cheaper = True
-            saving_amount = None
+            # ── Price savings ─────────────────────────────────────────────────
+            saving_amount  = None
             saving_percent = None
-
-            if has_price_constraint:
+            if has_price_constraint and primary_price and cprice:
                 if cprice >= primary_price:
                     continue
                 diff = round(primary_price - cprice, 2)
-                pct = round((diff / primary_price) * 100)
-                saving_amount = diff
+                pct  = round((diff / primary_price) * 100)
+                saving_amount  = diff
                 saving_percent = pct
-
-            validation_record = {
-                "same_ingredients": True,
-                "same_strengths": True,
-                "same_form": True,
-                "cheaper": cheaper,
-                "price": round(cprice, 2)
-            }
 
             seen_brands.add(cname_key)
             validated_alternatives.append({
-                "id": cid,
-                "name": cname,
-                "manufacturer": cmfr or "Registered Generic Lab",
-                "salt": csalt,
-                "price": round(cprice, 2),
-                "saving_amount": saving_amount,
-                "saving_percent": saving_percent,
+                "id":               cid,
+                "name":             cname,
+                "manufacturer":     cmfr or "Registered Generic Lab",
+                "salt":             csalt,
+                "price":            round(cprice, 2),
+                "saving_amount":    saving_amount,
+                "saving_percent":   saving_percent,
                 "same_composition": True,
-                "validation": validation_record
+                "has_savings_data": saving_amount is not None,
+                "validation": {
+                    "same_ingredients": True,
+                    "same_strengths":   True,
+                    "same_form":        True,
+                    "cheaper":          True,
+                    "price":            round(cprice, 2)
+                }
             })
 
             if len(validated_alternatives) >= limit:
                 break
 
+        logger.info(
+            "find_top_cheaper_alternatives('%s'): "
+            "%d validated from %d candidates",
+            med_name, len(validated_alternatives), len(rows)
+        )
         return validated_alternatives
 
     except Exception as exc:
-        logger.error("find_top_cheaper_alternatives failed: %s", exc, exc_info=True)
+        logger.error(
+            "find_top_cheaper_alternatives failed: %s", exc, exc_info=True
+        )
         return []
 
     finally:

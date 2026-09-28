@@ -202,22 +202,27 @@ def parse_salt(salt_str: Optional[str]) -> List[Dict[str, Any]]:
 
 def is_corrupted_salt(salt_str: Optional[str]) -> bool:
     """
-    Check if a salt string from database scraping is corrupted
-    (e.g. has orphaned parentheses with missing ingredient names).
+    Only reject genuinely corrupted salt strings:
+    - Empty or whitespace-only
+    - Starts with orphaned parenthesis like "(250mg) + ..."
+      with NO ingredient name at all before the first (
+    - Has zero parseable ingredients AND no recognisable
+      ingredient word before any parenthesis
     """
     if not salt_str or not salt_str.strip():
         return True
     s = salt_str.strip()
-    if _ORPHANED_STRENGTH_RE.match(s):
+
+    # Only corrupt if the ENTIRE string starts with a number+unit
+    # in parens with nothing before it
+    if re.match(r'^\(\s*[\d\.]+\s*[a-zA-Z%]+', s):
         return True
-    parsed = parse_salt(s)
-    if not parsed:
+
+    # Must have at least one letter-word before any parenthesis
+    before_paren = s.split('(')[0].strip()
+    if not before_paren or not re.search(r'[a-zA-Z]{2,}', before_paren):
         return True
-    # Count opening parentheses in original string vs successfully parsed ingredients
-    open_parens = s.count('(')
-    if open_parens > len(parsed):
-        # An ingredient block failed to parse because of missing name
-        return True
+
     return False
 
 
