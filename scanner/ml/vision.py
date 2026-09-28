@@ -94,28 +94,60 @@ def load_models():
 
 def crop_strip(image_pil):
     """
-    Attempt YOLO detection first.
-    If detection succeeds: use the detected crop.
-    If detection fails: crop the left 60% of the image
-    (blister strip text is typically on the label side).
+    Detect medicine strip / label region:
+    1. If YOLO detects a large package/strip box (>20% of image), crop that region.
+    2. If YOLO detects multiple small blister pockets/cavities (<15% of image each),
+       blister text is printed on the foil label side (opposite to the blister pockets).
+       Crop the primary brand/active ingredient label region on the foil side.
+    3. Fallback: crop the central text band on the label side (left 55%).
     """
     try:
+        W, H = image_pil.size
+        img_area = W * H
+
         results = _strip_detector(image_pil, conf=0.25)
         boxes = results[0].boxes if results else None
 
         if boxes is not None and len(boxes) > 0:
-            confidences = boxes.conf.cpu().tolist()
-            best_idx = confidences.index(max(confidences))
-            x1, y1, x2, y2 = [
-                int(v) for v in boxes.xyxy[best_idx].cpu().tolist()
-            ]
-            crop = image_pil.crop((x1, y1, x2, y2))
-            logger.info("crop_strip: YOLO crop used")
-            return crop, True
+            box_list = boxes.xyxy.cpu().tolist()
+            confs = boxes.conf.cpu().tolist()
 
-        W, H = image_pil.size
-        left_crop = image_pil.crop((0, 0, int(W * 0.60), H))
-        logger.info("crop_strip: YOLO miss — using left 60%% crop")
+            # Check if there is a dominant package/strip box (>20% of image area)
+            dominant_boxes = [
+                (b, c) for b, c in zip(box_list, confs)
+                if ((b[2] - b[0]) * (b[3] - b[1])) / img_area >= 0.20
+            ]
+
+            if dominant_boxes:
+                best_box = max(dominant_boxes, key=lambda x: (x[0][2] - x[0][0]) * (x[0][3] - x[0][1]))[0]
+                x1, y1, x2, y2 = [int(v) for v in best_box]
+                crop = image_pil.crop((x1, y1, x2, y2))
+                logger.info("crop_strip: Dominant YOLO package crop used (%dx%d)", crop.size[0], crop.size[1])
+                return crop, True
+
+            # If small blister pockets were detected (each < 15% of image area)
+            mean_x = sum((b[0] + b[2]) / 2 for b in box_list) / len(box_list)
+            logger.info("crop_strip: Detected %d blister cavities (mean_x=%.1f)", len(box_list), mean_x)
+
+            if mean_x > 0.5 * W:
+                # Cavities on the right -> foil text is on the left
+                # Primary medicine name / brand band is in center-lower region of foil
+                x1, x2 = int(0.07 * W), int(0.52 * W)
+                y1, y2 = int(0.45 * H), int(0.82 * H)
+                crop = image_pil.crop((x1, y1, x2, y2))
+                logger.info("crop_strip: Cavities on right -> foil text crop used (%dx%d)", crop.size[0], crop.size[1])
+                return crop, True
+            elif mean_x < 0.5 * W:
+                # Cavities on the left -> foil text is on the right
+                x1, x2 = int(0.48 * W), int(0.93 * W)
+                y1, y2 = int(0.45 * H), int(0.82 * H)
+                crop = image_pil.crop((x1, y1, x2, y2))
+                logger.info("crop_strip: Cavities on left -> foil text crop used (%dx%d)", crop.size[0], crop.size[1])
+                return crop, True
+
+        # Fallback: crop primary label band on left side
+        left_crop = image_pil.crop((int(0.07 * W), int(0.45 * H), int(0.52 * W), int(0.82 * H)))
+        logger.info("crop_strip: Fallback central label crop used")
         return left_crop, False
 
     except Exception as exc:
