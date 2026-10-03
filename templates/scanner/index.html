@@ -93,36 +93,62 @@
           <p class="scanner-subtitle">Upload a photo to get instant AI analysis</p>
         </div>
 
-        <!-- Scan Mode Segmented Toggle: Medicine Strip vs Prescription -->
-        <div class="segmented-control" role="tablist" aria-label="Select scan mode">
-          <button type="button" class="segment-btn active" data-mode="medicine_package" role="tab" aria-selected="true" id="tabStrip">
-            <span class="tab-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"></path><path d="m8.5 8.5 7 7"></path></svg>
-            </span>
-            <span>Medicine Strip</span>
-          </button>
-          <button type="button" class="segment-btn" data-mode="prescription" role="tab" aria-selected="false" id="tabRx">
-            <span class="tab-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14h6"></path><path d="M9 18h6"></path><path d="M9 10h1"></path></svg>
-            </span>
-            <span>Prescription</span>
-          </button>
-        </div>
-
         <!-- Scanner Form -->
         <form method="POST" action="{% url 'index' %}" enctype="multipart/form-data" id="scanForm">
           {% csrf_token %}
 
-          <!-- Hidden Mode Radio inputs -->
-          <input type="radio" name="mode" value="medicine_package" checked class="hidden-radio" id="modeStrip" />
-          <input type="radio" name="mode" value="prescription" class="hidden-radio" id="modeRx" />
-          <input type="radio" name="mode" value="auto" class="hidden-radio" id="modeAuto" />
+          <div class="mode-selector-wrap">
+            <div class="mode-selector-title">
+              What are you scanning?
+            </div>
+            <div class="mode-selector-grid">
+
+              <input type="radio" name="mode" id="mode_auto"
+                     value="auto" class="hidden-radio" checked>
+              <label for="mode_auto" class="mode-tile">
+                <span class="mode-tile-icon">🔍</span>
+                <span class="mode-tile-name">Auto Detect</span>
+                <span class="mode-tile-desc">
+                  AI decides automatically
+                </span>
+              </label>
+
+              <input type="radio" name="mode" id="mode_strip"
+                     value="medicine_package" class="hidden-radio">
+              <label for="mode_strip" class="mode-tile">
+                <span class="mode-tile-icon">💊</span>
+                <span class="mode-tile-name">Medicine Strip</span>
+                <span class="mode-tile-desc">
+                  Box, blister pack or label
+                </span>
+              </label>
+
+              <input type="radio" name="mode" id="mode_rx"
+                     value="prescription" class="hidden-radio">
+              <label for="mode_rx" class="mode-tile mode-tile-rx">
+                <span class="mode-tile-icon">📋</span>
+                <span class="mode-tile-name">Prescription</span>
+                <span class="mode-tile-desc">
+                  Doctor's Rx — handwritten
+                </span>
+                <span class="mode-tile-badge">
+                  Multiple drugs
+                </span>
+              </label>
+
+            </div>
+
+            <div class="mode-hint" id="modeHint">
+              💡 Use <strong>Prescription</strong> mode for doctor
+              handwritten notes — Auto may misread them
+            </div>
+          </div>
 
           <!-- Hidden Native File Input -->
-          <input type="file" name="image" id="id_image" accept="image/jpeg,image/png,image/webp,image/bmp" class="hidden-file-input" required />
+          <input type="file" name="image" id="imageInput" accept="image/jpeg,image/png,image/webp,image/bmp" class="hidden-file-input" required />
 
-          <!-- Clean Dropzone -->
-          <div class="upload-dropzone" id="scannerDropzone" tabindex="0" role="button" aria-label="Upload medicine photo">
+          <!-- Clean Dropzone as Label for Direct Native File Trigger -->
+          <label for="imageInput" class="upload-dropzone" id="scannerDropzone" tabindex="0" role="button" aria-label="Upload medicine photo">
             
             <!-- Corner Brackets -->
             <span class="dropzone-corner corner-tl" aria-hidden="true"></span>
@@ -131,7 +157,7 @@
             <span class="dropzone-corner corner-br" aria-hidden="true"></span>
 
             <div class="dropzone-camera-icon">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                 <circle cx="12" cy="13" r="4"></circle>
               </svg>
@@ -140,7 +166,7 @@
             <div class="dropzone-format-info">JPG &bull; PNG &bull; WEBP &bull; Max 10MB</div>
 
             <div class="dropzone-camera-link">
-              <button type="button" class="btn-open-camera" id="btnTriggerCamera" title="Take a live photo with camera">
+              <button type="button" class="btn-open-camera" id="btnTriggerCamera" title="Take a live photo with camera" onclick="event.preventDefault(); event.stopPropagation();">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                   <circle cx="12" cy="13" r="4"></circle>
@@ -148,7 +174,7 @@
                 <span>Or use live camera</span>
               </button>
             </div>
-          </div>
+          </label>
 
           <!-- Selected Image Preview Card -->
           <div class="file-preview-card" id="previewCard" style="display: none;">

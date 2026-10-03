@@ -1,0 +1,54 @@
+{% load mediscan_tags %}
+
+<div class="alt-section-title">💊 Top 5 Cheaper Alternatives</div>
+<div class="alt-section-sub">
+  Same active salt &bull; Sorted by price &bull; Bioequivalent
+</div>
+
+{% if alternatives %}
+
+  {% if medicines and medicines.0.price %}
+  <div class="max-savings-pill">
+    {% with base=medicines.0.price cheap=alternatives.0.price %}
+      {% if cheap %}
+      🔥 Save up to ₹{{ base }} vs ₹{{ cheap }}
+      &nbsp;&bull;&nbsp; cheapest starts at ₹{{ cheap }}
+      {% endif %}
+    {% endwith %}
+  </div>
+  {% endif %}
+
+  {% for alt in alternatives|slice:":5" %}
+  <div class="alt-card-full {% if forloop.first %}cheapest{% endif %}">
+
+    {% if forloop.first %}
+    <span class="cheapest-badge">CHEAPEST</span>
+    {% endif %}
+
+    <div class="alt-card-top">
+      <div class="alt-rank">#{{ forloop.counter }}</div>
+      <div class="alt-name-group">
+        <div class="alt-card-name">{{ alt.name }}</div>
+        <div class="alt-card-mfr">{{ alt.manufacturer }}</div>
+      </div>
+      <div class="alt-price-group">
+        <div class="alt-card-price">₹ {{ alt.price }}</div>
+        {% if alt.saving_amount %}
+        <div class="alt-savings">
+          Save ₹{{ alt.saving_amount }}
+          ({{ alt.saving_percent }}% cheaper)
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="alt-card-salt">🧪 {{ alt.salt }}</div>
+
+  </div>
+  {% endfor %}
+
+{% else %}
+  <div class="no-alt-msg">
+    No cheaper alternatives found in database for this salt.
+  </div>
+{% endif %}

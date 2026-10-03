@@ -38,7 +38,7 @@
   /* ── 2. DROPZONE & FILE PREVIEW ────────────────────────────────────────── */
   function initDropzone() {
     const dropzone = document.getElementById('scannerDropzone');
-    const fileInput = document.getElementById('id_image');
+    const fileInput = document.getElementById('imageInput') || document.getElementById('id_image');
     const previewCard = document.getElementById('previewCard');
     const previewThumb = document.getElementById('previewThumb');
     const previewFilename = document.getElementById('previewFilename');
@@ -50,8 +50,21 @@
 
     // Open file browser on dropzone click (unless camera trigger is clicked)
     dropzone.addEventListener('click', function (e) {
-      if (e.target.closest('#btnTriggerCamera')) return;
-      fileInput.click();
+      if (e.target.closest('#btnTriggerCamera')) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      if (dropzone.tagName.toLowerCase() !== 'label') {
+        fileInput.click();
+      }
+    });
+
+    dropzone.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        fileInput.click();
+      }
     });
 
     // Drag-over styling
@@ -82,6 +95,7 @@
           fileInput.files = container.files;
         } catch (_) {}
         displayFilePreview(file);
+        fileInput.dispatchEvent(new Event('change'));
       }
     });
 
@@ -209,9 +223,13 @@
 
         // 1. Switch mode
         if (mode === 'prescription') {
+          const rxRadio = document.getElementById('mode_rx');
+          if (rxRadio) { rxRadio.checked = true; rxRadio.dispatchEvent(new Event('change')); }
           const tabRx = document.getElementById('tabRx');
           if (tabRx) tabRx.click();
         } else {
+          const stripRadio = document.getElementById('mode_strip');
+          if (stripRadio) { stripRadio.checked = true; stripRadio.dispatchEvent(new Event('change')); }
           const tabStrip = document.getElementById('tabStrip');
           if (tabStrip) tabStrip.click();
         }
@@ -281,7 +299,7 @@
     const stepTitle = document.getElementById('loadingStepTitle');
     const stepDesc = document.getElementById('loadingStepDesc');
     const progressFill = document.getElementById('loadingProgressFill');
-    const fileInput = document.getElementById('id_image');
+    const fileInput = document.getElementById('imageInput') || document.getElementById('id_image');
 
     if (!form || !overlay) return;
 
@@ -398,10 +416,41 @@
     } catch (_) {}
   }
 
+  /* ── 1b. MODE SELECTOR TILES CLICK & SYNC ────────────────────────────── */
+  function initModeSelector() {
+    const tiles = document.querySelectorAll('.mode-tile');
+    tiles.forEach(function (tile) {
+      tile.addEventListener('click', function (e) {
+        const forId = tile.getAttribute('for');
+        if (!forId) return;
+        const radio = document.getElementById(forId);
+        if (radio) {
+          radio.checked = true;
+          radio.dispatchEvent(new Event('change', { bubbles: true }));
+          document.querySelectorAll('.mode-tile').forEach(t => t.classList.remove('auto-suggested'));
+        }
+      });
+    });
+
+    document.querySelectorAll('input[name="mode"]').forEach(function (radio) {
+      radio.addEventListener('change', function () {
+        var hint = document.getElementById('modeHint');
+        if (!hint) return;
+        if (this.value === 'auto') {
+          hint.textContent = '💡 Use Prescription mode for doctor handwritten notes — Auto may misread them';
+          hint.classList.add('visible');
+        } else {
+          hint.classList.remove('visible');
+        }
+      });
+    });
+  }
+
   /* ── DOM BOOTSTRAP ──────────────────────────────────────────────────────── */
   function boot() {
     enforceLightMode();
     initSegmentedControl();
+    initModeSelector();
     initDropzone();
     initCamera();
     initSampleDemos();
@@ -417,3 +466,121 @@
     boot();
   }
 })();
+
+/* ── Medicine Selector (Prescription Mode) ── */
+
+let _currentMedIndex = 0;
+
+function selectMedicine(medKey) {
+  if (typeof SCAN_MODE === 'undefined' || SCAN_MODE !== 'prescription') return;
+
+  // Update selector card highlighting
+  document.querySelectorAll('.med-selector-card').forEach(card => {
+    card.classList.remove('selected');
+  });
+  const activeCard = document.querySelector(
+    `.med-selector-card[data-med-key="${CSS.escape(medKey)}"]`
+  );
+  if (activeCard) activeCard.classList.add('selected');
+
+  // Find the index of this medicine
+  const detailPanels = document.querySelectorAll('.presc-med-detail');
+  const altPanels    = document.querySelectorAll('.presc-alt-panel');
+
+  let targetIndex = 0;
+  detailPanels.forEach((panel, i) => {
+    if (panel.dataset.medKey === medKey) {
+      targetIndex = i;
+    }
+  });
+
+  // Hide all
+  detailPanels.forEach(p => {
+    p.style.display = 'none';
+    p.classList.remove('panel-fade-in');
+  });
+  altPanels.forEach(p => {
+    p.style.display = 'none';
+    p.classList.remove('panel-fade-in');
+  });
+
+  // Show selected with animation
+  const newDetail = detailPanels[targetIndex];
+  const newAlt    = altPanels[targetIndex];
+
+  if (newDetail) {
+    newDetail.style.display = 'block';
+    requestAnimationFrame(() => {
+      newDetail.classList.add('panel-fade-in');
+    });
+  }
+  if (newAlt) {
+    newAlt.style.display = 'block';
+    requestAnimationFrame(() => {
+      newAlt.classList.add('panel-fade-in');
+    });
+  }
+
+  _currentMedIndex = targetIndex;
+}
+
+// Keyboard navigation (left/right arrow keys)
+document.addEventListener('keydown', function(e) {
+  if (typeof SCAN_MODE === 'undefined' || SCAN_MODE !== 'prescription') return;
+  const cards = document.querySelectorAll('.med-selector-card');
+  if (!cards.length) return;
+
+  let newIndex = _currentMedIndex;
+  if (e.key === 'ArrowRight') newIndex = Math.min(_currentMedIndex + 1, cards.length - 1);
+  if (e.key === 'ArrowLeft')  newIndex = Math.max(_currentMedIndex - 1, 0);
+  if (newIndex !== _currentMedIndex) {
+    selectMedicine(cards[newIndex].dataset.medKey);
+  }
+});
+
+/* ── Auto-select prescription mode when file looks like
+      a document (tall aspect ratio) ── */
+function checkImageForPrescription(file) {
+  var url = URL.createObjectURL(file);
+  var img = new Image();
+  img.onload = function() {
+    var ratio = img.height / img.width;
+    // Portrait + tall → likely prescription
+    if (ratio > 1.2) {
+      var rxRadio = document.getElementById('mode_rx');
+      if (rxRadio) {
+        rxRadio.checked = true;
+        rxRadio.dispatchEvent(new Event('change', { bubbles: true }));
+        // Trigger visual update
+        document.querySelectorAll('.mode-tile')
+          .forEach(function(t) { t.classList.remove('auto-suggested'); });
+        var rxLabel = document.querySelector('label[for="mode_rx"]');
+        if (rxLabel) {
+          rxLabel.classList.add('auto-suggested');
+        }
+        // Show suggestion message
+        var hint = document.getElementById('modeHint');
+        if (hint) {
+          hint.textContent =
+            '📋 Portrait image detected — switched to Prescription mode. '
+            + 'Change above if this is a medicine box photo.';
+          hint.classList.add('visible');
+        }
+      }
+    }
+    URL.revokeObjectURL(url);
+  };
+  img.src = url;
+}
+
+/* Hook into file selection */
+var imageInput = document.getElementById('imageInput') || document.getElementById('id_image');
+if (imageInput) {
+  imageInput.addEventListener('change', function(e) {
+    if (e.target.files && e.target.files[0]) {
+      checkImageForPrescription(e.target.files[0]);
+    }
+  });
+}
+
+

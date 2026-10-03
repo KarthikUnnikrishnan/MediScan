@@ -84,7 +84,7 @@ def index(request):
             unique_filename, full_path = _save_upload(image_file)
 
             # 2. Determine mode
-            mode = form.cleaned_data['mode']
+            mode = form.cleaned_data.get('mode', 'auto')
 
             # 3. Run precision ML pipeline
             result_data = scan_image(full_path, mode=mode)
@@ -129,27 +129,32 @@ def result(request):
         return redirect('index')
 
     context = {
-        'result': scan_result,
-        'status': scan_result.get('status', 'unverified'),
-        'success': scan_result.get('success', False),
-        'mode': scan_result.get('mode', 'medicine_package'),
-        'medicine': scan_result.get('medicine'),
-        'medicines': scan_result.get('medicines', []),
-        'ingredients': scan_result.get('ingredients', []),
-        'alternatives': scan_result.get('alternatives', []),
-        'max_savings': scan_result.get('max_savings'),
-        'max_savings_percent': scan_result.get('max_savings_percent'),
-        'side_effects': scan_result.get('side_effects', []),
-        'interactions': scan_result.get('interactions', []),
-        'cross_interactions': scan_result.get('cross_interactions', []),
-        'confidence_breakdown': scan_result.get('confidence_breakdown', {}),
-        'verification': scan_result.get('verification', {}),
-        'image_url': scan_result.get('image_url', ''),
-        'timestamp': scan_result.get('timestamp', ''),
-        'raw_ocr': scan_result.get('raw_ocr', ''),
-        'normalized_ocr': scan_result.get('normalized_ocr', ''),
-        'rejection_reasons': scan_result.get('rejection_reasons', []),
+        'result':                scan_result,
+        'mode':                  scan_result.get('mode', 'auto'),
+        'success':               scan_result.get('success', False),
+        'medicines':             scan_result.get('medicines', []),
+        'alternatives':          scan_result.get('alternatives', []),
+        'cross_interactions':    scan_result.get('cross_interactions', []),
+        'ocr_text':              scan_result.get('ocr_text', ''),
+        'extracted_names':       scan_result.get('extracted_names', []),
+        'image_url':             scan_result.get('image_url', ''),
+        'strip_detected':        scan_result.get('strip_detected', False),
+        'timestamp':             scan_result.get('timestamp', ''),
+        'diagnosis':             scan_result.get('diagnosis', ''),
+        'per_medicine_results':  scan_result.get('per_medicine_results', {}),
+        'default_selected':      scan_result.get('default_selected', ''),
+        'total_found':           scan_result.get('total_found', 0),
+        'ai_validation':         scan_result.get('ai_validation', {}),
+        'ai_suggested_correction': scan_result.get(
+                                     'ai_suggested_correction', ''),
     }
+
+    import json as _json
+    context['per_medicine_json'] = _json.dumps(
+        scan_result.get('per_medicine_results', {}),
+        default=str
+    )
+
     return render(request, 'scanner/result.html', context)
 
 
@@ -170,7 +175,7 @@ def scan(request):
 
         image_file = form.cleaned_data['image']
         unique_filename, full_path = _save_upload(image_file)
-        mode = form.cleaned_data['mode']
+        mode = form.cleaned_data.get('mode', 'auto')
 
         result_data = scan_image(full_path, mode=mode)
 
