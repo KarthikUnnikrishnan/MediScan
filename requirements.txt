@@ -10,3 +10,4 @@ sentencepiece
 tiktoken
 rapidfuzz
 msvc-runtime; sys_platform == 'win32'
+groq

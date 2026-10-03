@@ -3886,3 +3886,35 @@ img {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── AI Validation Bar ── */
+.ai-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1.5rem;
+  font-size: 0.78rem;
+  border-bottom: 1px solid #1e1e1e;
+  flex-wrap: wrap;
+}
+.ai-high   { background: rgba(34,197,94,0.06);  border-left: 3px solid #22c55e; }
+.ai-medium { background: rgba(251,191,36,0.06); border-left: 3px solid #fbbf24; }
+.ai-low    { background: rgba(239,68,68,0.06);  border-left: 3px solid #ef4444; }
+.ai-bar-icon { font-size: 1rem; flex-shrink: 0; }
+.ai-bar-text { flex: 1; color: #ccc; line-height: 1.5; }
+.ai-badge {
+  flex-shrink: 0;
+  border-radius: 20px;
+  padding: 2px 10px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.ai-badge-high   { background: rgba(34,197,94,0.12);  color: #22c55e; border: 1px solid rgba(34,197,94,0.2); }
+.ai-badge-medium { background: rgba(251,191,36,0.12); color: #fbbf24; border: 1px solid rgba(251,191,36,0.2); }
+.ai-badge-low    { background: rgba(239,68,68,0.12);  color: #ef4444; border: 1px solid rgba(239,68,68,0.2); }
+
+@media print {
+  .ai-bar { display: none; }
+}

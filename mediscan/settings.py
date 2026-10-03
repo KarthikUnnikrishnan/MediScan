@@ -119,3 +119,7 @@ SESSION_COOKIE_AGE = 3600  # 1 hour
 # File uploads
 # ---------------------------------------------------------------------------
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB
+
+import os
+GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
+

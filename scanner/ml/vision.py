@@ -87,6 +87,12 @@ def load_models():
 
         logger.info("MediScan vision models loaded successfully on %s", _device)
 
+        try:
+            from .ai_validator import init_groq
+            init_groq()
+        except Exception:
+            pass
+
     except Exception as exc:
         logger.error("Failed to load MediScan vision models: %s", exc, exc_info=True)
         raise

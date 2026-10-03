@@ -23,6 +23,7 @@ from .medicine_index import get_medicine_index
 from .medicine_matcher import match_medicine
 from .alternative_matcher import find_top_cheaper_alternatives
 from .drug_safety import get_drug_safety_info
+from .ai_validator import init_groq, run_ai_validation
 
 logger = logging.getLogger(__name__)
 
@@ -237,22 +238,25 @@ def scan_image(image_path: str, mode: str = "auto") -> Dict[str, Any]:
         image_pil = Image.open(image_path)
 
         if mode == "medicine_package":
-            return scan_medicine_package(image_pil)
-        if mode == "prescription":
-            return scan_prescription(image_pil)
+            result = scan_medicine_package(image_pil)
+        elif mode == "prescription":
+            result = scan_prescription(image_pil)
+        else:
+            # Auto-mode
+            logger.info("Auto-mode: running package scan")
+            res = scan_medicine_package(image_pil)
+            if res.get("status") == "verified" and res.get("medicine"):
+                result = res
+            else:
+                logger.info("Auto-mode: trying prescription scan")
+                rx_res = scan_prescription(image_pil)
+                if rx_res.get("status") == "verified" and rx_res.get("medicines"):
+                    result = rx_res
+                else:
+                    result = res if res.get("raw_ocr") else rx_res
 
-        # Auto-mode
-        logger.info("Auto-mode: running package scan")
-        res = scan_medicine_package(image_pil)
-        if res.get("status") == "verified" and res.get("medicine"):
-            return res
-
-        logger.info("Auto-mode: trying prescription scan")
-        rx_res = scan_prescription(image_pil)
-        if rx_res.get("status") == "verified" and rx_res.get("medicines"):
-            return rx_res
-
-        return res if res.get("raw_ocr") else rx_res
+        result = run_ai_validation(result)
+        return result
 
     except Exception as exc:
         logger.error("scan_image failed on %s: %s", image_path, exc, exc_info=True)
@@ -262,5 +266,7 @@ def scan_image(image_path: str, mode: str = "auto") -> Dict[str, Any]:
 # Load models on import
 try:
     load_models()
+    init_groq()
 except Exception as _load_exc:
     logger.warning("MediScan vision models could not be loaded at import time: %s", _load_exc)
+
