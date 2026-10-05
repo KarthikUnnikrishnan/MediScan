@@ -51,11 +51,24 @@
 
   <!-- ── AI VALIDATION BAR ────────────────────────────── -->
   {% with ai=ai_validation %}
-  {% if ai and ai.available and ai.confidence_label %}
+  {% if ai and ai.confidence_label %}
   <div class="ai-bar ai-{{ ai.confidence_label|lower|default:'medium' }}">
     <span class="ai-bar-icon">🤖</span>
     <span class="ai-bar-text">
-      AI Analysis Complete
+      AI Analysis
+      {% if ai.tier == 'groq' %}
+        <span class="ai-tier-badge ai-tier-online">
+          ☁ Groq Online
+        </span>
+      {% elif ai.tier == 'ollama' %}
+        <span class="ai-tier-badge ai-tier-offline">
+          💻 Ollama Offline
+        </span>
+      {% else %}
+        <span class="ai-tier-badge ai-tier-rules">
+          ⚙ Rule-based
+        </span>
+      {% endif %}
     </span>
     <span class="ai-badge ai-badge-{{ ai.confidence_label|lower|default:'medium' }}">
       {{ ai.confidence_label|default:'Medium' }} Confidence

@@ -218,8 +218,12 @@
 
     sampleBtns.forEach(function (btn) {
       btn.addEventListener('click', function () {
-        const mode = btn.getAttribute('data-sample-mode');
-        const name = btn.getAttribute('data-sample-name');
+        const mode = btn.getAttribute('data-sample-mode') || 'medicine_package';
+        const name = btn.getAttribute('data-sample-name') || 'Dolo 650 Tablet';
+
+        // Update active state on sample buttons
+        sampleBtns.forEach(function (b) { b.classList.remove('active-sample'); });
+        btn.classList.add('active-sample');
 
         // 1. Switch mode
         if (mode === 'prescription') {
@@ -234,46 +238,163 @@
           if (tabStrip) tabStrip.click();
         }
 
-        // 2. Synthesize a high-contrast test medicine image on canvas
+        // 2. Synthesize ultra-realistic medical test image on canvas
         const canvas = document.createElement('canvas');
-        canvas.width = 600;
-        canvas.height = 400;
         const ctx = canvas.getContext('2d');
 
-        // Background
-        ctx.fillStyle = '#f8faf7';
-        ctx.fillRect(0, 0, 600, 400);
+        if (mode === 'prescription') {
+          // Prescription Pad Note Simulation
+          canvas.width = 720;
+          canvas.height = 500;
 
-        // Strip blister simulation
-        ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = '#cde2d4';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(40, 40, 520, 320);
-        ctx.fillRect(40, 40, 520, 320);
+          // Cream medical notepad background
+          ctx.fillStyle = '#faf8f5';
+          ctx.fillRect(0, 0, 720, 500);
 
-        // Blister pockets
-        ctx.fillStyle = '#ebf5ee';
-        for (let i = 0; i < 4; i++) {
+          // Top Header Bar
+          ctx.fillStyle = '#143d2b';
+          ctx.fillRect(40, 25, 640, 4);
+
+          ctx.fillStyle = '#143d2b';
+          ctx.font = 'bold 22px "Plus Jakarta Sans", sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText('METROPOLITAN CLINICAL CARE CENTER', 50, 60);
+
+          ctx.fillStyle = '#475569';
+          ctx.font = '13px "Plus Jakarta Sans", sans-serif';
+          ctx.fillText('Dr. Arvind Sharma, MBBS, MD (Medicine) • Reg: MCI-49201', 50, 85);
+          ctx.fillText('14 Healthcare Blvd, Ground Floor • Helpline: +91 98765 43210', 50, 105);
+
+          // Divider
+          ctx.strokeStyle = '#cde2d4';
+          ctx.lineWidth = 1.5;
           ctx.beginPath();
-          ctx.arc(100 + i * 130, 110, 42, 0, Math.PI * 2);
+          ctx.moveTo(40, 125);
+          ctx.lineTo(680, 125);
+          ctx.stroke();
+
+          // Patient metadata
+          ctx.fillStyle = '#334155';
+          ctx.font = '14px "Plus Jakarta Sans", sans-serif';
+          ctx.fillText('Patient: Rahul Verma    Age/Sex: 38 / M    Date: 2026-10-05', 50, 155);
+
+          // Rx Symbol
+          ctx.fillStyle = '#15803d';
+          ctx.font = 'bold 42px Georgia, serif';
+          ctx.fillText('℞', 50, 215);
+
+          // Prescribed Medication Line 1
+          ctx.fillStyle = '#0f172a';
+          ctx.font = 'bold 24px "Plus Jakarta Sans", sans-serif';
+          ctx.fillText(name, 105, 215);
+
+          ctx.fillStyle = '#475569';
+          ctx.font = '15px "Plus Jakarta Sans", sans-serif';
+          ctx.fillText('Sig: 1 Tablet Twice Daily (BD) after meals × 5 days', 105, 245);
+
+          // Prescribed Medication Line 2
+          ctx.fillStyle = '#0f172a';
+          ctx.font = 'bold 20px "Plus Jakarta Sans", sans-serif';
+          ctx.fillText('Tab Pantoprazole 40mg', 105, 295);
+
+          ctx.fillStyle = '#475569';
+          ctx.font = '15px "Plus Jakarta Sans", sans-serif';
+          ctx.fillText('Sig: 1 Tablet Once Daily (OD) before breakfast × 5 days', 105, 320);
+
+          // Advice box
+          ctx.fillStyle = '#ebf5ee';
+          ctx.fillRect(50, 360, 620, 48);
+          ctx.fillStyle = '#1b4a35';
+          ctx.font = '13px "Plus Jakarta Sans", sans-serif';
+          ctx.fillText('Advice: Drink plenty of fluids. Review after 5 days if fever persists.', 65, 390);
+
+          // Signature Line
+          ctx.strokeStyle = '#94a3b8';
+          ctx.beginPath();
+          ctx.moveTo(490, 455);
+          ctx.lineTo(670, 455);
+          ctx.stroke();
+
+          ctx.fillStyle = '#0f172a';
+          ctx.font = 'italic bold 20px "Brush Script MT", cursive, sans-serif';
+          ctx.fillText('Dr. A. Sharma', 520, 445);
+
+          ctx.fillStyle = '#64748b';
+          ctx.font = '11px "Plus Jakarta Sans", sans-serif';
+          ctx.fillText("Physician's Signature & Stamp", 510, 472);
+
+        } else {
+          // Blister Packaging Simulation
+          canvas.width = 720;
+          canvas.height = 460;
+
+          // Background
+          ctx.fillStyle = '#f1f5f2';
+          ctx.fillRect(0, 0, 720, 460);
+
+          // Blister Pack Border & Surface
+          const grad = ctx.createLinearGradient(40, 30, 680, 420);
+          grad.addColorStop(0, '#ffffff');
+          grad.addColorStop(0.3, '#f4fbf7');
+          grad.addColorStop(0.7, '#e6f4ec');
+          grad.addColorStop(1, '#ffffff');
+          ctx.fillStyle = grad;
+          ctx.strokeStyle = '#bbf7d0';
+          ctx.lineWidth = 3;
+          if (ctx.roundRect) {
+            ctx.roundRect(40, 30, 640, 400, 16);
+          } else {
+            ctx.rect(40, 30, 640, 400);
+          }
           ctx.fill();
+          ctx.stroke();
+
+          // Metallic blister pocket circles
+          for (let i = 0; i < 5; i++) {
+            const cx = 115 + i * 122;
+            const cy = 110;
+            const rad = ctx.createRadialGradient(cx - 8, cy - 8, 4, cx, cy, 38);
+            rad.addColorStop(0, '#ffffff');
+            rad.addColorStop(0.55, '#d1fae5');
+            rad.addColorStop(1, '#a7f3d0');
+            ctx.fillStyle = rad;
+            ctx.beginPath();
+            ctx.arc(cx, cy, 38, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#6ee7b7';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
+
+          // Medicine Name
+          ctx.fillStyle = '#143d2b';
+          ctx.font = 'bold 32px "Plus Jakarta Sans", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(name, 360, 225);
+
+          // Composition
+          ctx.fillStyle = '#059669';
+          ctx.font = '600 16px "Plus Jakarta Sans", sans-serif';
+          ctx.fillText('Active Molecule • Bioequivalent Generic Formulation', 360, 260);
+
+          // Storage info
+          ctx.fillStyle = '#475569';
+          ctx.font = '14px "Plus Jakarta Sans", sans-serif';
+          ctx.fillText('Schedule H Prescription Drug • Store below 30°C in dry place', 360, 295);
+
+          // Batch info
+          ctx.fillStyle = '#1e293b';
+          ctx.font = '12px "Courier New", monospace';
+          ctx.fillText('B.No. MS-84920  MFG. 09/2026  EXP. 08/2028  M.R.P. ₹34.50', 360, 335);
+
+          // Warning Red Bar
+          ctx.fillStyle = '#ef4444';
+          ctx.fillRect(110, 360, 500, 3);
+          ctx.font = 'bold 11px "Plus Jakarta Sans", sans-serif';
+          ctx.fillText('WARNING: To be sold by retail on the prescription of a Registered Medical Practitioner only.', 360, 380);
         }
 
-        // Medicine label text
-        ctx.fillStyle = '#143d2b';
-        ctx.font = 'bold 30px "Plus Jakarta Sans", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(name, 300, 220);
-
-        ctx.fillStyle = '#475569';
-        ctx.font = '16px "Plus Jakarta Sans", sans-serif';
-        ctx.fillText('Rx Formulation • For Medical Use Only • Batch #2026', 300, 260);
-
-        ctx.fillStyle = '#b45309';
-        ctx.font = 'bold 15px "Plus Jakarta Sans", sans-serif';
-        ctx.fillText('Keep out of reach of children • Store below 30°C', 300, 290);
-
-        // 3. Convert to File and set into input
+        // 3. Convert to File and set into dropzone input
         canvas.toBlob(function (blob) {
           if (!blob) return;
           const cleanFileName = name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase() + '.jpg';
@@ -282,8 +403,20 @@
             window.setMediScanFile(sampleFile);
           }
 
-          // 4. Smooth scroll to terminal
+          // 4. Visual feedback: Pulse scanner terminal and highlight submit button
           const terminal = document.getElementById('scanner-terminal');
+          if (terminal) {
+            terminal.classList.remove('scanner-sample-loaded');
+            void terminal.offsetWidth;
+            terminal.classList.add('scanner-sample-loaded');
+          }
+
+          const submitBtn = document.getElementById('btnScanSubmit');
+          if (submitBtn) {
+            submitBtn.classList.add('btn-sample-ready');
+          }
+
+          // Smooth scroll to terminal
           if (terminal) {
             terminal.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
