@@ -544,7 +544,6 @@
   function enforceLightMode() {
     try {
       localStorage.removeItem('mediscan_theme');
-      localStorage.removeItem('mediscan_history');
       document.documentElement.removeAttribute('data-theme');
     } catch (_) {}
   }
