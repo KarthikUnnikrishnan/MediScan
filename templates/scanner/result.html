@@ -49,33 +49,7 @@
     </div>
   </div>
 
-  <!-- ── AI VALIDATION BAR ────────────────────────────── -->
-  {% with ai=ai_validation %}
-  {% if ai and ai.confidence_label %}
-  <div class="ai-bar ai-{{ ai.confidence_label|lower|default:'medium' }}">
-    <span class="ai-bar-icon">🤖</span>
-    <span class="ai-bar-text">
-      AI Analysis
-      {% if ai.tier == 'groq' %}
-        <span class="ai-tier-badge ai-tier-online">
-          ☁ Groq Online
-        </span>
-      {% elif ai.tier == 'ollama' %}
-        <span class="ai-tier-badge ai-tier-offline">
-          💻 Ollama Offline
-        </span>
-      {% else %}
-        <span class="ai-tier-badge ai-tier-rules">
-          ⚙ Rule-based
-        </span>
-      {% endif %}
-    </span>
-    <span class="ai-badge ai-badge-{{ ai.confidence_label|lower|default:'medium' }}">
-      {{ ai.confidence_label|default:'Medium' }} Confidence
-    </span>
-  </div>
-  {% endif %}
-  {% endwith %}
+
 
   <!-- ── DIAGNOSIS BANNER (prescription only) ─────────── -->
   {% if mode == 'prescription' and diagnosis %}
@@ -112,9 +86,15 @@
         </div>
         {% endif %}
         {% if med_data.top_medicine %}
-        <div class="med-sel-found">✓ Found in DB</div>
+        <div class="confidence-indicator conf-{{ med_data.confidence|confidence_tier }} med-sel-indicator">
+          <span class="confidence-dot"></span>
+          <span>{{ med_data.confidence|confidence_percent }} Match</span>
+        </div>
         {% else %}
-        <div class="med-sel-notfound">⚠ Not matched</div>
+        <div class="confidence-indicator conf-low med-sel-indicator">
+          <span class="confidence-dot"></span>
+          <span>Unmatched</span>
+        </div>
         {% endif %}
       </div>
       {% endfor %}
@@ -154,7 +134,13 @@
               <div class="mrp-value">₹ {{ med.price }}</div>
             </div>
           </div>
-          <div class="best-match-badge">✓ Best Database Match</div>
+          <div class="match-meta-bar">
+            <span class="best-match-badge">✓ Best Database Match</span>
+            <span class="confidence-indicator conf-{{ med.confidence|default:94|confidence_tier }}">
+              <span class="confidence-dot"></span>
+              <span>{{ med.confidence|default:94|confidence_percent }} Match Confidence</span>
+            </span>
+          </div>
           {% endwith %}
         {% else %}
           <div class="no-match-state">
@@ -211,7 +197,13 @@
                     <div class="mrp-value">₹ {{ med.price }}</div>
                   </div>
                 </div>
-                <div class="best-match-badge">✓ Best Database Match</div>
+                <div class="match-meta-bar">
+                  <span class="best-match-badge">✓ Best Database Match</span>
+                  <span class="confidence-indicator conf-{{ med_data.confidence|confidence_tier }}">
+                    <span class="confidence-dot"></span>
+                    <span>{{ med_data.confidence|confidence_percent }} Match Confidence</span>
+                  </span>
+                </div>
                 {% endwith %}
 
               {% else %}

@@ -405,7 +405,7 @@ img {
 
 /* ── 4. HERO SECTION ─────────────────────────────────────────────────────── */
 .hero-section {
-  padding: 2rem 0 0.85rem;
+  padding: 1.6rem 0 0.5rem;
   position: relative;
   overflow: visible;
 }
@@ -801,16 +801,19 @@ img {
   pointer-events: none !important;
 }
 
-/* Upload Dropzone - Clean Medical Viewfinder (No Scanning Animation) */
+/* Upload Dropzone - Clean Compact Medical Viewfinder matching preview footprint */
 .upload-dropzone {
   position: relative;
-  border: 2px dashed rgba(20, 61, 43, 0.22);
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 76px;
+  border: 1.5px dashed rgba(20, 61, 43, 0.24);
   border-radius: var(--radius-inner);
   background: #f6faf7;
-  padding: 18px 16px 14px;
-  text-align: center;
+  padding: 11px 16px;
+  margin-bottom: 16px;
   cursor: pointer !important;
-  display: block;
   overflow: hidden;
   transition: all 0.25s ease;
 }
@@ -819,184 +822,156 @@ img {
 .upload-dropzone.drag-active {
   border-color: #10b981;
   background: #edf7f0;
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.12);
-  transform: scale(1.008);
+  box-shadow: 0 4px 18px rgba(16, 185, 129, 0.12);
 }
 
 /* Reticle Corner Brackets */
 .dropzone-corner {
   position: absolute;
-  width: 14px;
-  height: 14px;
+  width: 10px;
+  height: 10px;
   pointer-events: none;
-  transition: all 0.3s ease;
+  transition: all 0.25s ease;
 }
 
 .corner-tl {
-  top: 9px;
-  left: 9px;
-  border-top: 2.5px solid #10b981;
-  border-left: 2.5px solid #10b981;
-  border-top-left-radius: 4px;
+  top: 6px;
+  left: 6px;
+  border-top: 2px solid #10b981;
+  border-left: 2px solid #10b981;
+  border-top-left-radius: 3px;
 }
 
 .corner-tr {
-  top: 9px;
-  right: 9px;
-  border-top: 2.5px solid #10b981;
-  border-right: 2.5px solid #10b981;
-  border-top-right-radius: 4px;
+  top: 6px;
+  right: 6px;
+  border-top: 2px solid #10b981;
+  border-right: 2px solid #10b981;
+  border-top-right-radius: 3px;
 }
 
 .corner-bl {
-  bottom: 9px;
-  left: 9px;
-  border-bottom: 2.5px solid #10b981;
-  border-left: 2.5px solid #10b981;
-  border-bottom-left-radius: 4px;
+  bottom: 6px;
+  left: 6px;
+  border-bottom: 2px solid #10b981;
+  border-left: 2px solid #10b981;
+  border-bottom-left-radius: 3px;
 }
 
 .corner-br {
-  bottom: 9px;
-  right: 9px;
-  border-bottom: 2.5px solid #10b981;
-  border-right: 2.5px solid #10b981;
-  border-bottom-right-radius: 4px;
+  bottom: 6px;
+  right: 6px;
+  border-bottom: 2px solid #10b981;
+  border-right: 2px solid #10b981;
+  border-bottom-right-radius: 3px;
 }
 
 .upload-dropzone:hover .dropzone-corner {
-  width: 18px;
-  height: 18px;
+  width: 12px;
+  height: 12px;
   border-color: #059669;
 }
 
-.scanner-laser-beam {
-  display: none !important;
-}
-
-.camera-pulse-halo {
-  display: none !important;
-}
-
-.dropzone-camera-icon {
-  position: relative;
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  background: var(--color-sage-bg);
-  color: var(--color-forest);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 8px;
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  z-index: 3;
-}
-
-.camera-pulse-halo {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border-radius: 16px;
-  background: rgba(16, 185, 129, 0.3);
-  z-index: -1;
-  animation: cameraHaloPulse 2.8s ease-in-out infinite;
-}
-
-@keyframes cameraHaloPulse {
-
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 0.4;
-  }
-
-  50% {
-    transform: scale(1.24);
-    opacity: 0.08;
-  }
-}
-
-.upload-dropzone:hover .dropzone-camera-icon {
-  transform: scale(1.1);
-  background: rgba(205, 226, 212, 0.8);
-}
-
-.dropzone-prompt {
-  font-size: 1.02rem;
-  font-weight: 750;
-  color: var(--text-dark);
-  margin-bottom: 4px;
-  position: relative;
-  z-index: 3;
-}
-
-.dropzone-format-info {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  font-weight: 500;
-  margin-bottom: 12px;
-  position: relative;
-  z-index: 3;
-}
-
-/* Optical Sensor Pill */
-.dropzone-ai-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(20, 61, 43, 0.06);
-  border: 1px solid rgba(20, 61, 43, 0.1);
-  padding: 4px 12px;
-  border-radius: var(--radius-pill);
-  font-size: 0.74rem;
-  font-weight: 700;
-  color: var(--color-forest);
-  margin-bottom: 10px;
-  position: relative;
-  z-index: 3;
-}
-
-.ai-lens-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #10b981;
-  box-shadow: 0 0 6px #10b981;
-}
-
-.dropzone-camera-link {
-  margin-top: 4px;
-  position: relative;
-  z-index: 3;
-}
-
-.btn-open-camera {
-  background: none;
-  border: none;
-  color: var(--color-accent-green);
-  font-size: 0.84rem;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  padding: 5px 12px;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-}
-
-.btn-open-camera:hover {
-  background: rgba(35, 103, 70, 0.1);
-  color: var(--color-forest);
-}
-
-/* File Preview Card */
-.file-preview-card {
+/* Inner Horizontal Flow */
+.dropzone-compact-inner {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 12px 16px;
+  width: 100%;
+  position: relative;
+  z-index: 3;
+}
+
+.dropzone-camera-icon {
+  width: 50px;
+  height: 50px;
+  min-width: 50px;
+  border-radius: 12px;
+  background: var(--color-sage-bg);
+  color: var(--color-forest);
+  border: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0;
+  flex-shrink: 0;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease;
+}
+
+.upload-dropzone:hover .dropzone-camera-icon {
+  transform: scale(1.04);
+  background: rgba(205, 226, 212, 0.85);
+}
+
+.dropzone-text-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: left;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.dropzone-prompt {
+  font-size: 0.94rem;
+  font-weight: 750;
+  color: var(--text-dark);
+  line-height: 1.25;
+  margin: 0 0 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dropzone-format-info {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  line-height: 1.2;
+  margin: 0;
+}
+
+/* Compact Camera Button on Right */
+.btn-compact-camera {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: rgba(20, 61, 43, 0.07);
+  border: 1px solid rgba(20, 61, 43, 0.12);
+  color: var(--color-forest);
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.btn-compact-camera:hover {
+  background: var(--color-forest);
+  color: #ffffff;
+  border-color: var(--color-forest);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(20, 61, 43, 0.16);
+}
+
+.scanner-laser-beam,
+.camera-pulse-halo,
+.dropzone-ai-badge,
+.dropzone-camera-link {
+  display: none !important;
+}
+
+/* File Preview Card (Matching Height & Spacing) */
+.file-preview-card {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 76px;
+  gap: 14px;
+  padding: 11px 16px;
   border-radius: var(--radius-inner);
   background: #f3f8f5;
   border: 1px solid var(--color-sage-border);
@@ -1144,7 +1119,7 @@ img {
 
 /* ── 6B. HERO BOTTOM DOCK (SAMPLES, METRICS & TRUST PROOF) ──────────────── */
 .hero-bottom-dock {
-  margin-top: 2rem;
+  margin-top: 1.35rem;
   display: flex;
   flex-direction: column;
   gap: 1.15rem;
@@ -3474,83 +3449,84 @@ img {
 }
 
 
-/* ── AI Validation Bar ── */
-.ai-bar {
+/* ── Minimalist Match Confidence Indicator ── */
+.confidence-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+  vertical-align: middle;
+  transition: all 0.2s ease;
+}
+
+.confidence-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* High (>= 80%): Subtle sage/emerald background (#ecfdf5), dark green text (#15803d), vibrant green dot */
+.confidence-indicator.conf-high {
+  background: #ecfdf5;
+  color: #15803d;
+  border: 1px solid rgba(21, 128, 61, 0.22);
+}
+
+.confidence-indicator.conf-high .confidence-dot {
+  background: #16a34a;
+  box-shadow: 0 0 0 2.5px rgba(34, 197, 94, 0.25);
+}
+
+/* Medium (60% - 79%): Warm amber background (#fffbeb), dark amber text (#b45309), amber dot */
+.confidence-indicator.conf-medium {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid rgba(180, 83, 9, 0.22);
+}
+
+.confidence-indicator.conf-medium .confidence-dot {
+  background: #d97706;
+  box-shadow: 0 0 0 2.5px rgba(245, 158, 11, 0.25);
+}
+
+/* Low (< 60%): Soft red background (#fef2f2), red text (#b91c1c), red dot */
+.confidence-indicator.conf-low {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid rgba(185, 28, 28, 0.22);
+}
+
+.confidence-indicator.conf-low .confidence-dot {
+  background: #dc2626;
+  box-shadow: 0 0 0 2.5px rgba(239, 68, 68, 0.25);
+}
+
+/* Compact indicator for medicine selector cards */
+.med-sel-indicator {
+  font-size: 0.68rem;
+  padding: 2px 8px;
+  margin-top: 4px;
+}
+
+.med-sel-indicator .confidence-dot {
+  width: 5.5px;
+  height: 5.5px;
+}
+
+/* Match Meta Row holding Best Match Badge and Confidence Indicator together */
+.match-meta-bar {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.65rem 1.25rem;
-  font-size: 0.8rem;
-  border-radius: 12px;
-  margin-bottom: 0.85rem;
+  gap: 10px;
   flex-wrap: wrap;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
-}
-
-.ai-high {
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  border-left: 4px solid #16a34a;
-}
-
-.ai-medium {
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  border-left: 4px solid #d97706;
-}
-
-.ai-low {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-left: 4px solid #dc2626;
-}
-
-.ai-bar-icon {
-  font-size: 1.05rem;
-  flex-shrink: 0;
-}
-
-.ai-bar-text {
-  flex: 1;
-  color: #1e293b;
-  line-height: 1.5;
-  font-weight: 600;
-}
-
-.ai-badge {
-  flex-shrink: 0;
-  border-radius: 20px;
-  padding: 3px 10px;
-  font-size: 0.68rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.ai-badge-high {
-  background: #dcfce7;
-  color: #15803d;
-  border: 1px solid #86efac;
-}
-
-.ai-badge-medium {
-  background: #fef3c7;
-  color: #b45309;
-  border: 1px solid #fde68a;
-}
-
-.ai-badge-low {
-  background: #fee2e2;
-  color: #b91c1c;
-  border: 1px solid #fca5a5;
-}
-
-@media print {
-  .ai-bar {
-    display: none;
-  }
+  margin-top: 1.15rem;
 }
 
 /* ── Result Page Dashboard Styles ── */
@@ -4369,32 +4345,4 @@ input[type=radio]:checked+.mode-tile .mode-tile-icon-svg {
   border-color: #f97316;
   background: rgba(249, 115, 22, 0.06);
   box-shadow: 0 0 0 1.5px #f97316;
-}
-
-.ai-tier-badge {
-  display: inline-block;
-  border-radius: 20px;
-  padding: 1px 8px;
-  font-size: 0.62rem;
-  font-weight: 700;
-  margin-left: 6px;
-  vertical-align: middle;
-}
-
-.ai-tier-online {
-  background: rgba(34, 197, 94, 0.12);
-  color: #22c55e;
-  border: 1px solid rgba(34, 197, 94, 0.2);
-}
-
-.ai-tier-offline {
-  background: rgba(99, 102, 241, 0.12);
-  color: #a5b4fc;
-  border: 1px solid rgba(99, 102, 241, 0.2);
-}
-
-.ai-tier-rules {
-  background: rgba(251, 191, 36, 0.12);
-  color: #fbbf24;
-  border: 1px solid rgba(251, 191, 36, 0.2);
 }

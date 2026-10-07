@@ -8,6 +8,8 @@ Three-tier AI validation for MediScan:
 """
 
 import os
+import io
+import base64
 import json
 import logging
 import re
@@ -25,6 +27,11 @@ _groq_client      = None
 _groq_available   = False
 _ollama_available = False
 _active_tier      = None
+_gemini_client    = None
+_gemini_available = False
+_GEMINI_MODEL     = "gemini-3.5-flash"
+_OLLAMA_VISION_MODEL = "llava"
+_OLLAMA_VISION_URL   = "http://localhost:11434/api/generate"
 
 
 # ════════════════════════════════════════════════════════
@@ -33,11 +40,10 @@ _active_tier      = None
 
 def _check_internet():
     try:
-        socket.setdefaulttimeout(2)
-        socket.socket(
-            socket.AF_INET, socket.SOCK_STREAM
-        ).connect(("8.8.8.8", 53))
-        return True
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(2)
+            s.connect(("8.8.8.8", 53))
+            return True
     except Exception:
         return False
 
@@ -118,6 +124,321 @@ def init_groq():
         "AI Tier 3: Rule-based fallback active "
         "(no Groq, no Ollama)"
     )
+
+
+def init_gemini():
+    """
+    Initialise Gemini Vision using the new google.genai SDK.
+    Model: gemini-2.0-flash.
+    """
+    global _gemini_client, _gemini_available
+    try:
+        from google import genai
+        from django.conf import settings
+
+        api_key = (
+            getattr(settings, 'GEMINI_API_KEY', '')
+            or os.environ.get('GEMINI_API_KEY', '')
+        )
+        if not api_key:
+            logger.warning(
+                "GEMINI_API_KEY not set — "
+                "Gemini Vision OCR disabled"
+            )
+            return
+
+        _gemini_client    = genai.Client(api_key=api_key)
+        _gemini_available = True
+        logger.info(
+            "Gemini Vision OCR ready (model: %s)",
+            _GEMINI_MODEL
+        )
+
+    except ImportError:
+        logger.warning(
+            "google-genai not installed. "
+            "Run: pip install google-genai"
+        )
+    except Exception as exc:
+        logger.warning("Gemini Vision init failed: %s", exc)
+
+
+def _extract_via_gemini(image_pil) -> dict:
+    """
+    Extract medicine info using Gemini Vision (new SDK).
+    Uses gemini-2.0-flash.
+    """
+    if not _gemini_available or not _gemini_client:
+        return {}
+    try:
+        from google import genai
+        from google.genai import types
+        import io
+
+        prompt = """This is an Indian medicine strip, blister 
+pack, or medicine box label photo.
+
+Read ALL text visible on the label carefully.
+Extract:
+1. Generic medicine name (e.g. "Loratadine", "Fexofenadine")
+2. Brand name (e.g. "Lorinol-10", "Fexodin-120")
+3. Strength (e.g. "10mg", "120mg", "500mg")
+4. Dosage form (tablet/capsule/syrup/injection)
+5. Manufacturer name
+6. Best 2-3 word search term for looking up in a database
+
+Reply ONLY with valid JSON:
+{
+  "medicine_name": "<generic name + strength + form>",
+  "brand_name":    "<brand name or null>",
+  "salt":          "<active ingredient with strength>",
+  "strength":      "<strength like 10mg>",
+  "manufacturer":  "<manufacturer or null>",
+  "raw_text":      "<key text from label>",
+  "search_query":  "<best 2-3 word DB search term>"
+}
+
+Examples of good search_query:
+  "loratadine 10mg"
+  "fexofenadine 120mg"
+  "paracetamol 500mg"
+  "amoxicillin 250mg"
+"""
+
+        import io
+        from google.genai import types
+
+        buf = io.BytesIO()
+        image_pil.save(buf, format='JPEG', quality=90)
+        img_bytes = buf.getvalue()
+
+        response = _gemini_client.models.generate_content(
+            model    = _GEMINI_MODEL,
+            contents = [
+                types.Content(
+                    role  = "user",
+                    parts = [
+                        types.Part.from_bytes(
+                            data      = img_bytes,
+                            mime_type = "image/jpeg",
+                        ),
+                        types.Part.from_text(
+                            text = prompt
+                        ),
+                    ]
+                )
+            ],
+        )
+
+        text = response.text.strip()
+        text = re.sub(r'```json\s*', '', text)
+        text = re.sub(r'```\s*',     '', text)
+        match = re.search(r'\{.*\}', text, re.DOTALL)
+        if match:
+            parsed = json.loads(match.group(0))
+        else:
+            parsed = json.loads(text.strip())
+
+        logger.info(
+            "Gemini Vision: name=%r search=%r",
+            parsed.get("medicine_name", ""),
+            parsed.get("search_query", ""),
+        )
+        return parsed
+
+    except Exception as exc:
+        logger.warning(
+            "Gemini Vision primary (%s) failed: %s — trying fallbacks",
+            _GEMINI_MODEL, exc
+        )
+        all_candidates = [
+            "gemini-3.5-flash",
+            "gemini-3-flash-preview",
+            "gemini-flash-lite-latest",
+            "gemini-3.1-flash-lite",
+            "gemini-flash-latest",
+            "gemini-3.8-flash",
+        ]
+        fallback_models = [m for m in all_candidates if m != _GEMINI_MODEL]
+        for fb_model in fallback_models:
+            try:
+                response = _gemini_client.models\
+                    .generate_content(
+                        model    = fb_model,
+                        contents = [
+                            types.Content(
+                                role  = "user",
+                                parts = [
+                                    types.Part.from_bytes(
+                                        data=img_bytes,
+                                        mime_type="image/jpeg"
+                                    ),
+                                    types.Part.from_text(
+                                        text=prompt
+                                    ),
+                                ]
+                            )
+                        ],
+                    )
+                text = response.text.strip()
+                text = re.sub(r'```json\s*', '', text)
+                text = re.sub(r'```\s*',     '', text)
+                match = re.search(r'\{.*\}', text, re.DOTALL)
+                if match:
+                    parsed = json.loads(match.group(0))
+                else:
+                    parsed = json.loads(text.strip())
+                logger.info(
+                    "Fallback model %s worked: %r",
+                    fb_model,
+                    parsed.get("search_query", "")
+                )
+                return parsed
+            except Exception:
+                continue
+        logger.warning(
+            "All Gemini model fallbacks failed — switching to Ollama LLaVA"
+        )
+        return {}
+
+
+def _extract_via_ollama_vision(image_pil) -> dict:
+    """
+    Extract medicine info using Ollama LLaVA vision model.
+    Runs completely offline. Fallback when Gemini unavailable.
+    Requires: ollama pull llava
+    """
+    try:
+        import urllib.request
+        import base64
+        import io
+
+        # Check Ollama is running
+        try:
+            urllib.request.urlopen(
+                "http://localhost:11434", timeout=2
+            )
+        except Exception:
+            logger.warning(
+                "Ollama not running — LLaVA vision unavailable"
+            )
+            return {}
+
+        # Verify llava model is pulled
+        try:
+            tags_resp = urllib.request.urlopen(
+                "http://localhost:11434/api/tags", timeout=3
+            )
+            tags_data = json.loads(tags_resp.read())
+            model_names = [
+                m.get("name", "")
+                for m in tags_data.get("models", [])
+            ]
+            if not any(
+                _OLLAMA_VISION_MODEL in n
+                for n in model_names
+            ):
+                logger.warning(
+                    "Ollama LLaVA not found. "
+                    "Run: ollama pull llava\n"
+                    "Available models: %s",
+                    model_names
+                )
+                return {}
+        except Exception:
+            pass
+
+        # Convert image to base64
+        buf = io.BytesIO()
+        image_pil.save(buf, format='JPEG', quality=85)
+        img_b64 = base64.b64encode(
+            buf.getvalue()
+        ).decode('utf-8')
+
+        prompt = """Look at this medicine label image carefully.
+Extract the medicine information and reply with ONLY 
+valid JSON, no other text:
+{
+  "medicine_name": "<generic name and strength>",
+  "brand_name": "<brand name or null>",
+  "salt": "<active ingredient with strength>",
+  "strength": "<strength like 10mg>",
+  "manufacturer": "<manufacturer or null>",
+  "raw_text": "<key text from label>",
+  "search_query": "<2-3 word search like loratadine 10mg>"
+}"""
+
+        payload = json.dumps({
+            "model":  _OLLAMA_VISION_MODEL,
+            "prompt": prompt,
+            "images": [img_b64],
+            "stream": False,
+            "format": "json",
+            "options": {"temperature": 0.1},
+        }).encode()
+
+        req = urllib.request.Request(
+            _OLLAMA_VISION_URL,
+            data    = payload,
+            headers = {"Content-Type": "application/json"},
+            method  = "POST",
+        )
+
+        with urllib.request.urlopen(req, timeout=180) as resp:
+            data   = json.loads(resp.read())
+            text   = data.get("response", "")
+            parsed = json.loads(text)
+
+            logger.info(
+                "Ollama LLaVA Vision: name=%r search=%r",
+                parsed.get("medicine_name", ""),
+                parsed.get("search_query", ""),
+            )
+            return parsed
+
+    except json.JSONDecodeError:
+        logger.warning(
+            "Ollama LLaVA returned non-JSON response"
+        )
+        return {}
+    except Exception as exc:
+        logger.warning(
+            "Ollama LLaVA vision failed: %s", exc
+        )
+        return {}
+
+
+def extract_medicine_text_gemini(image_pil) -> dict:
+    """
+    Main vision OCR entry point.
+    Tier 1: Gemini Vision (online, 1500 req/day free)
+    Tier 2: Ollama LLaVA (offline, needs ollama pull llava)
+    Tier 3: Empty dict (falls back to TrOCR in pipeline)
+    """
+    # Try Gemini first
+    if _gemini_available:
+        result = _extract_via_gemini(image_pil)
+        if result and result.get("search_query"):
+            return result
+        logger.info(
+            "Gemini Vision returned no result — "
+            "trying Ollama LLaVA"
+        )
+
+    # Try Ollama LLaVA offline
+    result = _extract_via_ollama_vision(image_pil)
+    if result and result.get("search_query"):
+        logger.info(
+            "Ollama LLaVA Vision succeeded offline"
+        )
+        return result
+
+    # Both failed
+    logger.warning(
+        "All vision OCR failed — "
+        "falling back to TrOCR in pipeline"
+    )
+    return {}
 
 
 def get_active_tier():

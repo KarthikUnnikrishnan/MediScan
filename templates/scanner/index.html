@@ -169,7 +169,7 @@
           <!-- Hidden Native File Input -->
           <input type="file" name="image" id="imageInput" accept="image/jpeg,image/png,image/webp,image/bmp" class="hidden-file-input" required />
 
-          <!-- Clean Dropzone as Label for Direct Native File Trigger -->
+          <!-- Clean Compact Dropzone matching preview footprint -->
           <label for="imageInput" class="upload-dropzone" id="scannerDropzone" tabindex="0" role="button" aria-label="Upload medicine photo">
             
             <!-- Corner Brackets -->
@@ -178,22 +178,23 @@
             <span class="dropzone-corner corner-bl" aria-hidden="true"></span>
             <span class="dropzone-corner corner-br" aria-hidden="true"></span>
 
-            <div class="dropzone-camera-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                <circle cx="12" cy="13" r="4"></circle>
-              </svg>
-            </div>
-            <div class="dropzone-prompt">Tap to photograph or upload</div>
-            <div class="dropzone-format-info">JPG &bull; PNG &bull; WEBP &bull; Max 10MB</div>
-
-            <div class="dropzone-camera-link">
-              <button type="button" class="btn-open-camera" id="btnTriggerCamera" title="Take a live photo with camera" onclick="event.preventDefault(); event.stopPropagation();">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <div class="dropzone-compact-inner">
+              <div class="dropzone-camera-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                   <circle cx="12" cy="13" r="4"></circle>
                 </svg>
-                <span>Or use live camera</span>
+              </div>
+              <div class="dropzone-text-group">
+                <div class="dropzone-prompt">Tap to photograph or upload</div>
+                <div class="dropzone-format-info">JPG &bull; PNG &bull; WEBP &bull; Max 10MB</div>
+              </div>
+              <button type="button" class="btn-compact-camera" id="btnTriggerCamera" title="Take a live photo with camera" onclick="event.preventDefault(); event.stopPropagation();">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                  <circle cx="12" cy="13" r="4"></circle>
+                </svg>
+                <span>Camera</span>
               </button>
             </div>
           </label>
