@@ -9,7 +9,6 @@ Architecture:
 - medicine_matcher.py: Multi-Tier Matcher with Hard Composition Validation
 - alternative_matcher.py: Bioequivalent Cheaper Alternatives Search Engine
 - drug_safety.py: Active Chemical Side Effects & Drug Interaction Engine
-- ai_verifier.py: Secondary Candidate AI Verifier
 """
 
 import logging
