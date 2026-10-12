@@ -187,24 +187,23 @@ def extract_brand_candidate(text: str) -> Optional[str]:
     """
     # Exclude common non-brand words
     exclude_words = {
-        'tablet', 'tablets', 'capsule', 'capsules', 'syrup', 'suspension',
-        'injection', 'ointment', 'gel', 'cream', 'drops', 'ip', 'bp', 'usp',
+        'tab', 'tabs', 'tablet', 'tablets', 'cap', 'caps', 'capsule', 'capsules',
+        'syp', 'syrup', 'suspension', 'inj', 'injection', 'ointment', 'gel',
+        'cream', 'drops', 'drop', 'ip', 'bp', 'usp', 'rx', 'dr', 'od', 'bd', 'tds', 'hs', 'sos',
         'mg', 'ml', 'mcg', 'g', 'for', 'the', 'use', 'store', 'reach',
         'composition', 'each', 'contains', 'film', 'coated', 'batch'
     }
 
     words = text.split()
-    candidates = []
-    for w in words:
+    for i, w in enumerate(words):
         clean_w = re.sub(r'[^a-zA-Z0-9-]', '', w)
         if len(clean_w) >= 2 and clean_w.lower() not in exclude_words and not clean_w.isdigit():
-            candidates.append(clean_w)
-
-    if candidates:
-        # Return first 1 or 2 words if they form a brand (e.g. "Dolo 650", "Augmentin 625", "1-AL")
-        if len(candidates) >= 2 and re.match(r'^\d+$', candidates[1]):
-            return f"{candidates[0]} {candidates[1]}"
-        return candidates[0]
+            # Check if immediately following word is a strength number (e.g. "650", "625", "500")
+            if i + 1 < len(words):
+                next_clean = re.sub(r'[^0-9]', '', words[i + 1])
+                if next_clean and 1 <= len(next_clean) <= 4:
+                    return f"{clean_w} {next_clean}"
+            return clean_w
 
     return None
 

@@ -1,10 +1,23 @@
 """
 scanner/ml/vision.py — Vision models for MediScan: YOLOv8 detector & TrOCR text recognition.
 
-Keep YOLO and TrOCR models unchanged.
+PATCHED — anti-hallucination guard added to run_ocr().
+
+Root cause of hallucination: TrOCR is a seq2seq model trained on medicine-strip
+text. When it receives a low-information image (blank foil crop, wrong side of
+blister pack, too-small region), it still generates tokens from its LM prior —
+commonly outputting "aceclofenac paracetamol tablets" or similar high-frequency
+training phrases instead of declining.
+
+Fix: validate TrOCR output with _ocr_output_looks_real(). The check is
+lightweight (regex + token heuristics) and does NOT require internet access.
+If the output fails validation, run_ocr() returns "" so the caller can fall
+through to Gemini Vision OCR or return unverified rather than presenting a
+hallucinated medicine name.
 """
 
 import os
+import re
 import sys
 import logging
 from django.conf import settings
@@ -12,22 +25,12 @@ from PIL import Image
 
 # ---------------------------------------------------------------------------
 # Windows DLL fix — must run before *any* torch import.
-#
-# Root cause: Oracle Database XE ships a stale libiomp5md.dll (build 20190109)
-# into C:\app\Admin\product\21c\dbhomeXE\bin\ which sits on the system PATH.
-# When torch's c10.dll loads, Windows resolves libiomp5md.dll from Oracle's
-# directory first, causing the DLL initialization routine to fail (WinError 1114).
-#
-# Fix: register torch's own lib directory as a DLL search path (Python 3.8+
-# os.add_dll_directory API), then explicitly ctypes-load torch's libiomp5md.dll
-# before Windows has a chance to load the Oracle version from PATH.
 # ---------------------------------------------------------------------------
 if sys.platform == "win32":
     try:
         import ctypes
         import site
 
-        # Locate torch's lib directory inside the active venv / site-packages.
         _torch_lib_dir = None
         for _sp in site.getsitepackages():
             _candidate = os.path.join(_sp, "torch", "lib")
@@ -36,16 +39,11 @@ if sys.platform == "win32":
                 break
 
         if _torch_lib_dir:
-            # Register as a trusted DLL directory (takes precedence over PATH).
             os.add_dll_directory(_torch_lib_dir)
-
-            # Pre-load torch's libiomp5md.dll so Windows won't later load
-            # the Oracle-installed version from PATH.
             _iomp_path = os.path.join(_torch_lib_dir, "libiomp5md.dll")
             if os.path.isfile(_iomp_path):
                 ctypes.CDLL(_iomp_path)
     except Exception as _dll_fix_err:
-        # Non-fatal — log and continue; torch import may still succeed.
         logging.getLogger(__name__).warning(
             "Windows DLL pre-load fix failed (non-fatal): %s", _dll_fix_err
         )
@@ -54,10 +52,99 @@ if sys.platform == "win32":
 logger = logging.getLogger(__name__)
 
 _strip_detector = None
-_ocr_processor = None
-_ocr_model = None
-_device = None
+_ocr_processor  = None
+_ocr_model      = None
+_device         = None
 
+
+# ── Anti-hallucination helpers ────────────────────────────────────────────────
+
+# High-frequency Indian medicine names that TrOCR hallucinates when
+# it receives a low-information crop instead of a real strip label.
+# These should NEVER appear as the sole output of a strip scan unless
+# the strip actually contains those words — and when they do appear
+# legitimately, they'll also appear alongside other real label tokens.
+_HALLUCINATION_PHRASES = {
+    "aceclofenac paracetamol tablets",
+    "aceclofenac paracetamol",
+    "diclofenac paracetamol tablets",
+    "paracetamol tablets",
+    "amoxycillin capsules",
+    "metformin tablets",
+    "atorvastatin tablets",
+    "amlodipine tablets",
+}
+
+# A realistic strip label should contain at least one of:
+# - a strength value (digits + mg/ml/mcg/g)
+# - a recognizable pharma suffix (IP, BP, USP)
+# - a dosage form word
+_STRENGTH_RE = re.compile(
+    r'\b\d+\s*(?:mg|ml|mcg|g|iu|units?)\b',
+    re.IGNORECASE,
+)
+_PHARMA_SUFFIX_RE = re.compile(
+    r'\b(?:ip|bp|usp|er|sr|cr|xl|od|bd|tds|hs|sos)\b',
+    re.IGNORECASE,
+)
+_DOSAGE_FORM_RE = re.compile(
+    r'\b(?:tablet|capsule|syrup|suspension|injection|drops|ointment|gel|cream|strip)\b',
+    re.IGNORECASE,
+)
+
+
+def _ocr_output_looks_real(text: str) -> bool:
+    """
+    Return True if *text* looks like genuine strip OCR output, False if it
+    looks like a TrOCR hallucination.
+
+    Heuristics (any one pass → real):
+      1. Contains a strength value (e.g. "20mg", "500 mg")
+      2. Contains a pharma suffix (IP, BP, USP, OD, SR, ...)
+      3. Is longer than 30 chars and does NOT match a known hallucination phrase
+
+    A text that is ONLY a short phrase matching a known hallucination is rejected.
+    """
+    if not text:
+        return False
+
+    t = text.strip()
+    t_lower = t.lower()
+
+    # Immediate reject: exact or near-exact hallucination phrase
+    for phrase in _HALLUCINATION_PHRASES:
+        if t_lower == phrase or t_lower.startswith(phrase + " "):
+            logger.warning(
+                "run_ocr: hallucination detected — output matches known phrase %r",
+                phrase,
+            )
+            return False
+
+    # Pass: contains a strength value
+    if _STRENGTH_RE.search(t):
+        return True
+
+    # Pass: contains a pharma suffix
+    if _PHARMA_SUFFIX_RE.search(t):
+        return True
+
+    # Pass: longer than 30 chars and not a short hallucination
+    # (legitimate strip labels have brand + manufacturer + strength → many tokens)
+    if len(t) > 30 and not _DOSAGE_FORM_RE.search(t_lower):
+        return True
+
+    # Short text with only a dosage form word and nothing else is suspicious
+    if _DOSAGE_FORM_RE.search(t_lower) and len(t) < 30:
+        logger.warning(
+            "run_ocr: suspicious output — only dosage form word, no strength: %r", t
+        )
+        return False
+
+    # Default: accept (don't over-reject legitimate short labels)
+    return True
+
+
+# ── Model loading ─────────────────────────────────────────────────────────────
 
 def load_models():
     """
@@ -87,16 +174,12 @@ def load_models():
 
         logger.info("MediScan vision models loaded successfully on %s", _device)
 
-        try:
-            from .ai_validator import init_groq
-            init_groq()
-        except Exception:
-            pass
-
     except Exception as exc:
         logger.error("Failed to load MediScan vision models: %s", exc, exc_info=True)
         raise
 
+
+# ── Strip crop ────────────────────────────────────────────────────────────────
 
 def crop_strip(image_pil):
     """
@@ -116,7 +199,7 @@ def crop_strip(image_pil):
 
         if boxes is not None and len(boxes) > 0:
             box_list = boxes.xyxy.cpu().tolist()
-            confs = boxes.conf.cpu().tolist()
+            confs    = boxes.conf.cpu().tolist()
 
             # Check if there is a dominant package/strip box (>20% of image area)
             dominant_boxes = [
@@ -125,35 +208,41 @@ def crop_strip(image_pil):
             ]
 
             if dominant_boxes:
-                best_box = max(dominant_boxes, key=lambda x: (x[0][2] - x[0][0]) * (x[0][3] - x[0][1]))[0]
+                best_box = max(
+                    dominant_boxes,
+                    key=lambda x: (x[0][2] - x[0][0]) * (x[0][3] - x[0][1]),
+                )[0]
                 x1, y1, x2, y2 = [int(v) for v in best_box]
                 crop = image_pil.crop((x1, y1, x2, y2))
-                logger.info("crop_strip: Dominant YOLO package crop used (%dx%d)", crop.size[0], crop.size[1])
+                logger.info(
+                    "crop_strip: Dominant YOLO package crop (%dx%d)", crop.size[0], crop.size[1]
+                )
                 return crop, True
 
-            # If small blister pockets were detected (each < 15% of image area)
+            # Small blister pockets detected — determine foil side
             mean_x = sum((b[0] + b[2]) / 2 for b in box_list) / len(box_list)
-            logger.info("crop_strip: Detected %d blister cavities (mean_x=%.1f)", len(box_list), mean_x)
+            logger.info(
+                "crop_strip: %d blister cavities detected (mean_x=%.1f)", len(box_list), mean_x
+            )
 
             if mean_x > 0.5 * W:
-                # Cavities on the right -> foil text is on the left
-                # Primary medicine name / brand band is in center-lower region of foil
+                # Cavities on right → foil text on left
                 x1, x2 = int(0.07 * W), int(0.52 * W)
                 y1, y2 = int(0.45 * H), int(0.82 * H)
-                crop = image_pil.crop((x1, y1, x2, y2))
-                logger.info("crop_strip: Cavities on right -> foil text crop used (%dx%d)", crop.size[0], crop.size[1])
-                return crop, True
-            elif mean_x < 0.5 * W:
-                # Cavities on the left -> foil text is on the right
+            else:
+                # Cavities on left → foil text on right
                 x1, x2 = int(0.48 * W), int(0.93 * W)
                 y1, y2 = int(0.45 * H), int(0.82 * H)
-                crop = image_pil.crop((x1, y1, x2, y2))
-                logger.info("crop_strip: Cavities on left -> foil text crop used (%dx%d)", crop.size[0], crop.size[1])
-                return crop, True
+
+            crop = image_pil.crop((x1, y1, x2, y2))
+            logger.info("crop_strip: Blister-side foil crop (%dx%d)", crop.size[0], crop.size[1])
+            return crop, True
 
         # Fallback: crop primary label band on left side
-        left_crop = image_pil.crop((int(0.07 * W), int(0.45 * H), int(0.52 * W), int(0.82 * H)))
-        logger.info("crop_strip: Fallback central label crop used")
+        left_crop = image_pil.crop(
+            (int(0.07 * W), int(0.45 * H), int(0.52 * W), int(0.82 * H))
+        )
+        logger.info("crop_strip: Fallback central label crop")
         return left_crop, False
 
     except Exception as exc:
@@ -161,14 +250,24 @@ def crop_strip(image_pil):
         return image_pil, False
 
 
-def run_ocr(image_pil):
+# ── TrOCR text recognition ────────────────────────────────────────────────────
+
+def run_ocr(image_pil) -> str:
     """
     Run TrOCR on *image_pil* and return the decoded text string.
+
+    Includes an anti-hallucination guard: if the decoded text matches a
+    known hallucination pattern (short phrase with no dosage/suffix info)
+    the function returns "" so callers can fall through to Gemini Vision OCR.
+
+    Returns
+    -------
+    str — recognised text, or "" on failure or detected hallucination.
     """
     try:
-        import torch
+        import torch  # noqa: PLC0415
 
-        rgb_image = image_pil.convert('RGB')
+        rgb_image    = image_pil.convert('RGB')
         pixel_values = _ocr_processor(
             images=rgb_image, return_tensors='pt'
         ).pixel_values.to(_device)
@@ -182,8 +281,19 @@ def run_ocr(image_pil):
 
         text = _ocr_processor.batch_decode(
             generated_ids, skip_special_tokens=True
-        )[0]
-        return text.strip()
+        )[0].strip()
+
+        if not text:
+            return ""
+
+        # ── Anti-hallucination guard ──────────────────────────────────────────
+        if not _ocr_output_looks_real(text):
+            logger.warning(
+                "run_ocr: output rejected as hallucination: %r", text[:80]
+            )
+            return ""
+
+        return text
 
     except Exception as exc:
         logger.warning("run_ocr failed: %s", exc, exc_info=True)

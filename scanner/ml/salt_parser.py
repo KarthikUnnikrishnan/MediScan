@@ -48,6 +48,13 @@ _SALT_BLOCK_RE = re.compile(
     re.IGNORECASE
 )
 
+# Regex to capture: [Ingredient Name] [Strength] [Unit] without parentheses
+# e.g. "Fexofenadine Hydrochloride 120mg", "Paracetamol 650 mg"
+_SALT_BLOCK_NO_PARENS_RE = re.compile(
+    r'(?:^|\+|\band\b|[,\n])\s*(.*?)\s+([\d\.]+)\s*([a-zA-Z%]+(?:\s*/\s*\d*\s*[a-zA-Z%]+|\s*[a-zA-Z%]+)?)(?=\s*(?:\+|\band\b|[,\n]|$))',
+    re.IGNORECASE
+)
+
 # Detect orphaned strength parenthesis at start or middle without ingredient
 # e.g. "(250mg) + diclofenac (50mg)"
 _ORPHANED_STRENGTH_RE = re.compile(
@@ -163,6 +170,8 @@ def parse_salt(salt_str: Optional[str]) -> List[Dict[str, Any]]:
         # Note: caller will know this has missing data if components don't match
 
     matches = list(_SALT_BLOCK_RE.finditer(s))
+    if not matches:
+        matches = list(_SALT_BLOCK_NO_PARENS_RE.finditer(s))
     ingredients: List[Dict[str, Any]] = []
 
     for m in matches:

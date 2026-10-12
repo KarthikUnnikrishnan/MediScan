@@ -4346,3 +4346,15 @@ input[type=radio]:checked+.mode-tile .mode-tile-icon-svg {
   background: rgba(249, 115, 22, 0.06);
   box-shadow: 0 0 0 1.5px #f97316;
 }
+
+.status-icon--unverified {
+  background: #fef3c7;
+  color: #b45309;
+  border-color: #fcd34d;
+}
+
+.status-icon--service-error {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+}

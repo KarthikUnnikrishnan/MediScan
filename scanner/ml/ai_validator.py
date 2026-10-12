@@ -7,6 +7,7 @@ Three-tier AI validation for MediScan:
   Tier 3: Rule-based fallback   — always works, no AI
 """
 
+import atexit
 import os
 import io
 import base64
@@ -29,7 +30,8 @@ _ollama_available = False
 _active_tier      = None
 _gemini_client    = None
 _gemini_available = False
-_GEMINI_MODEL     = "gemini-3.5-flash"
+# Configurable Gemini model name (default: gemini-2.5-flash)
+_GEMINI_MODEL     = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 _OLLAMA_VISION_MODEL = "llava"
 _OLLAMA_VISION_URL   = "http://localhost:11434/api/generate"
 
@@ -154,6 +156,15 @@ def init_gemini():
             _GEMINI_MODEL
         )
 
+        # ── Error 3 fix: close the underlying httpx client cleanly
+        # on Django/process shutdown so __del__ never fires mid-GC.
+        def _close_gemini_client():
+            try:
+                _gemini_client._client.close()
+            except Exception:
+                pass
+        atexit.register(_close_gemini_client)
+
     except ImportError:
         logger.warning(
             "google-genai not installed. "
@@ -230,7 +241,19 @@ Examples of good search_query:
             ],
         )
 
-        text = response.text.strip()
+        # ── Error 2 fix: skip thought/reasoning parts silently so the
+        # SDK never emits the 'thought_signature' warning.
+        text_parts = []
+        for part in response.candidates[0].content.parts:
+            if hasattr(part, 'thought') and part.thought:
+                continue
+            if hasattr(part, 'text') and part.text:
+                text_parts.append(part.text)
+        text = ''.join(text_parts).strip()
+
+        if not text:
+            raise ValueError("Primary model returned only thought parts — no text")
+
         text = re.sub(r'```json\s*', '', text)
         text = re.sub(r'```\s*',     '', text)
         match = re.search(r'\{.*\}', text, re.DOTALL)
@@ -248,56 +271,8 @@ Examples of good search_query:
 
     except Exception as exc:
         logger.warning(
-            "Gemini Vision primary (%s) failed: %s — trying fallbacks",
+            "Gemini Vision (%s) failed: %s",
             _GEMINI_MODEL, exc
-        )
-        all_candidates = [
-            "gemini-3.5-flash",
-            "gemini-3-flash-preview",
-            "gemini-flash-lite-latest",
-            "gemini-3.1-flash-lite",
-            "gemini-flash-latest",
-            "gemini-3.8-flash",
-        ]
-        fallback_models = [m for m in all_candidates if m != _GEMINI_MODEL]
-        for fb_model in fallback_models:
-            try:
-                response = _gemini_client.models\
-                    .generate_content(
-                        model    = fb_model,
-                        contents = [
-                            types.Content(
-                                role  = "user",
-                                parts = [
-                                    types.Part.from_bytes(
-                                        data=img_bytes,
-                                        mime_type="image/jpeg"
-                                    ),
-                                    types.Part.from_text(
-                                        text=prompt
-                                    ),
-                                ]
-                            )
-                        ],
-                    )
-                text = response.text.strip()
-                text = re.sub(r'```json\s*', '', text)
-                text = re.sub(r'```\s*',     '', text)
-                match = re.search(r'\{.*\}', text, re.DOTALL)
-                if match:
-                    parsed = json.loads(match.group(0))
-                else:
-                    parsed = json.loads(text.strip())
-                logger.info(
-                    "Fallback model %s worked: %r",
-                    fb_model,
-                    parsed.get("search_query", "")
-                )
-                return parsed
-            except Exception:
-                continue
-        logger.warning(
-            "All Gemini model fallbacks failed — switching to Ollama LLaVA"
         )
         return {}
 

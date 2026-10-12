@@ -13,13 +13,15 @@
   <!-- ── STATUS BAR ───────────────────────────────────── -->
   <div class="result-status-bar">
     <div class="status-left">
-      <div class="status-icon">✓</div>
+      <div class="status-icon{% if result.status == 'unverified' %} status-icon--unverified{% elif result.status == 'ocr_service_error' %} status-icon--service-error{% endif %}">{% if success %}✓{% elif result.status == 'ocr_service_error' %}✕{% else %}⚠{% endif %}</div>
       <div>
         <div class="status-title">
           {% if success %}
             Medication Verified & Matched
+          {% elif result.status == 'ocr_service_error' %}
+            Scan Service Unavailable
           {% else %}
-            Scan Failed
+            Could Not Confidently Verify
           {% endif %}
         </div>
         <div class="status-pills">
@@ -30,7 +32,7 @@
               💊 Medicine Strip
             {% endif %}
           </span>
-          <span class="status-pill">🕐 {{ timestamp }}</span>
+          <span class="status-pill">🕐 {{ timestamp|date:"j M Y, g:i A" }}</span>
           {% if total_found and total_found > 1 %}
           <span class="status-pill green">
             {{ total_found }} medicines found
@@ -136,9 +138,9 @@
           </div>
           <div class="match-meta-bar">
             <span class="best-match-badge">✓ Best Database Match</span>
-            <span class="confidence-indicator conf-{{ med.confidence|default:94|confidence_tier }}">
+            <span class="confidence-indicator conf-{{ med.confidence|default:0|confidence_tier }}">
               <span class="confidence-dot"></span>
-              <span>{{ med.confidence|default:94|confidence_percent }} Match Confidence</span>
+              <span>{{ med.confidence|default:0|confidence_percent }} Match Confidence</span>
             </span>
           </div>
           {% endwith %}
@@ -272,8 +274,23 @@
   <!-- SCAN FAILED STATE -->
   <div class="fail-state">
     <div class="fail-icon">✗</div>
-    <div class="fail-title">Scan Failed</div>
-    <div class="fail-msg">{{ result.error }}</div>
+    <div class="fail-title">Could Not Confidently Verify</div>
+    <div class="fail-msg">
+      {% if result.message %}
+        {{ result.message }}
+      {% elif result.error %}
+        {{ result.error }}
+      {% else %}
+        The scan did not provide enough reliable evidence to identify a medicine.
+      {% endif %}
+    </div>
+    {% if result.rejection_reasons %}
+    <div class="fail-msg">
+      {% for reason in result.rejection_reasons %}
+        <div>{{ reason }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
     <a href="{% url 'index' %}" class="btn-primary-sm">
       ← Try Again
     </a>

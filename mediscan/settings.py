@@ -123,4 +123,11 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB
 import os
 GROQ_API_KEY   = os.environ.get('GROQ_API_KEY', '')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+GEMINI_MODEL   = os.environ.get('GEMINI_MODEL', 'gemini-3.5-flash')
+GEMINI_FALLBACK_MODELS = os.environ.get('GEMINI_FALLBACK_MODELS', 'gemini-3.5-flash-lite,gemini-3.8-flash')
 
+if 'GEMINI_MODEL=' in GEMINI_API_KEY:
+    raise RuntimeError(
+        'Invalid .env configuration: GEMINI_MODEL was appended to '
+        'GEMINI_API_KEY. Put GEMINI_MODEL on a separate line.'
+    )

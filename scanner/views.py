@@ -12,6 +12,7 @@ import os
 import time
 import uuid
 import logging
+from datetime import datetime
 from pathlib import Path
 
 from django.conf import settings
@@ -129,9 +130,9 @@ def result(request):
         return redirect('index')
 
     medicines = scan_result.get('medicines', [])
-    default_conf = scan_result.get('confidence_breakdown', {}).get('overall') or 94.0
+    default_conf = scan_result.get('confidence_breakdown', {}).get('overall', 0.0)
     if 'confidence_breakdown' not in scan_result or not scan_result['confidence_breakdown']:
-        scan_result['confidence_breakdown'] = {'overall': default_conf}
+        scan_result['confidence_breakdown'] = {'overall': 0.0}
     for m in medicines:
         if isinstance(m, dict) and 'confidence' not in m:
             m['confidence'] = default_conf
@@ -142,7 +143,7 @@ def result(request):
             if 'confidence' not in v or not v['confidence']:
                 top_m = v.get('top_medicine')
                 if top_m:
-                    v['confidence'] = top_m.get('confidence', 90.0)
+                    v['confidence'] = top_m.get('confidence', 0.0)
                 else:
                     v['confidence'] = 0.0
 
@@ -157,7 +158,7 @@ def result(request):
         'extracted_names':       scan_result.get('extracted_names', []),
         'image_url':             scan_result.get('image_url', ''),
         'strip_detected':        scan_result.get('strip_detected', False),
-        'timestamp':             scan_result.get('timestamp', ''),
+        'timestamp':             timezone.localtime(datetime.fromisoformat(scan_result['timestamp'])) if scan_result.get('timestamp') else '',
         'diagnosis':             scan_result.get('diagnosis', ''),
         'per_medicine_results':  per_meds,
         'default_selected':      scan_result.get('default_selected', ''),

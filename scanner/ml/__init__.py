@@ -1,705 +1,566 @@
 """
-scanner/ml — Precision Medicine Scanning, OCR & Bioequivalent Alternative Matching Package.
+scanner/ml — Precision Medicine Scanning Package.
 
 Architecture:
-- vision.py: YOLOv8 Strip Detector & TrOCR Vision Models (Unchanged)
-- salt_parser.py: Active Ingredient & Chemical Salt Formulation Parser
-- extractor.py: Context-Aware Normalizer & Structured OCR Extractor
-- medicine_index.py: Dynamic 503k+ Medicine Search Index with Fast Cache
-- medicine_matcher.py: Multi-Tier Matcher with Hard Composition Validation
+- vision.py:            YOLOv8 Strip Detector & TrOCR (with anti-hallucination guard)
+- gemini_vision.py:     Gemini Vision OCR — modern google-genai SDK recovery engine
+- groq_extractor.py:    Groq cloud NLP — structured medicine-name extraction
+- salt_parser.py:       Active Ingredient & Chemical Salt Formulation Parser
+- extractor.py:         Context-Aware Normalizer & Structured OCR Extractor
+- medicine_index.py:    Dynamic 503k+ Medicine Search Index with Fast Cache
+- medicine_matcher.py:  Multi-Tier Matcher with Hard Composition Validation
 - alternative_matcher.py: Bioequivalent Cheaper Alternatives Search Engine
-- drug_safety.py: Active Chemical Side Effects & Drug Interaction Engine
+- drug_safety.py:       Active Chemical Side Effects & Drug Interaction Engine
+
+OCR cascade for medicine package scan:
+  1. TrOCR (local fine-tuned model)
+  2. OCR quality & database candidate validation
+  3. Gemini Vision OCR recovery (when TrOCR is empty, suspicious, or unverified)
+  4. Disagreement evaluation & conservative verification safeguards
 """
 
 import logging
 import os
 import re
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, Tuple
 
 from .vision import load_models, crop_strip, run_ocr
-from .extractor import extract_structured_ocr, normalize_ocr_text
+from .gemini_vision import (
+    gemini_vision_ocr,
+    gemini_vision_ocr_structured,
+    strip_preamble,
+    NO_TEXT_DETECTED,
+)
+from .groq_extractor import extract_medicines_with_groq
+from .extractor import extract_structured_ocr, normalize_ocr_text, extract_dosage_form
 from .medicine_index import get_medicine_index
-from .medicine_matcher import match_medicine
+from .medicine_matcher import match_medicine, CONFIDENCE_THRESHOLD
 from .alternative_matcher import find_top_cheaper_alternatives
 from .drug_safety import get_drug_safety_info
-from .ai_validator import (
-    init_groq,
-    init_gemini,
-    run_ai_validation,
-    extract_medicine_text_gemini,
-)
+from .salt_parser import parse_salt
 
 logger = logging.getLogger(__name__)
 
 
-def scan_medicine_package(image_pil):
+# ── TrOCR Quality Heuristics ──────────────────────────────────────────────────
+
+def _check_trocr_credibility(trocr_text: str) -> Tuple[bool, str]:
     """
-    Pipeline for medicine strip/box/label scan.
-    
-    OCR Strategy (in order):
-      1. Gemini Vision — best accuracy, reads labels directly
-      2. TrOCR (strip_ocr_finetuned) — fallback if Gemini fails
-      3. Left-60% crop + TrOCR — last resort
-    
-    After OCR: search medicines.sqlite, get alternatives.
+    Evaluate whether TrOCR output is credible enough to attempt candidate matching.
+    Uses explicit heuristic checks (clearly labeled as heuristics).
+
+    Returns (is_credible, reason).
+    """
+    if not trocr_text or not trocr_text.strip():
+        return False, "TrOCR returned empty text"
+
+    cleaned = trocr_text.strip()
+
+    # Heuristic 1: Text length check
+    if len(cleaned) < 4:
+        return False, f"TrOCR output too short ({len(cleaned)} chars)"
+
+    # Heuristic 2: Insufficient alphanumeric tokens
+    alphanumeric = re.sub(r'[^a-zA-Z0-9]', '', cleaned)
+    if len(alphanumeric) < 3:
+        return False, "TrOCR output has insufficient alphanumeric characters"
+
+    # Heuristic 3: Excessive token repetition
+    words = cleaned.split()
+    if len(words) >= 4 and len(set(words)) == 1:
+        return False, "TrOCR output exhibits repetitive character hallucination"
+
+    return True, "TrOCR output passed basic credibility heuristics"
+
+
+# ── Medicine package scan with controlled recovery ────────────────────────────
+
+def scan_medicine_package(image_pil) -> Dict[str, Any]:
+    """
+    Execute precision medicine package/strip scanning workflow:
+    1. YOLO strip crop
+    2. TrOCR text recognition
+    3. OCR quality check
+       - If credible: database candidate matching & candidate validation
+       - If suspicious or unverified: Gemini Vision OCR recovery
+    4. Disagreement & evidence evaluation
+    5. Bioequivalent alternatives search
+    6. Clinical safety, side effects, and interaction warnings
     """
     try:
-        ocr_text       = ""
-        search_query   = ""
-        gemini_data    = {}
-        was_cropped    = False
-        used_gemini    = False
+        # 1. Detect and crop strip/label
+        cropped_pil, yolo_hit = crop_strip(image_pil)
 
-        # ── Strategy 1: Gemini Vision ─────────────────────
-        gemini_data = extract_medicine_text_gemini(image_pil)
+        # 2. Run TrOCR on crop
+        trocr_text = run_ocr(cropped_pil)
+        if not trocr_text and yolo_hit:
+            # Fallback crop or full image if tight crop produced nothing
+            trocr_text = run_ocr(image_pil)
 
-        if gemini_data and gemini_data.get("search_query"):
-            search_query = gemini_data["search_query"].strip()
-            ocr_text     = (
-                gemini_data.get("raw_text", "")
-                or gemini_data.get("medicine_name", "")
-            )
-            used_gemini  = True
-            logger.info(
-                "Using Gemini Vision result: %r", search_query
-            )
+        is_trocr_credible, credibility_reason = _check_trocr_credibility(trocr_text)
 
-        # ── Strategy 2: TrOCR fallback ────────────────────
-        if not search_query:
-            logger.info(
-                "Gemini Vision unavailable/failed — "
-                "falling back to TrOCR"
-            )
-            cropped, was_cropped = crop_strip(image_pil)
-            ocr_text = run_ocr(cropped)
-            search_query = ocr_text
-            logger.info(
-                "TrOCR output: %r", ocr_text[:80]
-            )
+        trocr_extracted = None
+        trocr_match = None
+        need_recovery = False
+        recovery_reason = ""
 
-        if not search_query or len(search_query.strip()) < 3:
-            return {
-                'success': False,
-                'error':   'Could not read medicine label. '
-                           'Please try a clearer photo.',
-            }
+        if trocr_text and trocr_text.strip():
+            trocr_extracted = extract_structured_ocr(trocr_text)
+            trocr_match = match_medicine(trocr_extracted)
 
-        # ── DB search ─────────────────────────────────────
-        # Try Gemini's search_query first (most specific)
-        medicines = query_medicines_db(search_query)
+        if is_trocr_credible and trocr_match and trocr_match.get("status") == "verified":
+            trocr_med = trocr_match.get("medicine")
+            trocr_conf = trocr_match.get("confidence_breakdown", {}).get("overall", 0.0)
 
-        # If Gemini gave us extra info, try alternate searches
-        if not medicines and gemini_data:
-            # Try brand name
-            brand = gemini_data.get("brand_name", "")
-            if brand and len(brand) >= 3:
+            if trocr_conf >= CONFIDENCE_THRESHOLD:
+                need_recovery = False
                 logger.info(
-                    "Retrying DB search with brand: %r", brand
-                )
-                medicines = query_medicines_db(brand)
-
-            # Try medicine_name field
-            if not medicines:
-                med_name = gemini_data.get("medicine_name", "")
-                if med_name and len(med_name) >= 3:
-                    logger.info(
-                        "Retrying DB search with "
-                        "medicine_name: %r", med_name
-                    )
-                    medicines = query_medicines_db(med_name)
-
-            # Try salt field
-            if not medicines:
-                salt = gemini_data.get("salt", "")
-                if salt and len(salt) >= 3:
-                    logger.info(
-                        "Retrying DB search with salt: %r",
-                        salt
-                    )
-                    medicines = query_medicines_db(salt)
-
-        # ── Get alternatives ──────────────────────────────
-        alternatives = []
-        drug_info    = {'side_effects': [], 'interactions': []}
-
-        if medicines:
-            top = medicines[0]
-            drug_info    = query_drugs_db(top['name'])
-            alternatives = query_alternative_medicines(
-                top.get('salt', ''),
-                top.get('id', -1),
-                top.get('name', ''),
-            )
-
-        return {
-            'success':        True,
-            'mode':           'medicine_package',
-            'ocr_text':       ocr_text,
-            'search_query':   search_query,
-            'gemini_data':    gemini_data,
-            'used_gemini':    used_gemini,
-            'medicines':      medicines,
-            'drug_info':      drug_info,
-            'alternatives':   alternatives,
-            'strip_detected': was_cropped,
-        }
-
-    except Exception as exc:
-        logger.error(
-            "scan_medicine_package error: %s",
-            exc, exc_info=True
-        )
-        return {'success': False, 'error': str(exc)}
-
-
-import sqlite3
-from django.conf import settings
-from . import ai_validator
-
-
-def extract_medicine_names(ocr_text: str) -> List[str]:
-    """Fallback extraction of medicine names using regex."""
-    names = []
-    for line in ocr_text.splitlines():
-        line = line.strip()
-        if re.search(r'\b(dextrose|ors|paracetamol|ceftriaxone|amoxicillin|pantoprazole|metformin|saline)\b', line, re.I):
-            m = re.search(r'([A-Za-z0-9% ]+)', line)
-            if m:
-                names.append(m.group(1).strip())
-    return names
-
-
-def query_medicines_db(med_name: str) -> List[Dict[str, Any]]:
-    """
-    Search medicines.sqlite for matches corresponding to med_name.
-    Returns list of dicts: {'id': ..., 'name': ..., 'salt': ..., 'manufacturer': ..., 'price': ...}
-    """
-    med_name_clean = med_name.strip()
-    norm = med_name_clean.lower()
-    matches = []
-
-    if "dextrose" in norm:
-        target_perc = "5%" if "5" in norm else "25%" if "25" in norm else "10%" if "10" in norm else ""
-        try:
-            conn = sqlite3.connect(str(settings.MEDICINES_DB_PATH))
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
-            if "5" in norm:
-                cur.execute(
-                    "SELECT id, name, salt, manufacturer, price FROM medicines "
-                    "WHERE LOWER(name) LIKE '%dextrose 5%' AND LOWER(name) NOT LIKE '%50%' "
-                    "  AND salt IS NOT NULL AND length(salt) > 0 "
-                    "  AND manufacturer IS NOT NULL AND length(manufacturer) > 0 "
-                    "  AND price IS NOT NULL "
-                    "ORDER BY (name = 'Dextrose 5% Infusion') DESC, price DESC LIMIT 5"
-                )
-            elif target_perc:
-                cur.execute(
-                    "SELECT id, name, salt, manufacturer, price FROM medicines "
-                    "WHERE LOWER(name) LIKE ? AND salt IS NOT NULL AND length(salt) > 0 AND price IS NOT NULL ORDER BY price DESC LIMIT 5",
-                    (f"%dextrose {target_perc}%",)
+                    "scan_medicine_package: TrOCR produced credible, verified candidate %r (conf=%.1f%%)",
+                    trocr_med.get("name"),
+                    trocr_conf,
                 )
             else:
-                cur.execute(
-                    "SELECT id, name, salt, manufacturer, price FROM medicines "
-                    "WHERE LOWER(name) LIKE '%dextrose%' AND salt IS NOT NULL AND length(salt) > 0 AND price IS NOT NULL ORDER BY price DESC LIMIT 5"
-                )
-            for row in cur.fetchall():
-                matches.append(dict(row))
-            conn.close()
-        except Exception as e:
-            logger.debug("Dextrose query error: %s", e)
-
-    elif norm in ["ors", "oral rehydration salts", "electral", "electral ors"] or "ors" in norm.split():
-        matches.append({
-            "id": 999901,
-            "name": "Electral ORS Sachet (21.8g)",
-            "salt": "oral rehydration salts (sodium chloride + potassium chloride + sodium citrate + dextrose)",
-            "manufacturer": "FDC Ltd",
-            "price": 21.50,
-        })
-    else:
-        try:
-            conn = sqlite3.connect(str(settings.MEDICINES_DB_PATH))
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
-            cur.execute(
-                "SELECT id, name, salt, manufacturer, price FROM medicines "
-                "WHERE LOWER(name) LIKE ? AND price IS NOT NULL ORDER BY length(name) ASC LIMIT 5",
-                (f"%{norm}%",)
+                need_recovery = True
+                recovery_reason = f"TrOCR confidence ({trocr_conf}%) below threshold ({CONFIDENCE_THRESHOLD}%)"
+        else:
+            need_recovery = True
+            recovery_reason = credibility_reason if not is_trocr_credible else (
+                f"TrOCR database verification failed: {'; '.join(trocr_match.get('rejection_reasons', ['unverified'])) if trocr_match else 'unverified'}"
             )
-            for row in cur.fetchall():
-                matches.append(dict(row))
-            if not matches:
-                cur.execute(
-                    "SELECT id, name, salt, manufacturer, price FROM medicines "
-                    "WHERE LOWER(salt) LIKE ? AND price IS NOT NULL ORDER BY length(name) ASC LIMIT 5",
-                    (f"%{norm}%",)
-                )
-                for row in cur.fetchall():
-                    matches.append(dict(row))
-            conn.close()
-        except Exception as e:
-            logger.debug("query_medicines_db error: %s", e)
 
-    return matches
+        # 3. Controlled Gemini Vision Recovery
+        gemini_res: Dict[str, Any] = {}
+        gemini_text = ""
+        gemini_extracted = None
+        gemini_match = None
+        recovery_used = False
 
+        if need_recovery:
+            logger.info("scan_medicine_package: invoking Gemini Vision OCR recovery (%s)", recovery_reason)
+            recovery_used = True
 
-def query_drugs_db(med_name: str) -> Dict[str, Any]:
-    """Look up clinical side effects and interactions from drugs.sqlite."""
-    try:
-        from .drug_safety import get_drug_safety_info
-        tokens = re.findall(r'[a-zA-Z]{3,}', med_name or '')
-        ingredients = [{"ingredient": t.lower()} for t in tokens[:3]] if tokens else []
-        return get_drug_safety_info(ingredients)
-    except Exception as exc:
-        logger.debug("query_drugs_db error: %s", exc)
-        return {'side_effects': [], 'interactions': []}
+            # Send full image as primary context to avoid cropped-out text
+            gemini_input = image_pil if image_pil is not None else cropped_pil
+            gemini_res = gemini_vision_ocr_structured(gemini_input)
 
+            if gemini_res.get("success") and not gemini_res.get("is_empty"):
+                raw_gem = gemini_res.get("raw_text", "")
+                if raw_gem and raw_gem != NO_TEXT_DETECTED:
+                    gemini_text = gemini_res.get("plain_text") or strip_preamble(raw_gem)
+                    if gemini_text:
+                        gemini_extracted = extract_structured_ocr(gemini_text)
 
-def query_alternative_medicines(salt: str, med_id: int, name: str) -> List[Dict[str, Any]]:
-    """
-    Find cheaper bioequivalent alternatives for this medicine.
-    """
-    norm_name = name.lower()
-    alternatives = []
+                        # Incorporate structured label fields from Gemini if available
+                        struct = gemini_res.get("structured", {})
+                        if struct.get("brand") and (not gemini_extracted.get("brand") or gemini_extracted.get("brand").lower() != struct["brand"].lower()):
+                            gemini_extracted["brand"] = struct["brand"]
+                        if struct.get("ingredients"):
+                            parsed_salts = parse_salt(struct["ingredients"])
+                            if parsed_salts:
+                                gemini_extracted["ingredients"] = parsed_salts
+                        if struct.get("dosage_form"):
+                            gemini_extracted["dosage_form"] = extract_dosage_form(struct["dosage_form"]) or struct["dosage_form"]
+                        if struct.get("manufacturer") and not gemini_extracted.get("manufacturer"):
+                            gemini_extracted["manufacturer"] = struct["manufacturer"]
 
-    if "electral" in norm_name or "ors" in norm_name:
-        return [
+                        gemini_match = match_medicine(gemini_extracted)
+
+        # 4. Disagreement & Candidate Selection
+        final_ocr = ""
+        final_extracted = None
+        final_match = None
+        disagreement_detected = bool(trocr_text and gemini_text and trocr_text.strip().lower() != gemini_text.strip().lower())
+
+        trocr_verified = bool(trocr_match and trocr_match.get("status") == "verified" and trocr_match.get("medicine"))
+        gemini_verified = bool(gemini_match and gemini_match.get("status") == "verified" and gemini_match.get("medicine"))
+
+        if not need_recovery and trocr_verified:
+            # TrOCR credible and verified without needing recovery
+            final_ocr = trocr_text
+            final_extracted = trocr_extracted
+            final_match = trocr_match
+        elif recovery_used and gemini_verified and not trocr_verified:
+            # Recovery succeeded where TrOCR failed
+            logger.info("scan_medicine_package: Gemini recovery successfully verified candidate %r", gemini_match["medicine"]["name"])
+            final_ocr = gemini_text
+            final_extracted = gemini_extracted
+            final_match = gemini_match
+        elif recovery_used and gemini_verified and trocr_verified:
+            # Both returned verified candidates — compare evidence
+            med_trocr = trocr_match["medicine"]
+            med_gemini = gemini_match["medicine"]
+
+            if med_trocr.get("id") == med_gemini.get("id"):
+                # Both agree on identity
+                final_ocr = gemini_text or trocr_text
+                final_extracted = gemini_extracted or trocr_extracted
+                final_match = gemini_match
+            else:
+                # Candidates conflict: evaluate evidence
+                trocr_comp_ok = trocr_match.get("validation_details", {}).get("composition_valid", True)
+                gemini_comp_ok = gemini_match.get("validation_details", {}).get("composition_valid", True)
+
+                if gemini_comp_ok and not trocr_comp_ok:
+                    final_ocr = gemini_text
+                    final_extracted = gemini_extracted
+                    final_match = gemini_match
+                elif trocr_comp_ok and not gemini_comp_ok:
+                    final_ocr = trocr_text
+                    final_extracted = trocr_extracted
+                    final_match = trocr_match
+                else:
+                    # Contradictory evidence cannot be safely resolved
+                    logger.warning(
+                        "scan_medicine_package: contradictory candidates (%r vs %r) — returning unverified",
+                        med_trocr.get("name"),
+                        med_gemini.get("name"),
+                    )
+                    return {
+                        "success": False,
+                        "status": "unverified",
+                        "mode": "medicine_package",
+                        "message": "Contradictory OCR candidate evidence. Returning unverified is safer than returning a wrong result.",
+                        "rejection_reasons": ["Contradictory candidate evidence between local OCR and vision recovery."],
+                        "raw_ocr": gemini_text or trocr_text,
+                        "raw_ocr_trocr": trocr_text,
+                        "raw_ocr_gemini": gemini_res.get("raw_text", ""),
+                        "recovery_used": True,
+                        "disagreement_detected": True,
+                        "medicines": [],
+                        "alternatives": [],
+                        "confidence_breakdown": {
+                            "brand": 0.0, "ingredients": 0.0, "strength": 0.0,
+                            "manufacturer": 0.0, "dosage_form": 0.0, "overall": 0.0
+                        },
+                    }
+        elif recovery_used and trocr_verified and not gemini_verified:
+            # Gemini failed to find/verify, but TrOCR had a verified candidate
+            final_ocr = trocr_text
+            final_extracted = trocr_extracted
+            final_match = trocr_match
+        else:
+            # Neither produced a verified candidate
+            final_ocr = gemini_text or trocr_text
+            final_extracted = gemini_extracted or trocr_extracted or extract_structured_ocr(final_ocr)
+            final_match = gemini_match or trocr_match
+
+        # 5. Handle unverified result
+        if not final_match or final_match.get("status") != "verified" or not final_match.get("medicine"):
+            rejection_reasons = []
+            if final_match:
+                rejection_reasons = final_match.get("rejection_reasons", [])
+            if not rejection_reasons:
+                if not final_ocr:
+                    rejection_reasons = ["No readable text detected on the medicine package."]
+                else:
+                    rejection_reasons = ["Could not confidently verify medicine identity in database."]
+
+            if recovery_used and gemini_res.get("success") is False and not trocr_verified:
+                return {
+                    "success": False, "status": "ocr_service_error", "mode": "medicine_package",
+                    "message": "Text recognition service is temporarily unavailable. Please try again later.",
+                    "ocr_error": gemini_res.get("error_type", "API_ERROR"),
+                    "raw_ocr": final_ocr, "raw_ocr_trocr": trocr_text,
+                    "raw_ocr_gemini": "", "recovery_used": True, "medicines": [], "alternatives": [],
+                }
+            return {
+                "success": False,
+                "status": "unverified",
+                "mode": "medicine_package",
+                "message": (
+                    "Unable to confidently verify this medicine. "
+                    "Returning unverified is safer than returning a wrong result."
+                ),
+                "rejection_reasons": rejection_reasons,
+                "raw_ocr": final_ocr,
+                "raw_ocr_trocr": trocr_text,
+                "raw_ocr_gemini": gemini_res.get("raw_text", "") if recovery_used else "",
+                "recovery_used": recovery_used,
+                "recovery_reason": recovery_reason if recovery_used else None,
+                "disagreement_detected": disagreement_detected,
+                "normalized_ocr": final_extracted.get("normalized_ocr", "") if final_extracted else "",
+                "extracted": final_extracted or {},
+                "medicines": [],
+                "alternatives": [],
+                "confidence_breakdown": final_match.get("confidence_breakdown", {
+                    "brand": 0.0, "ingredients": 0.0, "strength": 0.0,
+                    "manufacturer": 0.0, "dosage_form": 0.0, "overall": 0.0
+                }) if final_match else {
+                    "brand": 0.0, "ingredients": 0.0, "strength": 0.0,
+                    "manufacturer": 0.0, "dosage_form": 0.0, "overall": 0.0
+                },
+            }
+
+        # 6. Verified Result Construction
+        verified_med = final_match["medicine"]
+        confidence = final_match.get("confidence_breakdown", {})
+
+        # Top 5 Cheaper Bioequivalent Alternatives
+        alternatives = find_top_cheaper_alternatives(verified_med, limit=5)
+
+        max_savings = None
+        max_savings_percent = None
+        for alt in alternatives:
+            s_amt = alt.get("saving_amount")
+            if s_amt is not None:
+                if max_savings is None or s_amt > max_savings:
+                    max_savings = s_amt
+                    max_savings_percent = alt.get("saving_percent")
+
+        # Clinical Safety Lookup
+        ingredients_list = (
+            verified_med.get("parsed_salt") or
+            (final_extracted.get("ingredients") if final_extracted else []) or []
+        )
+        safety_info = get_drug_safety_info(ingredients_list)
+
+        schedule = "Schedule H"
+        for ing in ingredients_list:
+            cname = ing.get("canonical_name", "").lower()
+            if any(k in cname for k in ["paracetamol", "calcium", "vitamin"]):
+                schedule = "General / OTC"
+
+        display_ingredients = [
             {
-                "name": "Generic ORS WHO Sachet",
-                "manufacturer": "Jan Aushadhi",
-                "price": 8.00,
-                "saving_amount": 13.50,
-                "saving_percent": 63,
-                "salt": "oral rehydration salts (WHO formula)",
-            },
-            {
-                "name": "Peditral ORS Powder",
-                "manufacturer": "Searle India",
-                "price": 15.50,
-                "saving_amount": 6.00,
-                "saving_percent": 28,
-                "salt": "oral rehydration salts (WHO formula)",
-            },
-            {
-                "name": "Walyte ORS Sachet",
-                "manufacturer": "Wallace Pharmaceuticals",
-                "price": 16.80,
-                "saving_amount": 4.70,
-                "saving_percent": 22,
-                "salt": "oral rehydration salts (WHO formula)",
-            },
-            {
-                "name": "Reli-Lyte ORS Sachet",
-                "manufacturer": "Dr. Reddy Laboratories",
-                "price": 17.50,
-                "saving_amount": 4.00,
-                "saving_percent": 19,
-                "salt": "oral rehydration salts (WHO formula)",
-            },
-            {
-                "name": "Prolyte ORS Sachet",
-                "manufacturer": "Cipla Ltd",
-                "price": 18.00,
-                "saving_amount": 3.50,
-                "saving_percent": 16,
-                "salt": "oral rehydration salts (WHO formula)",
-            },
+                "name": ing.get("ingredient", "").title(),
+                "canonical_name": ing.get("canonical_name", ""),
+                "strength": ing.get("strength"),
+                "unit": ing.get("unit", "mg"),
+            }
+            for ing in ingredients_list
         ]
 
-    try:
-        conn = sqlite3.connect(str(settings.MEDICINES_DB_PATH))
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-        
-        cur.execute("SELECT price FROM medicines WHERE id = ?", (med_id,))
-        prow = cur.fetchone()
-        primary_price = prow["price"] if prow and prow["price"] else None
-
-        keyword = ""
-        if salt:
-            m = re.match(r'([a-zA-Z\s]+)', salt.strip())
-            if m:
-                keyword = m.group(1).strip().lower()
-        if not keyword:
-            keyword = name.split()[0].lower()
-
-        if keyword:
-            if keyword == "dextrose" and ("5%" in (salt or "") or "5" in name):
-                cur.execute(
-                    "SELECT id, name, salt, manufacturer, price FROM medicines "
-                    "WHERE LOWER(salt) LIKE '%dextrose (5%' AND price IS NOT NULL AND price > 0 AND id != ? "
-                    "  AND price < ? ORDER BY price ASC LIMIT 10",
-                    (med_id, primary_price or 100.0)
-                )
-            else:
-                query = (
-                    "SELECT id, name, salt, manufacturer, price FROM medicines "
-                    "WHERE LOWER(salt) LIKE ? AND price IS NOT NULL AND price > 0 AND id != ? "
-                )
-                params = [f"%{keyword}%", med_id]
-                if primary_price:
-                    query += "AND price < ? "
-                    params.append(primary_price)
-                query += "ORDER BY price ASC LIMIT 10"
-                cur.execute(query, params)
-
-            rows = cur.fetchall()
-
-            seen_names = set()
-            for r in rows:
-                cname = r["name"].strip()
-                if cname.lower() in seen_names:
-                    continue
-                seen_names.add(cname.lower())
-                cprice = r["price"]
-                s_amt = None
-                s_pct = None
-                if primary_price and cprice and cprice < primary_price:
-                    s_amt = round(primary_price - cprice, 2)
-                    s_pct = round((s_amt / primary_price) * 100)
-
-                alternatives.append({
-                    "id": r["id"],
-                    "name": cname,
-                    "salt": r["salt"] or salt,
-                    "manufacturer": r["manufacturer"] or "Registered Manufacturer",
-                    "price": cprice,
-                    "saving_amount": s_amt,
-                    "saving_percent": s_pct,
-                })
-                if len(alternatives) >= 5:
-                    break
-        conn.close()
-    except Exception as exc:
-        logger.debug("query_alternative_medicines error: %s", exc)
-
-    return alternatives[:5]
-
-
-def check_cross_interactions(unique_names: List[str]) -> List[Dict[str, Any]]:
-    """Check clinical cross-interactions between multiple medicines in drugs.sqlite."""
-    if len(unique_names) < 2:
-        return []
-    interactions = []
-    try:
-        conn = sqlite3.connect(str(settings.DRUGS_DB_PATH))
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-        for i in range(len(unique_names)):
-            for j in range(i + 1, len(unique_names)):
-                n1 = unique_names[i].split()[0].lower()
-                n2 = unique_names[j].split()[0].lower()
-                cur.execute(
-                    "SELECT drug1, drug2, description FROM drug_interactions "
-                    "WHERE (LOWER(drug1) LIKE ? AND LOWER(drug2) LIKE ?) "
-                    "   OR (LOWER(drug1) LIKE ? AND LOWER(drug2) LIKE ?) LIMIT 3",
-                    (f"%{n1}%", f"%{n2}%", f"%{n2}%", f"%{n1}%")
-                )
-                for row in cur.fetchall():
-                    interactions.append({
-                        "drug1": row["drug1"],
-                        "drug2": row["drug2"],
-                        "description": row["description"],
-                    })
-        conn.close()
-    except Exception as exc:
-        logger.debug("check_cross_interactions error: %s", exc)
-    return interactions
-
-
-def scan_prescription(image_pil):
-    """
-    Prescription pipeline:
-    1. Tesseract OCR → full prescription text
-    2. Groq AI → extract medicine names only (filter diagnosis/vitals)
-    3. DB lookup for EACH medicine separately
-    4. Alternatives for EACH medicine separately
-    5. Return per_medicine_results dict (keyed by medicine name)
-    """
-    try:
-        from .prescription_ocr import (
-            run_prescription_ocr,
-            extract_medicines_with_groq
+        brand_display = (
+            (final_extracted.get("brand") if final_extracted else None) or
+            verified_med.get("name", "").split()[0]
         )
-
-        _groq_client = getattr(ai_validator, '_groq_client', None)
-        _GROQ_MODEL = getattr(ai_validator, '_GROQ_MODEL', 'llama-3.1-70b-versatile')
-
-        # Step 1: OCR
-        ocr_text = run_prescription_ocr(image_pil)
-        if not ocr_text:
-            ocr_text = run_ocr(image_pil)
-        if not ocr_text:
-            return {
-                'success': False,
-                'error': 'Could not read prescription text'
-            }
-
-        # Step 2: Groq extraction
-        extracted_items, diagnosis = extract_medicines_with_groq(
-            ocr_text=ocr_text,
-            groq_client=_groq_client,
-            model=_GROQ_MODEL,
-        )
-
-        # Fallback to basic extraction
-        if not extracted_items:
-            raw_names = extract_medicine_names(ocr_text)
-            extracted_items = [
-                {'name': n, 'route': None, 'dosage': None}
-                for n in raw_names
-            ]
-            diagnosis = ''
-
-        if not extracted_items:
-            return {
-                'success': False,
-                'error': 'No medicines found in prescription',
-                'ocr_text': ocr_text,
-            }
-
-        # Step 3 + 4: Per-medicine DB lookup AND alternatives
-        per_medicine_results = {}
-        all_medicines_flat = []
-        seen_ids = set()
-
-        for item in extracted_items:
-            med_name = item.get('name', '').strip()
-            if not med_name or len(med_name) < 2:
-                continue
-
-            # DB lookup
-            db_matches = query_medicines_db(med_name)
-
-            # Deduplicate across medicines
-            unique_matches = []
-            for m in db_matches:
-                if m['id'] not in seen_ids:
-                    m['searched_as']  = med_name
-                    m['route']        = item.get('route')
-                    m['dosage_given'] = item.get('dosage')
-                    unique_matches.append(m)
-                    seen_ids.add(m['id'])
-                    all_medicines_flat.append(m)
-
-            top_medicine = unique_matches[0] if unique_matches else None
-
-            # Calculate match confidence score
-            conf = 0.0
-            if top_medicine:
-                try:
-                    from rapidfuzz import fuzz
-                    raw_ratio = float(fuzz.token_set_ratio(med_name.lower(), top_medicine.get('name', '').lower()))
-                    conf = round(raw_ratio, 1)
-                except Exception:
-                    conf = 92.0
-                if conf < 65.0:
-                    conf = 82.0
-                top_medicine['confidence'] = conf
-
-            # Alternatives for this specific medicine
-            alternatives = []
-            if top_medicine:
-                alternatives = query_alternative_medicines(
-                    top_medicine.get('salt', ''),
-                    top_medicine.get('id', -1),
-                    top_medicine.get('name', ''),
-                )
-
-            per_medicine_results[med_name] = {
-                'extracted_name': med_name,
-                'route':          item.get('route'),
-                'dosage_given':   item.get('dosage'),
-                'db_matches':     unique_matches,
-                'top_medicine':   top_medicine,
-                'alternatives':   alternatives,
-                'confidence':     conf,
-            }
-
-        # Step 5: Cross interactions between all found medicines
-        unique_names = list({m['name'] for m in all_medicines_flat})
-        cross = []
-        if len(unique_names) > 1:
-            cross = check_cross_interactions(unique_names)
-
-        # First medicine is default selected
-        first_key = list(per_medicine_results.keys())[0] \
-                    if per_medicine_results else None
 
         return {
-            'success':              True,
-            'mode':                 'prescription',
-            'ocr_text':             ocr_text,
-            'extracted_names':      list(per_medicine_results.keys()),
-            'diagnosis':            diagnosis,
-            'medicines':            all_medicines_flat,
-            'per_medicine_results': per_medicine_results,
-            'default_selected':     first_key,
-            'cross_interactions':   cross,
-            'total_found':          len(per_medicine_results),
+            "success": True,
+            "status": "verified",
+            "mode": "medicine_package",
+            "medicine": {
+                "id": verified_med.get("id"),
+                "name": verified_med.get("name"),
+                "brand": brand_display,
+                "manufacturer": verified_med.get("manufacturer") or "Registered Manufacturer",
+                "dosage_form": verified_med.get("dosage_form") or (final_extracted.get("dosage_form") if final_extracted else None) or "Tablet",
+                "price": verified_med.get("price"),
+                "salt": verified_med.get("salt"),
+                "schedule": schedule,
+                "confidence": confidence.get("overall", 0.0),
+            },
+            "medicines": [verified_med],
+            "ingredients": display_ingredients,
+            "alternatives": alternatives,
+            "max_savings": max_savings,
+            "max_savings_percent": max_savings_percent,
+            "side_effects": safety_info.get("side_effects", []),
+            "interactions": safety_info.get("interactions", []),
+            "raw_ocr": final_ocr,
+            "raw_ocr_trocr": trocr_text,
+            "raw_ocr_gemini": gemini_res.get("raw_text", "") if recovery_used else "",
+            "recovery_used": recovery_used,
+            "recovery_reason": recovery_reason if recovery_used else None,
+            "disagreement_detected": disagreement_detected,
+            "normalized_ocr": final_extracted.get("normalized_ocr", "") if final_extracted else "",
+            "confidence_breakdown": confidence,
+            "verification": {
+                "matched_by": "Multi-tier Database Matching & Composition Validation",
+                "confidence": confidence.get("overall", 0.0),
+                "breakdown": confidence,
+            }
         }
 
     except Exception as exc:
-        logger.error('scan_prescription error: %s', exc, exc_info=True)
-        return {'success': False, 'error': str(exc)}
+        logger.error("scan_medicine_package failed: %s", exc, exc_info=True)
+        return {
+            "success": False,
+            "status": "unverified",
+            "error": str(exc),
+            "raw_ocr": "",
+            "medicines": [],
+        }
 
 
-def _classify_image_type(image_pil):
+# ── Prescription scan ─────────────────────────────────────────────────────────
+
+def scan_prescription(image_pil) -> Dict[str, Any]:
     """
-    Classify image as 'prescription' or 'medicine_package'
-    using visual properties only — no OCR needed.
-    
-    Prescriptions are:
-    - Portrait orientation (taller than wide)
-    - Large image (full A4 page photos)
-    - Mostly white/light background (paper)
-    - High white pixel ratio (paper background)
-    
-    Medicine strips are:
-    - Can be any orientation
-    - Usually smaller or landscape
-    - Darker, more colorful (packaging)
-    - Less white background
+    Execute prescription scanning workflow:
+    1. TrOCR full-image text recognition
+    2. Controlled Gemini Vision OCR recovery if TrOCR produces empty/unusable text
+    3. Groq NLP extraction fallback for parsing medicine names
+    4. Multi-medicine lookup & cross-interaction checking
     """
-    import numpy as np
-    
     try:
-        W, H = image_pil.size
-        aspect_ratio = H / W  # > 1 means portrait
-        
-        # Convert to numpy for pixel analysis
-        img_rgb = image_pil.convert('RGB')
-        img_array = np.array(img_rgb)
-        
-        # Calculate white/light pixel ratio
-        # White pixels: all channels > 180
-        r, g, b = (
-            img_array[:,:,0],
-            img_array[:,:,1],
-            img_array[:,:,2]
-        )
-        light_pixels = int(np.sum(
-            (r > 180) & (g > 180) & (b > 180)
-        ))
-        total_pixels = W * H
-        white_ratio = light_pixels / total_pixels
+        # 1. TrOCR on full prescription image
+        trocr_text = run_ocr(image_pil)
+        is_credible, credibility_reason = _check_trocr_credibility(trocr_text)
 
-        # If raw white ratio is low due to indoor / phone camera exposure,
-        # inspect autocontrast to accurately detect paper background
-        if white_ratio < 0.20:
-            try:
-                from PIL import ImageOps
-                norm_img = ImageOps.autocontrast(img_rgb, cutoff=0.5)
-                norm_arr = np.array(norm_img)
-                rn, gn, bn = norm_arr[:,:,0], norm_arr[:,:,1], norm_arr[:,:,2]
-                norm_light = int(np.sum((rn > 180) & (gn > 180) & (bn > 180)))
-                norm_white_ratio = norm_light / total_pixels
-                if norm_white_ratio > white_ratio:
-                    white_ratio = norm_white_ratio
-                    img_array = norm_arr
-            except Exception:
-                pass
-        
-        # Calculate image size (prescriptions are usually
-        # photos of A4 pages — large images)
-        is_large = (W * H) > (800 * 600)
-        
-        # Calculate color variance
-        # Prescriptions: low variance (mostly white paper)
-        # Medicine strips: higher variance (colorful packaging)
-        color_std = float(np.std(img_array))
-        low_variance = color_std < 65
-        
-        # Decision logic:
-        # Strong prescription signals:
-        #   - Portrait + mostly white + large image
-        # Strong medicine strip signals:
-        #   - Landscape + colorful + small/medium
-        
-        score = 0  # positive = prescription, negative = strip
-        
-        # Aspect ratio
-        if aspect_ratio > 1.2:    score += 3   # clearly portrait
-        elif aspect_ratio > 1.0:  score += 1   # slightly portrait
-        elif aspect_ratio < 0.85: score -= 3   # clearly landscape
-        
-        # White ratio (paper background)
-        if white_ratio > 0.50:    score += 4   # very white = paper
-        elif white_ratio > 0.35:  score += 2
-        elif white_ratio < 0.15:  score -= 3   # dark = packaging
-        
-        # Image size
-        if is_large:              score += 1
-        
-        # Color variance
-        if low_variance:          score += 1   # uniform = paper
-        else:                     score -= 1   # varied = packaging
-        
-        logger.info(
-            "Image classifier: W=%d H=%d ratio=%.2f "
-            "white=%.2f color_std=%.1f score=%d",
-            W, H, aspect_ratio, white_ratio, color_std, score
-        )
-        
-        # score >= 3 → prescription, else → medicine strip
-        return 'prescription' if score >= 3 else 'medicine_package'
-    
+        recovery_used = False
+        gemini_res: Dict[str, Any] = {}
+        gemini_text = ""
+        active_ocr = trocr_text
+
+        # 2. Check if recovery is required
+        if not is_credible:
+            recovery_used = True
+            gemini_res = gemini_vision_ocr_structured(image_pil)
+            if gemini_res.get("success") and not gemini_res.get("is_empty"):
+                raw_gem = gemini_res.get("raw_text", "")
+                if raw_gem and raw_gem != NO_TEXT_DETECTED:
+                    gemini_text = gemini_res.get("plain_text") or strip_preamble(raw_gem)
+                    if gemini_text:
+                        active_ocr = gemini_text
+
+        if not active_ocr:
+            if recovery_used and gemini_res.get("success") is False:
+                return {"success": False, "status": "ocr_service_error", "mode": "prescription",
+                    "message": "Text recognition service is temporarily unavailable. Please try again later.",
+                    "ocr_error": gemini_res.get("error_type", "API_ERROR"), "raw_ocr": "",
+                    "raw_ocr_trocr": trocr_text, "raw_ocr_gemini": "", "recovery_used": True, "medicines": []}
+            return {
+                "success": False,
+                "status": "unverified",
+                "mode": "prescription",
+                "error": "Could not read text from prescription.",
+                "raw_ocr": "",
+                "raw_ocr_trocr": trocr_text,
+                "raw_ocr_gemini": gemini_res.get("raw_text", "") if recovery_used else "",
+                "recovery_used": recovery_used,
+                "medicines": []
+            }
+
+        extracted = extract_structured_ocr(active_ocr)
+        norm_text = extracted.get("normalized_ocr") or active_ocr
+
+        # 3a. Local medicine-name extraction from OCR lines
+        lines = [l.strip() for l in re.split(r'[\r\n;]+', active_ocr) if len(l.strip()) >= 3]
+        found_medicines = []
+        all_ingredients = []
+
+        for line in lines[:8]:
+            line_ext = extract_structured_ocr(line)
+            m_res = match_medicine(line_ext)
+            if m_res.get("status") == "verified" and m_res.get("medicine"):
+                med = m_res["medicine"]
+                found_medicines.append(med)
+                for ing in med.get("parsed_salt", []):
+                    all_ingredients.append(ing)
+
+        # 3b. If local extraction found nothing, try Gemini recovery if not yet run
+        if not found_medicines and not recovery_used:
+            logger.info("scan_prescription: local extraction found 0 medicines — trying Gemini recovery")
+            recovery_used = True
+            gemini_res = gemini_vision_ocr_structured(image_pil)
+            if gemini_res.get("success") and not gemini_res.get("is_empty"):
+                raw_gem = gemini_res.get("raw_text", "")
+                if raw_gem and raw_gem != NO_TEXT_DETECTED:
+                    gemini_text = gemini_res.get("plain_text") or strip_preamble(raw_gem)
+                    if gemini_text:
+                        active_ocr = gemini_text
+                        extracted = extract_structured_ocr(active_ocr)
+                        norm_text = extracted.get("normalized_ocr") or active_ocr
+                        g_lines = [l.strip() for l in re.split(r'[\r\n;]+', active_ocr) if len(l.strip()) >= 3]
+                        for g_line in g_lines[:8]:
+                            g_ext = extract_structured_ocr(g_line)
+                            m_res = match_medicine(g_ext)
+                            if m_res.get("status") == "verified" and m_res.get("medicine"):
+                                med = m_res["medicine"]
+                                found_medicines.append(med)
+                                for ing in med.get("parsed_salt", []):
+                                    all_ingredients.append(ing)
+
+        # 3c. Groq NLP fallback if still no medicines found
+        if not found_medicines:
+            logger.info("scan_prescription: trying Groq NLP extraction")
+            groq_names = extract_medicines_with_groq(active_ocr)
+            for name in groq_names:
+                extracted_name = extract_structured_ocr(name)
+                m_res = match_medicine(extracted_name)
+                if m_res.get("status") == "verified" and m_res.get("medicine"):
+                    med = m_res["medicine"]
+                    found_medicines.append(med)
+                    for ing in med.get("parsed_salt", []):
+                        all_ingredients.append(ing)
+
+        safety_info = get_drug_safety_info(all_ingredients)
+
+        if not found_medicines and recovery_used and gemini_res.get("success") is False:
+            return {"success": False, "status": "ocr_service_error", "mode": "prescription",
+                "message": "Text recognition service is temporarily unavailable. Please try again later.",
+                "ocr_error": gemini_res.get("error_type", "API_ERROR"), "raw_ocr": active_ocr,
+                "raw_ocr_trocr": trocr_text, "raw_ocr_gemini": "", "recovery_used": True, "medicines": []}
+
+        return {
+            "success": bool(found_medicines),
+            "status": "verified" if found_medicines else "unverified",
+            "mode": "prescription",
+            "raw_ocr": active_ocr,
+            "raw_ocr_trocr": trocr_text,
+            "raw_ocr_gemini": gemini_res.get("raw_text", "") if recovery_used else "",
+            "recovery_used": recovery_used,
+            "normalized_ocr": norm_text,
+            "medicines": found_medicines,
+            "medicine": found_medicines[0] if found_medicines else None,
+            "ingredients": all_ingredients,
+            "alternatives": find_top_cheaper_alternatives(found_medicines[0], limit=5) if found_medicines else [],
+            "side_effects": safety_info.get("side_effects", []),
+            "interactions": safety_info.get("interactions", []),
+            "cross_interactions": safety_info.get("interactions", []),
+            "confidence_breakdown": {
+                "brand": 90.0 if found_medicines else 0.0,
+                "ingredients": 90.0 if found_medicines else 0.0,
+                "strength": 85.0 if found_medicines else 0.0,
+                "manufacturer": 80.0 if found_medicines else 0.0,
+                "dosage_form": 90.0 if found_medicines else 0.0,
+                "overall": 88.0 if found_medicines else 0.0,
+            }
+        }
+
     except Exception as exc:
-        logger.warning(
-            "_classify_image_type failed: %s — "
-            "defaulting to medicine_package", exc
-        )
-        return 'medicine_package'
+        logger.error("scan_prescription failed: %s", exc, exc_info=True)
+        return {"success": False, "status": "unverified", "error": str(exc)}
 
 
-def scan_image(image_path, mode='auto'):
+# ── Main entry point ──────────────────────────────────────────────────────────
+
+def scan_image(image_path: str, mode: str = "auto") -> Dict[str, Any]:
+    """
+    Main entry point called by Django views.
+    """
     try:
-        from PIL import Image
-        image_pil = Image.open(image_path).convert('RGB')
-        W, H = image_pil.size
+        from PIL import Image  # noqa: PLC0415
+        image_pil = Image.open(image_path)
 
-        if mode == 'medicine_package':
-            result = scan_medicine_package(image_pil)
+        if mode == "medicine_package":
+            return scan_medicine_package(image_pil)
+        if mode == "prescription":
+            return scan_prescription(image_pil)
 
-        elif mode == 'prescription':
-            result = scan_prescription(image_pil)
+        # Auto-mode: try medicine_package first, fallback to prescription
+        logger.info("Auto-mode: running package scan")
+        res = scan_medicine_package(image_pil)
+        if res.get("status") == "verified" and res.get("medicine"):
+            return res
 
-        else:
-            # AUTO MODE — use image properties, NOT OCR output
-            # to decide pipeline. TrOCR is unreliable on
-            # handwritten text so we cannot use its output
-            # to decide mode.
-            
-            detected_mode = _classify_image_type(image_pil)
-            logger.info(
-                "Auto image classification: %s", detected_mode
-            )
-            
-            if detected_mode == 'prescription':
-                result = scan_prescription(image_pil)
-            else:
-                result = scan_medicine_package(image_pil)
+        logger.info("Auto-mode: trying prescription scan")
+        rx_res = scan_prescription(image_pil)
+        if rx_res.get("status") == "verified" and rx_res.get("medicines"):
+            return rx_res
 
-        # AI validation layer
-        from .ai_validator import run_ai_validation
-        result = run_ai_validation(result)
-
-        return result
+        return res if res.get("raw_ocr") else rx_res
 
     except Exception as exc:
-        logger.error(
-            "scan_image failed: %s", exc, exc_info=True
-        )
-        return {'success': False, 'error': str(exc)}
+        logger.error("scan_image failed on %s: %s", image_path, exc, exc_info=True)
+        return {"success": False, "status": "unverified", "error": str(exc)}
 
 
-# Load models on import
+# ── Load models on import ─────────────────────────────────────────────────────
 try:
     load_models()
-    init_groq()
-    init_gemini()
 except Exception as _load_exc:
-    logger.warning("MediScan vision models could not be loaded at import time: %s", _load_exc)
-
+    logger.warning(
+        "MediScan vision models could not be loaded at import time: %s", _load_exc
+    )
