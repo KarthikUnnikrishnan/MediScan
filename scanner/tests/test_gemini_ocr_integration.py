@@ -27,6 +27,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'mediscan.settings')
 django.setup()
 
 from django.test import TestCase
+from django.utils import timezone
 
 from scanner.ml.gemini_vision import (
     gemini_vision_ocr,
@@ -525,6 +526,91 @@ class GeminiOCRIntegrationRegressionTests(TestCase):
         self.assertEqual(resp_result.status_code, 200)
         self.assertContains(resp_result, '1-AL')
 
+    # ── Test N: Prescription multi-medicine detection & switching ─────────────
+    @patch("scanner.ml.gemini_vision_ocr_structured")
+    @patch("scanner.ml.run_ocr")
+    def test_n_prescription_multi_medicine_switching(self, mock_run_ocr, mock_gemini):
+        """
+        Ensure multiple prescribed medicines are detected, populate per_medicine_results,
+        and allow frontend switching with corresponding details and alternatives.
+        """
+        mock_run_ocr.return_value = ""
+        mock_gemini.return_value = {
+            "success": True,
+            "raw_text": (
+                "Dr. John Brown, M.D.\n"
+                "Patient: Mary Smith\n"
+                "Rx\n"
+                "1. Lipitor 10 mg Tabs No. 30\n"
+                "2. Metformin 500 mg Tabs No. 60\n"
+                "Sig: tab i every day\n"
+                "Refill 3 times\n"
+            ),
+            "plain_text": (
+                "Lipitor 10 mg\n"
+                "Metformin 500 mg\n"
+                "Dr. John Brown, M.D.\n"
+                "Patient: Mary Smith\n"
+                "Rx\n"
+                "1. Lipitor 10 mg Tabs No. 30\n"
+                "2. Metformin 500 mg Tabs No. 60\n"
+                "Sig: tab i every day\n"
+                "Refill 3 times\n"
+            ),
+            "structured": {
+                "brand": "Lipitor",
+                "strength": "10 mg"
+            },
+            "error": None,
+            "is_empty": False,
+            "model": "gemini-2.5-flash",
+        }
+
+        res = scan_prescription(self.dummy_image)
+        self.assertTrue(res.get("success"))
+        self.assertEqual(res.get("status"), "verified")
+        self.assertEqual(res.get("mode"), "prescription")
+
+        # Must detect both medicines
+        self.assertGreaterEqual(res.get("total_found", 0), 2)
+        meds = res.get("medicines", [])
+        self.assertGreaterEqual(len(meds), 2)
+
+        # per_medicine_results must have both entries
+        per_results = res.get("per_medicine_results", {})
+        self.assertGreaterEqual(len(per_results), 2)
+
+        # First medicine details and alternatives
+        lipitor_key = res.get("default_selected")
+        self.assertIn("Lipitor", lipitor_key)
+        self.assertIn(lipitor_key, per_results)
+        lipitor_entry = per_results[lipitor_key]
+        self.assertIsNotNone(lipitor_entry.get("top_medicine"))
+        self.assertIn("atorvastatin", lipitor_entry["top_medicine"].get("salt", "").lower())
+        self.assertGreater(len(lipitor_entry.get("alternatives", [])), 0)
+
+        # Second medicine exists and has its own alternatives
+        other_keys = [k for k in per_results.keys() if k != lipitor_key]
+        self.assertGreater(len(other_keys), 0)
+        second_entry = per_results[other_keys[0]]
+        self.assertIsNotNone(second_entry.get("top_medicine"))
+        self.assertIn("metformin", second_entry["top_medicine"].get("salt", "").lower())
+
+        # Test rendering through client with session
+        session = self.client.session
+        res["image_url"] = "/media/uploads/test.jpg"
+        res["timestamp"] = timezone.now().isoformat()
+        session["scan_result"] = res
+        session.save()
+
+        resp = self.client.get('/result/')
+        self.assertEqual(resp.status_code, 200)
+        # Verify both medicine selector cards are rendered
+        self.assertContains(resp, "med-selector-section")
+        self.assertContains(resp, lipitor_key)
+        self.assertContains(resp, other_keys[0])
+
 
 if __name__ == "__main__":
     unittest.main()
+

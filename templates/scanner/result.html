@@ -206,6 +206,19 @@
                     <span>{{ med_data.confidence|confidence_percent }} Match Confidence</span>
                   </span>
                 </div>
+
+                {% if med_data.side_effects %}
+                <div class="presc-side-effects" style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #e2e8f0;">
+                  <div class="prop-block-label" style="margin-bottom: 0.5rem; font-size: 0.72rem; font-weight: 700; color: #64748b; letter-spacing: 0.05em;">KNOWN SIDE EFFECTS</div>
+                  <div style="display: flex; flex-wrap: wrap; gap: 0.35rem;">
+                    {% for se in med_data.side_effects|slice:":5" %}
+                    <span class="status-pill" style="font-size: 0.75rem; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; padding: 0.2rem 0.55rem; border-radius: 9999px;">
+                      {{ se.name }}
+                    </span>
+                    {% endfor %}
+                  </div>
+                </div>
+                {% endif %}
                 {% endwith %}
 
               {% else %}

@@ -194,3 +194,87 @@ def get_drug_safety_info(ingredients: List[Dict[str, Any]]) -> Dict[str, Any]:
     finally:
         if conn:
             conn.close()
+
+
+def get_cross_drug_interactions(medicines: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Find clinical drug-drug interactions strictly BETWEEN the prescribed medicines.
+    If only 1 medicine was prescribed, returns [] (no cross-drug interactions).
+    If 2+ medicines were prescribed, queries interactions between their active ingredients.
+    """
+    if not medicines or len(medicines) < 2:
+        return []
+
+    # Map each medicine to its STITCH compound names
+    med_compounds = []
+    for med in medicines:
+        salts = med.get("parsed_salt") or []
+        compounds = []
+        for s in salts:
+            cname = s.get("canonical_name") or normalize_ingredient_name(s.get("ingredient", ""))
+            stitch_name = map_to_stitch_name(cname)
+            if stitch_name:
+                compounds.append((cname, stitch_name))
+        if compounds:
+            med_compounds.append(compounds)
+
+    if len(med_compounds) < 2:
+        return []
+
+    conn = None
+    cross_out = []
+    seen_pairs: Set[str] = set()
+
+    try:
+        conn = sqlite3.connect(str(settings.DRUGS_DB_PATH))
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+
+        # Check every distinct medicine pair (i, j)
+        for i in range(len(med_compounds)):
+            for j in range(i + 1, len(med_compounds)):
+                for orig_a, stitch_a in med_compounds[i]:
+                    for orig_b, stitch_b in med_compounds[j]:
+                        if stitch_a.lower() == stitch_b.lower():
+                            continue
+
+                        pair_key = f"{min(stitch_a.lower(), stitch_b.lower())}:{max(stitch_a.lower(), stitch_b.lower())}"
+                        if pair_key in seen_pairs:
+                            continue
+
+                        cur.execute(
+                            "SELECT drug1, drug2, description FROM drug_interactions "
+                            "WHERE (LOWER(drug1) LIKE ? AND LOWER(drug2) LIKE ?) "
+                            "   OR (LOWER(drug1) LIKE ? AND LOWER(drug2) LIKE ?) "
+                            "LIMIT 5",
+                            (
+                                f"%{stitch_a.lower()}%", f"%{stitch_b.lower()}%",
+                                f"%{stitch_b.lower()}%", f"%{stitch_a.lower()}%"
+                            )
+                        )
+                        for r in cur.fetchall():
+                            d1 = r["drug1"].strip()
+                            d2 = r["drug2"].strip()
+                            desc = (r["description"] or "").strip()
+                            desc_key = f"{pair_key}:{desc[:30]}"
+                            if desc_key not in seen_pairs:
+                                seen_pairs.add(desc_key)
+                                severity = classify_severity(desc)
+                                cross_out.append({
+                                    "drug1": orig_a.capitalize(),
+                                    "drug2": orig_b.capitalize(),
+                                    "description": desc,
+                                    "severity": severity
+                                })
+
+        severity_order = {"HIGH": 0, "MODERATE": 1, "LOW": 2}
+        cross_out.sort(key=lambda x: severity_order.get(x["severity"], 3))
+        return cross_out[:10]
+
+    except Exception as exc:
+        logger.error("get_cross_drug_interactions failed: %s", exc, exc_info=True)
+        return []
+    finally:
+        if conn:
+            conn.close()
+

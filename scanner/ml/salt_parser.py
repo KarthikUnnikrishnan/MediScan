@@ -83,9 +83,9 @@ def normalize_ingredient_name(name: str) -> str:
         flags=re.IGNORECASE
     )
 
-    # Strip leading dosage form words if OCR captured "Brand Tablet Ingredient"
+    # Strip leading dosage form words if OCR captured "Brand Tablet Ingredient" or "Syp Brand"
     clean = re.sub(
-        r'^(?:.*?\b(?:tablet|tablets|capsule|capsules|syrup|suspension|injection|drops|ointment|gel|cream|solution|duo|forte)\b\s*)',
+        r'^(?:.*?\b(?:syp|syr|tab|tabs|cap|caps|inj|susp|oint|tablet|tablets|capsule|capsules|syrup|suspension|injection|drops|drop|ointment|gel|cream|solution|duo|forte)\b\s*)',
         '',
         clean,
         flags=re.IGNORECASE

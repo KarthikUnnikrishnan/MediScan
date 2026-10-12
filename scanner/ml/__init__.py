@@ -22,7 +22,7 @@ OCR cascade for medicine package scan:
 import logging
 import os
 import re
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, List
 
 from .vision import load_models, crop_strip, run_ocr
 from .gemini_vision import (
@@ -36,7 +36,7 @@ from .extractor import extract_structured_ocr, normalize_ocr_text, extract_dosag
 from .medicine_index import get_medicine_index
 from .medicine_matcher import match_medicine, CONFIDENCE_THRESHOLD
 from .alternative_matcher import find_top_cheaper_alternatives
-from .drug_safety import get_drug_safety_info
+from .drug_safety import get_drug_safety_info, get_cross_drug_interactions
 from .salt_parser import parse_salt
 
 logger = logging.getLogger(__name__)
@@ -383,6 +383,99 @@ def scan_medicine_package(image_pil) -> Dict[str, Any]:
         }
 
 
+# ── Prescription scan helpers ──────────────────────────────────────────────────
+
+_RX_METADATA_IGNORE = re.compile(
+    r'\b(?:m\.?d\.?|mbbs|dr\.|doctor|clinic|hospital|chc|phc|healthcare|pharmacy|physician|'
+    r'state\s*license|dea\s*no|license\s*no|reg\.?\s*no|phone|tel|fax|email|street|road|avenue|'
+    r'lane|suite|pincode|zip\s*code|nemmara|thrissur|jipmer)\b'
+    r'|^\s*(?:name|patient|age|sex|gender|date|address|uhid|opd|ipd|weight|wt)\b'
+    r'|^\s*(?:clinical\s*description|advice|adv:|rx:|treatment|diagnosis|symptoms?)\b'
+    r'|^\s*(?:urti|lrti|fever|cough|cold|rr\s*[-:]|rs\s*[-:]|bp\s*[-:]|pr\s*[-:]|spo2)\b'
+    r'|^\s*(?:refill|label|generic\s*if\s*available|signature|directions?|sig\b|every\s*day|take\s|with\s*water)\b'
+    r'|^\s*(?:\d+(?:\.\d+)?\s*(?:mg|ml|mcg|g|iu|%)|tabs?|caps?|nos?\.?\s*\d+)\s*$'
+    r'|^\s*[:\-\.]+\s*'
+    r'|^\s*(?:ph|tel|mob|mobile|cell)\s*[:\.]',
+    re.IGNORECASE
+)
+
+
+def extract_prescription_candidates(ocr_text: str, gemini_structured: Optional[Dict[str, Any]] = None) -> List[str]:
+    """
+    Extract high-precision medicine query strings from prescription OCR text.
+    Filters out doctor/clinic headers, patient info, and dosage directions.
+    """
+    candidates = []
+    seen = set()
+
+    def _add(cand: str):
+        c = cand.strip()
+        # Remove non-ASCII characters (such as Malayalam/regional annotations)
+        c = re.sub(r'[^\x00-\x7F]+', ' ', c).strip()
+        # Convert pediatric concentration fractions like (250/5) -> 250
+        c = re.sub(r'\((\d+)\s*/\s*\d+\)', r'\1', c)
+        c = re.sub(r'\b(\d+)\s*/\s*\d+\b', r'\1', c)
+        # Strip administration directions & dosage schedules
+        c = re.sub(r'\b(?:tabs?|caps?|no\.?|nos\.?)\s*\d+.*$', '', c, flags=re.I).strip()
+        c = re.sub(r'\b\d+(?:\.\d+)?\s*ml\b.*$', '', c, flags=re.I).strip()
+        c = re.sub(r'\b(?:sig:?|od|bd|tds|qid|hs|sos|once|twice|daily|every\s*day|q\d+h).*$', '', c, flags=re.I).strip()
+        c = re.sub(r'\bx\s*\d+\s*[dhmw].*$', '', c, flags=re.I).strip()
+        c = re.sub(r'[-–—]\s*\d+.*$', '', c).strip()
+        c = re.sub(r'^(?:rx|r/x|\(?\d+\)?[\.\s]*)\s*', '', c, flags=re.I).strip()
+        c = re.sub(r'^[:\-\.\s]+', '', c).strip()
+        c = re.sub(r'\s+', ' ', c).strip()
+        if len(c) >= 3 and not _RX_METADATA_IGNORE.search(c):
+            if re.search(r'[a-zA-Z]{2,}', c):
+                key = c.lower()
+                if key not in seen:
+                    seen.add(key)
+                    candidates.append(c)
+
+    # 1. Gemini structured fields (if available)
+    if gemini_structured:
+        brand = gemini_structured.get("brand") or ""
+        strength = gemini_structured.get("strength") or ""
+        generic = gemini_structured.get("generic") or ""
+        if brand and strength:
+            _add(f"{brand} {strength}")
+        if brand:
+            _add(brand)
+        if generic and strength:
+            _add(f"{generic} {strength}")
+        elif generic:
+            _add(generic)
+
+    if not ocr_text:
+        return candidates
+
+    # 2. Extract lines in and following 'Advice', 'Rx', or 'Treatment' markers if present
+    rx_match = re.search(r'\b(?:advice|treatment|rx|r/x)\b[:\s]*(.*)', ocr_text, flags=re.I | re.DOTALL)
+    rx_body = rx_match.group(1) if rx_match else ""
+
+    raw_lines = [l.strip() for l in re.split(r'[\r\n;]+', ocr_text) if l.strip()]
+    rx_lines = [l.strip() for l in re.split(r'[\r\n;]+', rx_body) if l.strip()] if rx_body else []
+
+    # Prioritize Rx/Advice lines, then full OCR lines
+    for line in rx_lines + raw_lines:
+        if not re.search(r'[a-zA-Z]', line):
+            continue
+        if _RX_METADATA_IGNORE.search(line):
+            continue
+
+        if re.search(r'\b(?:rx|r/x|advice|treatment)\b', line, re.I):
+            sub = re.split(r'\b(?:rx|r/x|advice|treatment)\b[:\s]*', line, flags=re.I)[-1].strip()
+            if sub:
+                _add(sub)
+                continue
+
+        if re.search(r'\b(?:tab|cap|inj|syp|syr|susp|oint|drop|resp)\b', line, re.I) or re.search(r'\d+(?:\.\d+)?\s*(?:mg|ml|mcg|g|iu|%)\b', line, re.I):
+            _add(line)
+        elif len(line) >= 4 and not any(w in line.lower() for w in ['name', 'date', 'street', 'phone', 'address', 'dr.', 'mbbs', 'chc', 'phc']):
+            _add(line)
+
+    return candidates
+
+
 # ── Prescription scan ─────────────────────────────────────────────────────────
 
 def scan_prescription(image_pil) -> Dict[str, Any]:
@@ -390,8 +483,8 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
     Execute prescription scanning workflow:
     1. TrOCR full-image text recognition
     2. Controlled Gemini Vision OCR recovery if TrOCR produces empty/unusable text
-    3. Groq NLP extraction fallback for parsing medicine names
-    4. Multi-medicine lookup & cross-interaction checking
+    3. Multi-medicine extraction & precision database matching
+    4. Per-medicine details, bioequivalent alternatives & cross-interaction checking
     """
     try:
         # 1. TrOCR on full prescription image
@@ -416,10 +509,13 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
 
         if not active_ocr:
             if recovery_used and gemini_res.get("success") is False:
-                return {"success": False, "status": "ocr_service_error", "mode": "prescription",
+                return {
+                    "success": False, "status": "ocr_service_error", "mode": "prescription",
                     "message": "Text recognition service is temporarily unavailable. Please try again later.",
                     "ocr_error": gemini_res.get("error_type", "API_ERROR"), "raw_ocr": "",
-                    "raw_ocr_trocr": trocr_text, "raw_ocr_gemini": "", "recovery_used": True, "medicines": []}
+                    "raw_ocr_trocr": trocr_text, "raw_ocr_gemini": "", "recovery_used": True,
+                    "medicines": [], "per_medicine_results": {}
+                }
             return {
                 "success": False,
                 "status": "unverified",
@@ -429,27 +525,35 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
                 "raw_ocr_trocr": trocr_text,
                 "raw_ocr_gemini": gemini_res.get("raw_text", "") if recovery_used else "",
                 "recovery_used": recovery_used,
-                "medicines": []
+                "medicines": [],
+                "per_medicine_results": {}
             }
 
         extracted = extract_structured_ocr(active_ocr)
         norm_text = extracted.get("normalized_ocr") or active_ocr
 
-        # 3a. Local medicine-name extraction from OCR lines
-        lines = [l.strip() for l in re.split(r'[\r\n;]+', active_ocr) if len(l.strip()) >= 3]
+        # 3a. Extract candidate medicine lines
+        candidates = extract_prescription_candidates(
+            active_ocr,
+            gemini_structured=gemini_res.get("structured") if recovery_used else None
+        )
+
         found_medicines = []
         all_ingredients = []
+        seen_med_ids = set()
 
-        for line in lines[:8]:
-            line_ext = extract_structured_ocr(line)
-            m_res = match_medicine(line_ext)
+        for cand_str in candidates[:25]:
+            cand_ext = extract_structured_ocr(cand_str)
+            m_res = match_medicine(cand_ext, is_prescription=True)
             if m_res.get("status") == "verified" and m_res.get("medicine"):
                 med = m_res["medicine"]
-                found_medicines.append(med)
-                for ing in med.get("parsed_salt", []):
-                    all_ingredients.append(ing)
+                if med["id"] not in seen_med_ids:
+                    seen_med_ids.add(med["id"])
+                    found_medicines.append(med)
+                    for ing in med.get("parsed_salt", []):
+                        all_ingredients.append(ing)
 
-        # 3b. If local extraction found nothing, try Gemini recovery if not yet run
+        # 3b. If extraction found nothing, try Gemini recovery if not yet run
         if not found_medicines and not recovery_used:
             logger.info("scan_prescription: local extraction found 0 medicines — trying Gemini recovery")
             recovery_used = True
@@ -462,15 +566,20 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
                         active_ocr = gemini_text
                         extracted = extract_structured_ocr(active_ocr)
                         norm_text = extracted.get("normalized_ocr") or active_ocr
-                        g_lines = [l.strip() for l in re.split(r'[\r\n;]+', active_ocr) if len(l.strip()) >= 3]
-                        for g_line in g_lines[:8]:
-                            g_ext = extract_structured_ocr(g_line)
-                            m_res = match_medicine(g_ext)
+                        gem_cands = extract_prescription_candidates(
+                            active_ocr,
+                            gemini_structured=gemini_res.get("structured")
+                        )
+                        for g_cand in gem_cands[:25]:
+                            g_ext = extract_structured_ocr(g_cand)
+                            m_res = match_medicine(g_ext, is_prescription=True)
                             if m_res.get("status") == "verified" and m_res.get("medicine"):
                                 med = m_res["medicine"]
-                                found_medicines.append(med)
-                                for ing in med.get("parsed_salt", []):
-                                    all_ingredients.append(ing)
+                                if med["id"] not in seen_med_ids:
+                                    seen_med_ids.add(med["id"])
+                                    found_medicines.append(med)
+                                    for ing in med.get("parsed_salt", []):
+                                        all_ingredients.append(ing)
 
         # 3c. Groq NLP fallback if still no medicines found
         if not found_medicines:
@@ -478,20 +587,48 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
             groq_names = extract_medicines_with_groq(active_ocr)
             for name in groq_names:
                 extracted_name = extract_structured_ocr(name)
-                m_res = match_medicine(extracted_name)
+                m_res = match_medicine(extracted_name, is_prescription=True)
                 if m_res.get("status") == "verified" and m_res.get("medicine"):
                     med = m_res["medicine"]
-                    found_medicines.append(med)
-                    for ing in med.get("parsed_salt", []):
-                        all_ingredients.append(ing)
+                    if med["id"] not in seen_med_ids:
+                        seen_med_ids.add(med["id"])
+                        found_medicines.append(med)
+                        for ing in med.get("parsed_salt", []):
+                            all_ingredients.append(ing)
 
-        safety_info = get_drug_safety_info(all_ingredients)
+        # 4. Build per_medicine_results for multiple medicine switching
+        per_medicine_results = {}
+        for med in found_medicines:
+            display_name = med.get("name") or "Medication"
+            alts = find_top_cheaper_alternatives(med, limit=5)
+            med_safety = get_drug_safety_info(med.get("parsed_salt", []))
+            per_medicine_results[display_name] = {
+                "top_medicine": med,
+                "db_matches": [med],
+                "alternatives": alts,
+                "side_effects": med_safety.get("side_effects", []),
+                "interactions": med_safety.get("interactions", []),
+                "route": med.get("dosage_form"),
+                "dosage_given": med.get("salt"),
+                "confidence": med.get("confidence", 95.0),
+            }
+
+        # 5. Check clinical cross-drug interactions strictly between prescribed medicines
+        cross_interactions = get_cross_drug_interactions(found_medicines)
+
+        primary_med = found_medicines[0] if found_medicines else None
+        primary_alts = per_medicine_results[primary_med["name"]]["alternatives"] if primary_med else []
+        primary_side_effects = per_medicine_results[primary_med["name"]]["side_effects"] if primary_med else []
+        primary_interactions = per_medicine_results[primary_med["name"]]["interactions"] if primary_med else []
 
         if not found_medicines and recovery_used and gemini_res.get("success") is False:
-            return {"success": False, "status": "ocr_service_error", "mode": "prescription",
+            return {
+                "success": False, "status": "ocr_service_error", "mode": "prescription",
                 "message": "Text recognition service is temporarily unavailable. Please try again later.",
                 "ocr_error": gemini_res.get("error_type", "API_ERROR"), "raw_ocr": active_ocr,
-                "raw_ocr_trocr": trocr_text, "raw_ocr_gemini": "", "recovery_used": True, "medicines": []}
+                "raw_ocr_trocr": trocr_text, "raw_ocr_gemini": "", "recovery_used": True,
+                "medicines": [], "per_medicine_results": {}
+            }
 
         return {
             "success": bool(found_medicines),
@@ -503,25 +640,28 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
             "recovery_used": recovery_used,
             "normalized_ocr": norm_text,
             "medicines": found_medicines,
-            "medicine": found_medicines[0] if found_medicines else None,
+            "medicine": primary_med,
+            "per_medicine_results": per_medicine_results,
+            "default_selected": primary_med["name"] if primary_med else "",
+            "total_found": len(found_medicines),
             "ingredients": all_ingredients,
-            "alternatives": find_top_cheaper_alternatives(found_medicines[0], limit=5) if found_medicines else [],
-            "side_effects": safety_info.get("side_effects", []),
-            "interactions": safety_info.get("interactions", []),
-            "cross_interactions": safety_info.get("interactions", []),
+            "alternatives": primary_alts,
+            "side_effects": primary_side_effects,
+            "interactions": primary_interactions,
+            "cross_interactions": cross_interactions,
             "confidence_breakdown": {
-                "brand": 90.0 if found_medicines else 0.0,
-                "ingredients": 90.0 if found_medicines else 0.0,
-                "strength": 85.0 if found_medicines else 0.0,
-                "manufacturer": 80.0 if found_medicines else 0.0,
-                "dosage_form": 90.0 if found_medicines else 0.0,
-                "overall": 88.0 if found_medicines else 0.0,
+                "brand": round(primary_med.get("confidence", 95.0), 1) if primary_med else 0.0,
+                "ingredients": 95.0 if primary_med else 0.0,
+                "strength": 95.0 if primary_med else 0.0,
+                "manufacturer": 85.0 if primary_med else 0.0,
+                "dosage_form": 90.0 if primary_med else 0.0,
+                "overall": round(primary_med.get("confidence", 95.0), 1) if primary_med else 0.0,
             }
         }
 
     except Exception as exc:
         logger.error("scan_prescription failed: %s", exc, exc_info=True)
-        return {"success": False, "status": "unverified", "error": str(exc)}
+        return {"success": False, "status": "unverified", "error": str(exc), "per_medicine_results": {}}
 
 
 # ── Main entry point ──────────────────────────────────────────────────────────
@@ -539,18 +679,30 @@ def scan_image(image_path: str, mode: str = "auto") -> Dict[str, Any]:
         if mode == "prescription":
             return scan_prescription(image_pil)
 
-        # Auto-mode: try medicine_package first, fallback to prescription
-        logger.info("Auto-mode: running package scan")
-        res = scan_medicine_package(image_pil)
-        if res.get("status") == "verified" and res.get("medicine"):
-            return res
+        # Auto-mode: choose initial preference based on aspect ratio
+        is_tall_document = (image_pil.height / max(1, image_pil.width)) >= 1.15
+        if is_tall_document:
+            logger.info("Auto-mode: tall aspect ratio detected — prioritizing prescription scan")
+            rx_res = scan_prescription(image_pil)
+            if rx_res.get("status") == "verified" and rx_res.get("medicines"):
+                return rx_res
+            logger.info("Auto-mode: prescription scan inconclusive — trying package scan")
+            res = scan_medicine_package(image_pil)
+            if res.get("status") == "verified" and res.get("medicine"):
+                return res
+            return rx_res if rx_res.get("raw_ocr") else res
+        else:
+            logger.info("Auto-mode: running package scan")
+            res = scan_medicine_package(image_pil)
+            if res.get("status") == "verified" and res.get("medicine"):
+                return res
 
-        logger.info("Auto-mode: trying prescription scan")
-        rx_res = scan_prescription(image_pil)
-        if rx_res.get("status") == "verified" and rx_res.get("medicines"):
-            return rx_res
+            logger.info("Auto-mode: trying prescription scan")
+            rx_res = scan_prescription(image_pil)
+            if rx_res.get("status") == "verified" and rx_res.get("medicines"):
+                return rx_res
 
-        return res if res.get("raw_ocr") else rx_res
+            return res if res.get("raw_ocr") else rx_res
 
     except Exception as exc:
         logger.error("scan_image failed on %s: %s", image_path, exc, exc_info=True)

@@ -608,12 +608,12 @@ function selectMedicine(medKey) {
 
   // Update selector card highlighting
   document.querySelectorAll('.med-selector-card').forEach(card => {
-    card.classList.remove('selected');
+    if (card.dataset.medKey === medKey) {
+      card.classList.add('selected');
+    } else {
+      card.classList.remove('selected');
+    }
   });
-  const activeCard = document.querySelector(
-    `.med-selector-card[data-med-key="${CSS.escape(medKey)}"]`
-  );
-  if (activeCard) activeCard.classList.add('selected');
 
   // Find the index of this medicine
   const detailPanels = document.querySelectorAll('.presc-med-detail');

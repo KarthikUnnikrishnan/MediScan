@@ -103,7 +103,11 @@ def are_forms_compatible(form_a: Optional[str], form_b: Optional[str]) -> Tuple[
     return False, 0.0
 
 
-def match_medicine(extracted: Dict[str, Any], index: Optional[MedicineIndex] = None) -> Dict[str, Any]:
+def match_medicine(
+    extracted: Dict[str, Any],
+    index: Optional[MedicineIndex] = None,
+    is_prescription: bool = False,
+) -> Dict[str, Any]:
     """
     Match extracted OCR information against the dynamic medicine index.
 
@@ -119,6 +123,9 @@ def match_medicine(extracted: Dict[str, Any], index: Optional[MedicineIndex] = N
             "normalized_ocr": str
         }
     index : MedicineIndex, optional
+    is_prescription : bool, optional
+        Set to True when scanning prescriptions where doctors specify brand + dosage form
+        without packaging-only manufacturer or salt details.
 
     Returns
     -------
@@ -141,6 +148,9 @@ def match_medicine(extracted: Dict[str, Any], index: Optional[MedicineIndex] = N
     """
     if index is None:
         index = get_medicine_index()
+
+    if extracted.get("is_prescription"):
+        is_prescription = True
 
     brand_query = extracted.get("brand") or ""
     detected_ingredients = extracted.get("ingredients") or []
@@ -241,6 +251,12 @@ def match_medicine(extracted: Dict[str, Any], index: Optional[MedicineIndex] = N
             b_score1 = fuzz.token_set_ratio(brand_query.lower(), cand_name.lower())
             b_score2 = fuzz.partial_ratio(brand_query.lower(), cand_name.lower())
             brand_score = max(b_score1, b_score2)
+            # If brand_query had attached strength digits (e.g. "MEFTAL-P 100"), also evaluate the base brand word
+            brand_base = re.sub(r'\b\d+(?:\.\d+)?\b', '', brand_query).strip()
+            if brand_base and len(brand_base) >= 3 and brand_base != brand_query:
+                b_score3 = fuzz.token_set_ratio(brand_base.lower(), cand_name.lower())
+                b_score4 = fuzz.partial_ratio(brand_base.lower(), cand_name.lower())
+                brand_score = max(brand_score, b_score3, b_score4)
         else:
             brand_score = 50.0
 
@@ -249,6 +265,7 @@ def match_medicine(extracted: Dict[str, Any], index: Optional[MedicineIndex] = N
         ing_score = 0.0
         strength_score = 0.0
 
+        brand_resolved = False
         if detected_ingredients and cand_salts:
             det_canons = {ing["canonical_name"] for ing in detected_ingredients if ing.get("canonical_name")}
             cand_canons = {ing["canonical_name"] for ing in cand_salts if ing.get("canonical_name")}
@@ -273,11 +290,47 @@ def match_medicine(extracted: Dict[str, Any], index: Optional[MedicineIndex] = N
                         f"Candidate contains un-detected active ingredients: {sorted(cand_canons - det_canons)}"
                     )
                 else:
-                    ing_score = 0.0
-                    composition_valid = False
+                    # Check if the single detected ingredient is actually the BRAND name with dosage
+                    # (e.g. 'Lipitor 10mg' parsed as ingredient='lipitor', strength=10; candidate='Lipitor 10mg Tablet')
+                    single_det_name = list(det_canons)[0]
+                    cand_name_lower = cand_name.lower()
+                    clean_cand_name = re.sub(r'[^a-z0-9]', ' ', cand_name_lower)
+                    clean_single_det = re.sub(r'[^a-z0-9]', ' ', single_det_name.lower()).strip()
+                    clean_brand_query = re.sub(r'[^a-z0-9]', ' ', brand_query.lower()).strip() if brand_query else ""
+                    brand_match = (
+                        (brand_score >= 75.0) and
+                        (
+                            clean_single_det in clean_cand_name
+                            or single_det_name in cand_name_lower
+                            or (clean_brand_query and clean_single_det in clean_brand_query)
+                        )
+                    )
+                    if brand_match:
+                        d_st = detected_ingredients[0].get("strength")
+                        cand_strengths = [s.get("strength") for s in cand_salts if s.get("strength") is not None]
+                        cand_nums = [float(n) for n in re.findall(r'\b\d+(?:\.\d+)?\b', cand_name)]
+                        if d_st is not None and (d_st in cand_strengths or d_st in cand_nums):
+                            ing_score = 95.0
+                            strength_score = 100.0
+                            composition_valid = True
+                            brand_resolved = True
+                        elif d_st is None:
+                            ing_score = 90.0
+                            strength_score = 85.0
+                            composition_valid = True
+                            brand_resolved = True
+                        else:
+                            ing_score = 0.0
+                            composition_valid = False
+                            rejection_reasons.append(
+                                f"Strength mismatch: detected {d_st} vs candidate {cand_strengths}"
+                            )
+                    else:
+                        ing_score = 0.0
+                        composition_valid = False
 
             # c. Strength verification (ingredient-by-ingredient)
-            if composition_valid:
+            if composition_valid and not brand_resolved:
                 strength_matches = 0
                 for d_ing in detected_ingredients:
                     d_cname = d_ing.get("canonical_name")
@@ -357,22 +410,33 @@ def match_medicine(extracted: Dict[str, Any], index: Optional[MedicineIndex] = N
                 (mfr_score * 0.05)
             )
         else:
+            has_form_evidence = bool(is_prescription and detected_form and form_compatible and form_score >= 70.0)
             overall = (
-                (brand_score * 0.55) +
+                (brand_score * (0.50 if has_form_evidence else 0.55)) +
                 (strength_score * 0.25) +
-                (form_score * 0.15) +
+                (form_score * (0.20 if has_form_evidence else 0.15)) +
                 (mfr_score * 0.05)
             )
 
-            if brand_score < 95.0:
+            if brand_score < 90.0:
                 rejection_reasons.append(
                     "No active ingredient was extracted, and brand evidence is not exact enough for verification."
                 )
                 overall = min(overall, 55.0)
 
-            if not has_brand_strength_evidence and not has_manufacturer_evidence:
+            if not has_brand_strength_evidence and not has_manufacturer_evidence and not has_form_evidence:
                 rejection_reasons.append(
                     "No active ingredient, visible strength, or manufacturer corroboration was extracted."
+                )
+                overall = min(overall, 55.0)
+
+            # If candidate name specifies a major strength number (e.g. 650 in 'Dolo 650 Tablet' or 500 in '500mg')
+            # but OCR lacks that strength corroboration, do not verify based on form alone.
+            cand_name_strengths = re.findall(r'(\d+(?:\.\d+)?)', cand_name)
+            cand_has_major_strength = any(float(n) >= 10 for n in cand_name_strengths)
+            if cand_has_major_strength and not (set(strength_numbers) & set(cand_name_strengths)):
+                rejection_reasons.append(
+                    f"Candidate specifies strength not verified in OCR text."
                 )
                 overall = min(overall, 55.0)
 

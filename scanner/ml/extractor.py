@@ -137,14 +137,34 @@ def normalize_ocr_text(raw_text: str) -> str:
     return normalized
 
 
+DOSAGE_FORM_ABBREVIATIONS = [
+    (re.compile(r'\b(?:syp|syr)\b', re.IGNORECASE), "Syrup"),
+    (re.compile(r'\b(?:susp)\b', re.IGNORECASE), "Suspension"),
+    (re.compile(r'\b(?:tab|tabs)\b', re.IGNORECASE), "Tablet"),
+    (re.compile(r'\b(?:cap|caps)\b', re.IGNORECASE), "Capsule"),
+    (re.compile(r'\b(?:inj)\b', re.IGNORECASE), "Injection"),
+    (re.compile(r'\b(?:oint)\b', re.IGNORECASE), "Ointment"),
+    (re.compile(r'\b(?:gtt|drops?)\b', re.IGNORECASE), "Drops"),
+    (re.compile(r'\b(?:soln?|sol)\b', re.IGNORECASE), "Solution"),
+    (re.compile(r'\b(?:inh|inhaler)\b', re.IGNORECASE), "Inhaler"),
+    (re.compile(r'\b(?:resp)\b', re.IGNORECASE), "Respules"),
+]
+
+
 def extract_dosage_form(text: str) -> Optional[str]:
     """
     Detect pharmaceutical dosage form (Tablet, Capsule, Syrup, etc.).
+    Supports full names and standard medical abbreviations (Syp, Tab, Cap, etc.).
     """
     for form in DOSAGE_FORMS:
         # Match as distinct word
         if re.search(r'\b' + re.escape(form) + r'(?:s|\b)', text, re.IGNORECASE):
             return form
+
+    for pattern, form in DOSAGE_FORM_ABBREVIATIONS:
+        if pattern.search(text):
+            return form
+
     return None
 
 
@@ -198,11 +218,13 @@ def extract_brand_candidate(text: str) -> Optional[str]:
     for i, w in enumerate(words):
         clean_w = re.sub(r'[^a-zA-Z0-9-]', '', w)
         if len(clean_w) >= 2 and clean_w.lower() not in exclude_words and not clean_w.isdigit():
-            # Check if immediately following word is a strength number (e.g. "650", "625", "500")
+            # Check if immediately following word is a strength number (e.g. "650", "625", "500", "250/5")
             if i + 1 < len(words):
-                next_clean = re.sub(r'[^0-9]', '', words[i + 1])
-                if next_clean and 1 <= len(next_clean) <= 4:
-                    return f"{clean_w} {next_clean}"
+                num_match = re.search(r'(\d+(?:\.\d+)?)', words[i + 1])
+                if num_match:
+                    next_clean = num_match.group(1)
+                    if 1 <= len(next_clean) <= 4:
+                        return f"{clean_w} {next_clean}"
             return clean_w
 
     return None
