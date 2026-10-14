@@ -32,7 +32,12 @@ from .gemini_vision import (
     NO_TEXT_DETECTED,
 )
 from .groq_extractor import extract_medicines_with_groq
-from .extractor import extract_structured_ocr, normalize_ocr_text, extract_dosage_form
+from .extractor import (
+    extract_structured_ocr,
+    normalize_ocr_text,
+    extract_dosage_form,
+    build_descriptive_medicine_name,
+)
 from .medicine_index import get_medicine_index
 from .medicine_matcher import match_medicine, CONFIDENCE_THRESHOLD
 from .alternative_matcher import find_top_cheaper_alternatives
@@ -75,7 +80,31 @@ def _check_trocr_credibility(trocr_text: str) -> Tuple[bool, str]:
 
 # ── Medicine package scan with controlled recovery ────────────────────────────
 
-def scan_medicine_package(image_pil) -> Dict[str, Any]:
+def is_prescription_text(text: str) -> bool:
+    """
+    Check if the text contains multiple clear markers of a doctor's prescription.
+    """
+    if not text:
+        return False
+    rx_patterns = [
+        r'\b(?:m\.?d\.?|mbbs|dr\.|doctor|clinic|hospital|physician)\b',
+        r'\b(?:rx|r/x|advice|treatment)\b',
+        r'\b(?:sig:?|tabs?\s*no\.?|take\s+\d+|every\s*day|refill)\b',
+        r'\b(?:syp|syrup)\s+[a-z0-9\-]+',
+        r'\b(?:tds|sos|q\d+h|od|bd)\b',
+        r'\b(?:dea\s*no|license\s*no|reg\.?\s*no)\b',
+        r'\b(?:clinical\s*description|urti|lrti|diagnosis|patient\s*name)\b',
+    ]
+    matches = sum(1 for p in rx_patterns if re.search(p, text, re.I))
+    return matches >= 2
+
+
+def scan_medicine_package(
+    image_pil,
+    cached_gemini_res: Optional[Dict[str, Any]] = None,
+    cropped_pil: Optional[Any] = None,
+    yolo_hit: Optional[bool] = None,
+) -> Dict[str, Any]:
     """
     Execute precision medicine package/strip scanning workflow:
     1. YOLO strip crop
@@ -89,7 +118,8 @@ def scan_medicine_package(image_pil) -> Dict[str, Any]:
     """
     try:
         # 1. Detect and crop strip/label
-        cropped_pil, yolo_hit = crop_strip(image_pil)
+        if cropped_pil is None or yolo_hit is None:
+            cropped_pil, yolo_hit = crop_strip(image_pil)
 
         # 2. Run TrOCR on crop
         trocr_text = run_ocr(cropped_pil)
@@ -108,7 +138,20 @@ def scan_medicine_package(image_pil) -> Dict[str, Any]:
             trocr_extracted = extract_structured_ocr(trocr_text)
             trocr_match = match_medicine(trocr_extracted)
 
-        if is_trocr_credible and trocr_match and trocr_match.get("status") == "verified":
+        has_corroboration = bool(
+            trocr_extracted and (
+                trocr_extracted.get("ingredients") or trocr_extracted.get("manufacturer")
+            )
+        )
+
+        aspect_ratio = (image_pil.height / max(1, image_pil.width)) if image_pil else 1.0
+
+        # Anti-hallucination guard: if image is document-like and no genuine blister cavities were found,
+        # TrOCR LM output cannot be trusted without Gemini Vision verification
+        if not yolo_hit and aspect_ratio >= 0.95:
+            need_recovery = True
+            recovery_reason = "Document-like image without blister cavity verification requires vision verification"
+        elif is_trocr_credible and trocr_match and trocr_match.get("status") == "verified" and has_corroboration:
             trocr_med = trocr_match.get("medicine")
             trocr_conf = trocr_match.get("confidence_breakdown", {}).get("overall", 0.0)
 
@@ -124,36 +167,56 @@ def scan_medicine_package(image_pil) -> Dict[str, Any]:
                 recovery_reason = f"TrOCR confidence ({trocr_conf}%) below threshold ({CONFIDENCE_THRESHOLD}%)"
         else:
             need_recovery = True
-            recovery_reason = credibility_reason if not is_trocr_credible else (
-                f"TrOCR database verification failed: {'; '.join(trocr_match.get('rejection_reasons', ['unverified'])) if trocr_match else 'unverified'}"
-            )
+            if is_trocr_credible and trocr_match and trocr_match.get("status") == "verified" and not has_corroboration:
+                recovery_reason = "TrOCR text lacks active ingredient/manufacturer corroboration"
+            else:
+                recovery_reason = credibility_reason if not is_trocr_credible else (
+                    f"TrOCR database verification failed: {'; '.join(trocr_match.get('rejection_reasons', ['unverified'])) if trocr_match else 'unverified'}"
+                )
+
 
         # 3. Controlled Gemini Vision Recovery
-        gemini_res: Dict[str, Any] = {}
+        gemini_res: Dict[str, Any] = cached_gemini_res or {}
         gemini_text = ""
         gemini_extracted = None
         gemini_match = None
         recovery_used = False
 
         if need_recovery:
-            logger.info("scan_medicine_package: invoking Gemini Vision OCR recovery (%s)", recovery_reason)
             recovery_used = True
+            if cached_gemini_res:
+                logger.info("scan_medicine_package: reusing cached Gemini Vision OCR result")
+                gemini_res = cached_gemini_res
+            else:
+                logger.info("scan_medicine_package: invoking Gemini Vision OCR recovery (%s)", recovery_reason)
+                gemini_input = image_pil if image_pil is not None else cropped_pil
+                gemini_res = gemini_vision_ocr_structured(gemini_input)
 
-            # Send full image as primary context to avoid cropped-out text
-            gemini_input = image_pil if image_pil is not None else cropped_pil
-            gemini_res = gemini_vision_ocr_structured(gemini_input)
 
             if gemini_res.get("success") and not gemini_res.get("is_empty"):
                 raw_gem = gemini_res.get("raw_text", "")
                 if raw_gem and raw_gem != NO_TEXT_DETECTED:
+                    # If Gemini Vision OCR demonstrates this is a prescription document, delegate to scan_prescription
+                    if is_prescription_text(raw_gem):
+                        logger.info("scan_medicine_package: vision OCR identified prescription markers — delegating to scan_prescription")
+                        return scan_prescription(image_pil, cached_gemini_res=gemini_res)
+
                     gemini_text = gemini_res.get("plain_text") or strip_preamble(raw_gem)
                     if gemini_text:
+                        if is_prescription_text(gemini_text):
+                            logger.info("scan_medicine_package: vision plain text identified prescription markers — delegating to scan_prescription")
+                            return scan_prescription(image_pil, cached_gemini_res=gemini_res)
+
                         gemini_extracted = extract_structured_ocr(gemini_text)
 
                         # Incorporate structured label fields from Gemini if available
                         struct = gemini_res.get("structured", {})
                         if struct.get("brand") and (not gemini_extracted.get("brand") or gemini_extracted.get("brand").lower() != struct["brand"].lower()):
                             gemini_extracted["brand"] = struct["brand"]
+                        if struct.get("generic"):
+                            gemini_extracted["generic"] = struct["generic"]
+                        if struct.get("detected_label_name"):
+                            gemini_extracted["detected_label_name"] = struct["detected_label_name"]
                         if struct.get("ingredients"):
                             parsed_salts = parse_salt(struct["ingredients"])
                             if parsed_salts:
@@ -171,7 +234,12 @@ def scan_medicine_package(image_pil) -> Dict[str, Any]:
         final_match = None
         disagreement_detected = bool(trocr_text and gemini_text and trocr_text.strip().lower() != gemini_text.strip().lower())
 
-        trocr_verified = bool(trocr_match and trocr_match.get("status") == "verified" and trocr_match.get("medicine"))
+        trocr_verified = bool(
+            trocr_match and
+            trocr_match.get("status") == "verified" and
+            trocr_match.get("medicine") and
+            has_corroboration
+        )
         gemini_verified = bool(gemini_match and gemini_match.get("status") == "verified" and gemini_match.get("medicine"))
 
         if not need_recovery and trocr_verified:
@@ -256,13 +324,18 @@ def scan_medicine_package(image_pil) -> Dict[str, Any]:
                     rejection_reasons = ["Could not confidently verify medicine identity in database."]
 
             if recovery_used and gemini_res.get("success") is False and not trocr_verified:
-                return {
-                    "success": False, "status": "ocr_service_error", "mode": "medicine_package",
-                    "message": "Text recognition service is temporarily unavailable. Please try again later.",
-                    "ocr_error": gemini_res.get("error_type", "API_ERROR"),
-                    "raw_ocr": final_ocr, "raw_ocr_trocr": trocr_text,
-                    "raw_ocr_gemini": "", "recovery_used": True, "medicines": [], "alternatives": [],
-                }
+                if not trocr_text or not trocr_text.strip():
+                    return {
+                        "success": False, "status": "ocr_service_error", "mode": "medicine_package",
+                        "message": "Text recognition service is temporarily unavailable. Please try again later.",
+                        "ocr_error": gemini_res.get("error_type", "API_ERROR"),
+                        "raw_ocr": final_ocr, "raw_ocr_trocr": trocr_text,
+                        "raw_ocr_gemini": "", "recovery_used": True, "medicines": [], "alternatives": [],
+                    }
+                logger.warning(
+                    "scan_medicine_package: Gemini Vision models failed (%s) — falling back to trained TrOCR output",
+                    gemini_res.get("error", "API error"),
+                )
             return {
                 "success": False,
                 "status": "unverified",
@@ -279,6 +352,7 @@ def scan_medicine_package(image_pil) -> Dict[str, Any]:
                 "recovery_reason": recovery_reason if recovery_used else None,
                 "disagreement_detected": disagreement_detected,
                 "normalized_ocr": final_extracted.get("normalized_ocr", "") if final_extracted else "",
+                "_gemini_res": gemini_res,
                 "extracted": final_extracted or {},
                 "medicines": [],
                 "alternatives": [],
@@ -295,8 +369,27 @@ def scan_medicine_package(image_pil) -> Dict[str, Any]:
         verified_med = final_match["medicine"]
         confidence = final_match.get("confidence_breakdown", {})
 
+        # Ensure manufacturer is populated from Vision extraction / database / known catalog
+        from .price_verifier import KNOWN_BRAND_MRPS
+        mfr = (verified_med.get("manufacturer") or "").strip()
+        if not mfr and final_extracted:
+            mfr = (final_extracted.get("manufacturer") or "").strip()
+        if not mfr:
+            name_l = (verified_med.get("name") or "").lower()
+            for k, info in KNOWN_BRAND_MRPS.items():
+                if k in name_l:
+                    mfr = info[3]
+                    break
+        if not mfr:
+            mfr = "Registered Manufacturer"
+        verified_med["manufacturer"] = mfr
+
         # Top 5 Cheaper Bioequivalent Alternatives
         alternatives = find_top_cheaper_alternatives(verified_med, limit=5)
+
+        # Backfill price if missing in database
+        if verified_med.get("price") is None and verified_med.get("price_verification"):
+            verified_med["price"] = verified_med["price_verification"].get("package_price_inr")
 
         max_savings = None
         max_savings_percent = None
@@ -335,13 +428,26 @@ def scan_medicine_package(image_pil) -> Dict[str, Any]:
             verified_med.get("name", "").split()[0]
         )
 
+        generic_label = (final_extracted.get("generic") if final_extracted else None)
+        descriptive_name = build_descriptive_medicine_name(
+            verified_med=verified_med,
+            extracted=final_extracted,
+            generic_text=generic_label,
+        )
+
+        # Store descriptive medicine name on verified_med for template binding
+        verified_med["detected_name"] = descriptive_name
+        verified_med["brand"] = brand_display
+
         return {
             "success": True,
             "status": "verified",
             "mode": "medicine_package",
+            "detected_name": descriptive_name,
             "medicine": {
                 "id": verified_med.get("id"),
                 "name": verified_med.get("name"),
+                "detected_name": descriptive_name,
                 "brand": brand_display,
                 "manufacturer": verified_med.get("manufacturer") or "Registered Manufacturer",
                 "dosage_form": verified_med.get("dosage_form") or (final_extracted.get("dosage_form") if final_extracted else None) or "Tablet",
@@ -349,6 +455,7 @@ def scan_medicine_package(image_pil) -> Dict[str, Any]:
                 "salt": verified_med.get("salt"),
                 "schedule": schedule,
                 "confidence": confidence.get("overall", 0.0),
+                "price_verification": verified_med.get("price_verification"),
             },
             "medicines": [verified_med],
             "ingredients": display_ingredients,
@@ -364,6 +471,7 @@ def scan_medicine_package(image_pil) -> Dict[str, Any]:
             "recovery_reason": recovery_reason if recovery_used else None,
             "disagreement_detected": disagreement_detected,
             "normalized_ocr": final_extracted.get("normalized_ocr", "") if final_extracted else "",
+            "_gemini_res": gemini_res,
             "confidence_breakdown": confidence,
             "verification": {
                 "matched_by": "Multi-tier Database Matching & Composition Validation",
@@ -388,19 +496,24 @@ def scan_medicine_package(image_pil) -> Dict[str, Any]:
 _RX_METADATA_IGNORE = re.compile(
     r'\b(?:m\.?d\.?|mbbs|dr\.|doctor|clinic|hospital|chc|phc|healthcare|pharmacy|physician|'
     r'state\s*license|dea\s*no|license\s*no|reg\.?\s*no|phone|tel|fax|email|street|road|avenue|'
-    r'lane|suite|pincode|zip\s*code|nemmara|thrissur|jipmer)\b'
+    r'lane|suite|pincode|zip\s*code|nemmara|thrissur|jipmer|maryland|libertyville)\b'
     r'|^\s*(?:name|patient|age|sex|gender|date|address|uhid|opd|ipd|weight|wt)\b'
     r'|^\s*(?:clinical\s*description|advice|adv:|rx:|treatment|diagnosis|symptoms?)\b'
-    r'|^\s*(?:urti|lrti|fever|cough|cold|rr\s*[-:]|rs\s*[-:]|bp\s*[-:]|pr\s*[-:]|spo2)\b'
+    r'|^\s*(?:c/o|imp:|o/e|urti|lrti|fever|cough|cold|rr\s*[-:]|rs\s*[-:]|bp\s*[-:]|pr\s*[-:]|spo2|rbs)\b'
     r'|^\s*(?:refill|label|generic\s*if\s*available|signature|directions?|sig\b|every\s*day|take\s|with\s*water)\b'
-    r'|^\s*(?:\d+(?:\.\d+)?\s*(?:mg|ml|mcg|g|iu|%)|tabs?|caps?|nos?\.?\s*\d+)\s*$'
+    r'|^\s*(?:\d+(?:\.\d+)?\s*(?:mg|ml|mcg|g|iu|%)(?!\w)|tabs?|caps?|nos?\.?\s*\d+)\s*$'
+    r'|^\s*(?:tabs?|caps?|tablets?|capsules?|syrup|syp|suspension|inj|injections?|drops?|solution|cream|gel|ointment)\s*$'
     r'|^\s*[:\-\.]+\s*'
     r'|^\s*(?:ph|tel|mob|mobile|cell)\s*[:\.]',
     re.IGNORECASE
 )
 
 
-def extract_prescription_candidates(ocr_text: str, gemini_structured: Optional[Dict[str, Any]] = None) -> List[str]:
+def extract_prescription_candidates(
+    ocr_text: str,
+    gemini_structured: Optional[Dict[str, Any]] = None,
+    raw_gemini_text: str = "",
+) -> List[str]:
     """
     Extract high-precision medicine query strings from prescription OCR text.
     Filters out doctor/clinic headers, patient info, and dosage directions.
@@ -408,20 +521,27 @@ def extract_prescription_candidates(ocr_text: str, gemini_structured: Optional[D
     candidates = []
     seen = set()
 
-    def _add(cand: str):
+    def _add(cand: Any):
+        if not cand or not isinstance(cand, str):
+            return
         c = cand.strip()
-        # Remove non-ASCII characters (such as Malayalam/regional annotations)
+        # Remove non-ASCII characters (such as regional annotations)
         c = re.sub(r'[^\x00-\x7F]+', ' ', c).strip()
-        # Convert pediatric concentration fractions like (250/5) -> 250
-        c = re.sub(r'\((\d+)\s*/\s*\d+\)', r'\1', c)
-        c = re.sub(r'\b(\d+)\s*/\s*\d+\b', r'\1', c)
+        # Convert pediatric concentration fractions like (250/5) -> 250mg
+        c = re.sub(r'\((\d+(?:\.\d+)?)\s*/\s*\d+(?:\.\d+)?\)', r'\1mg', c)
+        c = re.sub(r'\b(\d+(?:\.\d+)?)\s*/\s*\d+(?:\.\d+)?\b', r'\1mg', c)
         # Strip administration directions & dosage schedules
         c = re.sub(r'\b(?:tabs?|caps?|no\.?|nos\.?)\s*\d+.*$', '', c, flags=re.I).strip()
-        c = re.sub(r'\b\d+(?:\.\d+)?\s*ml\b.*$', '', c, flags=re.I).strip()
+        # Strip dose volumes like 4mL, 3 ml, but NOT concentrations like 100mg or 250mg
+        c = re.sub(r'(?<!/)\b\d+(?:\.\d+)?\s*ml\b.*$', '', c, flags=re.I).strip()
         c = re.sub(r'\b(?:sig:?|od|bd|tds|qid|hs|sos|once|twice|daily|every\s*day|q\d+h).*$', '', c, flags=re.I).strip()
         c = re.sub(r'\bx\s*\d+\s*[dhmw].*$', '', c, flags=re.I).strip()
         c = re.sub(r'[-–—]\s*\d+.*$', '', c).strip()
-        c = re.sub(r'^(?:rx|r/x|\(?\d+\)?[\.\s]*)\s*', '', c, flags=re.I).strip()
+        # Strip common clinical prefixes like Adv:, Advice:, Rx:, bullets, numbering
+        c = re.sub(r'^(?:rx|r/x|adv(?:ice)?[:\.]?|->|[*•]|\(?\d+\)?[\.\s]*)\s*', '', c, flags=re.I).strip()
+        # Strip route parentheticals like (iv), (im), (po), (stat)
+        c = re.sub(r'\s*\(\s*(?:iv|im|sc|po|stat)\s*\)', '', c, flags=re.I).strip()
+        c = re.sub(r'\b(?:iv|im|sc|po|stat)\b.*$', '', c, flags=re.I).strip()
         c = re.sub(r'^[:\-\.\s]+', '', c).strip()
         c = re.sub(r'\s+', ' ', c).strip()
         if len(c) >= 3 and not _RX_METADATA_IGNORE.search(c):
@@ -432,10 +552,10 @@ def extract_prescription_candidates(ocr_text: str, gemini_structured: Optional[D
                     candidates.append(c)
 
     # 1. Gemini structured fields (if available)
-    if gemini_structured:
-        brand = gemini_structured.get("brand") or ""
-        strength = gemini_structured.get("strength") or ""
-        generic = gemini_structured.get("generic") or ""
+    if gemini_structured and isinstance(gemini_structured, dict):
+        brand = str(gemini_structured.get("brand") or "").strip()
+        strength = str(gemini_structured.get("strength") or "").strip()
+        generic = str(gemini_structured.get("generic") or "").strip()
         if brand and strength:
             _add(f"{brand} {strength}")
         if brand:
@@ -444,6 +564,13 @@ def extract_prescription_candidates(ocr_text: str, gemini_structured: Optional[D
             _add(f"{generic} {strength}")
         elif generic:
             _add(generic)
+
+    # Also parse any BRAND: lines from raw_gemini_text if multi-medicine structured output was generated
+    if raw_gemini_text:
+        for m in re.finditer(r'^\s*BRAND:\s*(.+)$', raw_gemini_text, flags=re.MULTILINE | re.IGNORECASE):
+            b_line = m.group(1).strip()
+            if b_line and b_line.upper() not in ("NONE", "NULL", "BLANK", "N/A"):
+                _add(b_line)
 
     if not ocr_text:
         return candidates
@@ -470,7 +597,7 @@ def extract_prescription_candidates(ocr_text: str, gemini_structured: Optional[D
 
         if re.search(r'\b(?:tab|cap|inj|syp|syr|susp|oint|drop|resp)\b', line, re.I) or re.search(r'\d+(?:\.\d+)?\s*(?:mg|ml|mcg|g|iu|%)\b', line, re.I):
             _add(line)
-        elif len(line) >= 4 and not any(w in line.lower() for w in ['name', 'date', 'street', 'phone', 'address', 'dr.', 'mbbs', 'chc', 'phc']):
+        elif len(line) >= 4 and not any(w in line.lower() for w in ['name', 'date', 'street', 'phone', 'address', 'dr.', 'mbbs', 'chc', 'phc', 'reg.']):
             _add(line)
 
     return candidates
@@ -478,7 +605,10 @@ def extract_prescription_candidates(ocr_text: str, gemini_structured: Optional[D
 
 # ── Prescription scan ─────────────────────────────────────────────────────────
 
-def scan_prescription(image_pil) -> Dict[str, Any]:
+def scan_prescription(
+    image_pil,
+    cached_gemini_res: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     """
     Execute prescription scanning workflow:
     1. TrOCR full-image text recognition
@@ -491,13 +621,29 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
         trocr_text = run_ocr(image_pil)
         is_credible, credibility_reason = _check_trocr_credibility(trocr_text)
 
-        recovery_used = False
-        gemini_res: Dict[str, Any] = {}
-        gemini_text = ""
-        active_ocr = trocr_text
+        # Prescription documents have line breaks or clinical dosage directions.
+        # A single packaging name without clinical directions is a strip prior hallucination on a document.
+        has_rx_structure = bool(
+            trocr_text and (
+                re.search(r'[\r\n]', trocr_text) or
+                re.search(r'\b(?:1-0-1|1-1-1|0-1-0|0-0-1|tds|bd|od|qid|sos|q\d+h|sig|refill|rx|adv(?:ice)?)\b', trocr_text, re.I) or
+                re.search(r'\b(?:tab|cap|syp|inj)\b.*\b(?:tab|cap|syp|inj)\b', trocr_text, re.I)
+            )
+        )
 
-        # 2. Check if recovery is required
-        if not is_credible:
+        recovery_used = bool(cached_gemini_res and cached_gemini_res.get("success"))
+        gemini_res: Dict[str, Any] = cached_gemini_res or {}
+        gemini_text = ""
+        active_ocr = trocr_text if (is_credible and has_rx_structure) else ""
+
+        # 2. Check if recovery is required or cached
+        if recovery_used:
+            raw_gem = gemini_res.get("raw_text", "")
+            if raw_gem and raw_gem != NO_TEXT_DETECTED:
+                gemini_text = gemini_res.get("plain_text") or strip_preamble(raw_gem)
+                if gemini_text:
+                    active_ocr = gemini_text
+        elif not active_ocr:
             recovery_used = True
             gemini_res = gemini_vision_ocr_structured(image_pil)
             if gemini_res.get("success") and not gemini_res.get("is_empty"):
@@ -509,13 +655,20 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
 
         if not active_ocr:
             if recovery_used and gemini_res.get("success") is False:
-                return {
-                    "success": False, "status": "ocr_service_error", "mode": "prescription",
-                    "message": "Text recognition service is temporarily unavailable. Please try again later.",
-                    "ocr_error": gemini_res.get("error_type", "API_ERROR"), "raw_ocr": "",
-                    "raw_ocr_trocr": trocr_text, "raw_ocr_gemini": "", "recovery_used": True,
-                    "medicines": [], "per_medicine_results": {}
-                }
+                if not trocr_text or not trocr_text.strip():
+                    return {
+                        "success": False, "status": "ocr_service_error", "mode": "prescription",
+                        "message": "Text recognition service is temporarily unavailable. Please try again later.",
+                        "ocr_error": gemini_res.get("error_type", "API_ERROR"), "raw_ocr": "",
+                        "raw_ocr_trocr": trocr_text, "raw_ocr_gemini": "", "recovery_used": True,
+                        "_gemini_res": gemini_res,
+                        "medicines": [], "per_medicine_results": {}
+                    }
+                logger.warning(
+                    "scan_prescription: Gemini Vision failed (%s) — falling back to trained TrOCR output",
+                    gemini_res.get("error", "API error"),
+                )
+                active_ocr = trocr_text
             return {
                 "success": False,
                 "status": "unverified",
@@ -525,6 +678,7 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
                 "raw_ocr_trocr": trocr_text,
                 "raw_ocr_gemini": gemini_res.get("raw_text", "") if recovery_used else "",
                 "recovery_used": recovery_used,
+                "_gemini_res": gemini_res,
                 "medicines": [],
                 "per_medicine_results": {}
             }
@@ -535,7 +689,8 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
         # 3a. Extract candidate medicine lines
         candidates = extract_prescription_candidates(
             active_ocr,
-            gemini_structured=gemini_res.get("structured") if recovery_used else None
+            gemini_structured=gemini_res.get("structured") if recovery_used else None,
+            raw_gemini_text=gemini_res.get("raw_text", "") if recovery_used else "",
         )
 
         found_medicines = []
@@ -557,7 +712,11 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
         if not found_medicines and not recovery_used:
             logger.info("scan_prescription: local extraction found 0 medicines — trying Gemini recovery")
             recovery_used = True
-            gemini_res = gemini_vision_ocr_structured(image_pil)
+            if cached_gemini_res:
+                gemini_res = cached_gemini_res
+            else:
+                gemini_res = gemini_vision_ocr_structured(image_pil)
+
             if gemini_res.get("success") and not gemini_res.get("is_empty"):
                 raw_gem = gemini_res.get("raw_text", "")
                 if raw_gem and raw_gem != NO_TEXT_DETECTED:
@@ -599,6 +758,8 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
         # 4. Build per_medicine_results for multiple medicine switching
         per_medicine_results = {}
         for med in found_medicines:
+            descriptive_med_name = build_descriptive_medicine_name(verified_med=med)
+            med["detected_name"] = descriptive_med_name
             display_name = med.get("name") or "Medication"
             alts = find_top_cheaper_alternatives(med, limit=5)
             med_safety = get_drug_safety_info(med.get("parsed_salt", []))
@@ -627,6 +788,7 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
                 "message": "Text recognition service is temporarily unavailable. Please try again later.",
                 "ocr_error": gemini_res.get("error_type", "API_ERROR"), "raw_ocr": active_ocr,
                 "raw_ocr_trocr": trocr_text, "raw_ocr_gemini": "", "recovery_used": True,
+                "_gemini_res": gemini_res,
                 "medicines": [], "per_medicine_results": {}
             }
 
@@ -638,6 +800,7 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
             "raw_ocr_trocr": trocr_text,
             "raw_ocr_gemini": gemini_res.get("raw_text", "") if recovery_used else "",
             "recovery_used": recovery_used,
+            "_gemini_res": gemini_res,
             "normalized_ocr": norm_text,
             "medicines": found_medicines,
             "medicine": primary_med,
@@ -679,26 +842,42 @@ def scan_image(image_path: str, mode: str = "auto") -> Dict[str, Any]:
         if mode == "prescription":
             return scan_prescription(image_pil)
 
-        # Auto-mode: choose initial preference based on aspect ratio
-        is_tall_document = (image_pil.height / max(1, image_pil.width)) >= 1.15
-        if is_tall_document:
-            logger.info("Auto-mode: tall aspect ratio detected — prioritizing prescription scan")
+        # Auto-mode: quick strip detection check
+        cropped_pil, yolo_hit = crop_strip(image_pil)
+        aspect_ratio = image_pil.height / max(1, image_pil.width)
+        # Prioritize prescription scan if NO strip was detected AND aspect ratio indicates a document (>= 0.95)
+        is_likely_document = (not yolo_hit) and (aspect_ratio >= 0.95)
+
+        if is_likely_document:
+            logger.info("Auto-mode: document with no strip detected — prioritizing prescription scan")
             rx_res = scan_prescription(image_pil)
             if rx_res.get("status") == "verified" and rx_res.get("medicines"):
                 return rx_res
             logger.info("Auto-mode: prescription scan inconclusive — trying package scan")
-            res = scan_medicine_package(image_pil)
+            res = scan_medicine_package(
+                image_pil,
+                cached_gemini_res=rx_res.get("_gemini_res"),
+                cropped_pil=cropped_pil,
+                yolo_hit=yolo_hit,
+            )
             if res.get("status") == "verified" and res.get("medicine"):
                 return res
             return rx_res if rx_res.get("raw_ocr") else res
         else:
-            logger.info("Auto-mode: running package scan")
-            res = scan_medicine_package(image_pil)
+            logger.info("Auto-mode: prioritizing medicine package scan")
+            res = scan_medicine_package(
+                image_pil,
+                cropped_pil=cropped_pil,
+                yolo_hit=yolo_hit,
+            )
             if res.get("status") == "verified" and res.get("medicine"):
                 return res
 
-            logger.info("Auto-mode: trying prescription scan")
-            rx_res = scan_prescription(image_pil)
+            logger.info("Auto-mode: package scan inconclusive — trying prescription scan")
+            rx_res = scan_prescription(
+                image_pil,
+                cached_gemini_res=res.get("_gemini_res"),
+            )
             if rx_res.get("status") == "verified" and rx_res.get("medicines"):
                 return rx_res
 
@@ -707,6 +886,7 @@ def scan_image(image_path: str, mode: str = "auto") -> Dict[str, Any]:
     except Exception as exc:
         logger.error("scan_image failed on %s: %s", image_path, exc, exc_info=True)
         return {"success": False, "status": "unverified", "error": str(exc)}
+
 
 
 # ── Load models on import ─────────────────────────────────────────────────────

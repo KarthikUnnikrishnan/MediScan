@@ -30,8 +30,8 @@ _ollama_available = False
 _active_tier      = None
 _gemini_client    = None
 _gemini_available = False
-# Configurable Gemini model name (default: gemini-2.5-flash)
-_GEMINI_MODEL     = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+# Configurable Gemini model name (default: gemini-3.5-flash-lite)
+_GEMINI_MODEL     = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 _OLLAMA_VISION_MODEL = "llava"
 _OLLAMA_VISION_URL   = "http://localhost:11434/api/generate"
 

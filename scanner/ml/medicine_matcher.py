@@ -45,7 +45,7 @@ def _extract_strength_numbers(brand: str, normalized_ocr: str) -> List[str]:
     blister count or a hallucinated trailing token are not strength evidence.
     """
     numbers = re.findall(
-        r'\b(\d+(?:\.\d+)?)\s*(?:mg|ml|mcg|g|iu)\b',
+        r'\b(\d+(?:\.\d+)?)\s*(?:mg|ml|mcg|g|iu|%)(?!\w)',
         f"{brand} {normalized_ocr}",
         re.IGNORECASE,
     )
@@ -184,6 +184,16 @@ def match_medicine(
     if brand_query:
         for med in index.search_alias(brand_query):
             add_candidate(med)
+        # Search hyphen and spacing variants (e.g. "P-650" <-> "P 650" <-> "P650", "1-AL" <-> "1 AL")
+        for alt_q in [
+            brand_query.replace("-", " "),
+            brand_query.replace(" ", "-"),
+            brand_query.replace("-", ""),
+            brand_query.replace(" ", ""),
+        ]:
+            if alt_q and alt_q != brand_query:
+                for med in index.search_alias(alt_q):
+                    add_candidate(med)
         brand_base = re.split(r'[-\s\d]+', brand_query)[0]
         if brand_base and len(brand_base) >= 3 and brand_base != brand_query:
             for med in index.search_alias(brand_base):
@@ -248,15 +258,34 @@ def match_medicine(
         # a. Brand score
         brand_score = 0.0
         if brand_query:
-            b_score1 = fuzz.token_set_ratio(brand_query.lower(), cand_name.lower())
-            b_score2 = fuzz.partial_ratio(brand_query.lower(), cand_name.lower())
-            brand_score = max(b_score1, b_score2)
-            # If brand_query had attached strength digits (e.g. "MEFTAL-P 100"), also evaluate the base brand word
-            brand_base = re.sub(r'\b\d+(?:\.\d+)?\b', '', brand_query).strip()
-            if brand_base and len(brand_base) >= 3 and brand_base != brand_query:
-                b_score3 = fuzz.token_set_ratio(brand_base.lower(), cand_name.lower())
-                b_score4 = fuzz.partial_ratio(brand_base.lower(), cand_name.lower())
-                brand_score = max(brand_score, b_score3, b_score4)
+            clean_b = re.sub(r'[^a-z0-9]', '', brand_query.lower())
+            clean_c = re.sub(r'[^a-z0-9]', '', cand_name.lower())
+
+            # Exact compacted match or prefix (e.g. 'p650' in 'p650tablet' or '1al' in '1altablet')
+            if clean_b and (clean_b == clean_c or clean_c.startswith(clean_b) or f"{clean_b}tablet" in clean_c or f"{clean_b}capsule" in clean_c):
+                brand_score = 95.0
+            else:
+                b_words = [re.sub(r'[^a-z0-9]', '', w.lower()) for w in brand_query.split() if w.strip()]
+                c_words = [re.sub(r'[^a-z0-9]', '', w.lower()) for w in cand_name.split() if w.strip()]
+                first_b = b_words[0] if b_words else ""
+                first_c = c_words[0] if c_words else ""
+
+                if first_b and first_c and first_b == first_c:
+                    brand_score = 95.0
+                elif first_b and first_c and len(first_b) <= 2 and first_c != first_b:
+                    # Short codes like 'p' or 'd' cannot match completely different words like 'atpera' or 'algina'
+                    brand_score = 20.0
+                elif first_b and first_c and fuzz.ratio(first_b, first_c) < 65:
+                    brand_score = 30.0
+                else:
+                    b_score1 = fuzz.token_set_ratio(brand_query.lower(), cand_name.lower())
+                    b_score2 = fuzz.partial_ratio(brand_query.lower(), cand_name.lower())
+                    brand_score = max(b_score1, b_score2)
+                    brand_base = re.sub(r'\b\d+(?:\.\d+)?\b', '', brand_query).strip()
+                    if brand_base and len(brand_base) >= 3 and brand_base != brand_query:
+                        b_score3 = fuzz.token_set_ratio(brand_base.lower(), cand_name.lower())
+                        b_score4 = fuzz.partial_ratio(brand_base.lower(), cand_name.lower())
+                        brand_score = max(brand_score, b_score3, b_score4)
         else:
             brand_score = 50.0
 
@@ -376,11 +405,13 @@ def match_medicine(
                 elif cand_numbers and target_num not in cand_numbers:
                     # Candidate name specifies a different number and composition does not match
                     strength_score = min(strength_score, 40.0)
+                    composition_valid = False
                     rejection_reasons.append(
                         f"Visible strength/number {target_num} does not match candidate name."
                     )
                 elif not cand_salts and target_num not in cand_name:
                     strength_score = min(strength_score, 40.0)
+                    composition_valid = False
                     rejection_reasons.append(
                         f"Visible strength/number {target_num} does not match candidate name."
                     )
@@ -411,12 +442,20 @@ def match_medicine(
             )
         else:
             has_form_evidence = bool(is_prescription and detected_form and form_compatible and form_score >= 70.0)
-            overall = (
-                (brand_score * (0.50 if has_form_evidence else 0.55)) +
-                (strength_score * 0.25) +
-                (form_score * (0.20 if has_form_evidence else 0.15)) +
-                (mfr_score * 0.05)
-            )
+            if is_prescription and has_form_evidence and strength_score == 0:
+                # In prescriptions, doctors frequently omit strength for standard brands/pediatric liquids (e.g. 'Syp MEFTAL-P')
+                overall = (
+                    (brand_score * 0.65) +
+                    (form_score * 0.25) +
+                    (mfr_score * 0.10)
+                )
+            else:
+                overall = (
+                    (brand_score * (0.50 if has_form_evidence else 0.55)) +
+                    (strength_score * 0.25) +
+                    (form_score * (0.20 if has_form_evidence else 0.15)) +
+                    (mfr_score * 0.05)
+                )
 
             if brand_score < 90.0:
                 rejection_reasons.append(
@@ -446,8 +485,15 @@ def match_medicine(
                 )
                 overall = min(overall, 60.0)
 
-        # Quality bonus for verified rows with price, manufacturer, and valid salt
-        overall += cand.get("quality_score", 0) * 0.8
+        # CRITICAL HARD BRAND VALIDATION:
+        # If a distinct brand was detected from the image / OCR (e.g. "P-650", "1-AL", "Dolo 650"):
+        # A candidate whose brand does not match (brand_score < 55.0) CANNOT be
+        # verified as the detected medicine!
+        if brand_query and len(brand_query.strip()) >= 2 and brand_score < 55.0:
+            composition_valid = False
+            rejection_reasons.append(
+                f"Brand mismatch: detected trade name '{brand_query}' does not match candidate '{cand_name}'"
+            )
 
         if not composition_valid or not form_compatible:
             overall = min(overall, 45.0)

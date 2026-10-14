@@ -24,21 +24,13 @@
             Could Not Confidently Verify
           {% endif %}
         </div>
+        {% if total_found and total_found > 1 %}
         <div class="status-pills">
-          <span class="status-pill">
-            {% if mode == 'prescription' %}
-              📋 Prescription
-            {% else %}
-              💊 Medicine Strip
-            {% endif %}
-          </span>
-          <span class="status-pill">🕐 {{ timestamp|date:"j M Y, g:i A" }}</span>
-          {% if total_found and total_found > 1 %}
           <span class="status-pill green">
             {{ total_found }} medicines found
           </span>
-          {% endif %}
         </div>
+        {% endif %}
       </div>
     </div>
     <div class="status-right">
@@ -123,17 +115,62 @@
         {% if medicines %}
           {% with med=medicines.0 %}
           <div class="detected-label">DETECTED MEDICINE</div>
-          <div class="detected-name">{{ med.name }}</div>
+          <div class="detected-name">{{ med.detected_name|default:detected_name|default:med.name }}</div>
+          <div class="detected-match-sub" style="margin-top: -0.4rem; margin-bottom: 0.85rem; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+            {% if med.brand and med.brand != 'Generic' and med.brand|lower not in med.detected_name|lower %}
+            <span class="brand-matched-tag" style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.78rem; font-weight: 500; color: #475569; background: #f1f5f9; border: 1px solid #cbd5e1; padding: 3px 9px; border-radius: 6px;">
+              🏷 Scanned Brand: <strong>{{ med.brand }}</strong>
+            </span>
+            {% endif %}
+            {% if med.name and med.name != med.detected_name and med.name != detected_name %}
+            <span class="db-matched-tag" style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.78rem; font-weight: 500; color: #0369a1; background: #f0f9ff; border: 1px solid #bae6fd; padding: 3px 9px; border-radius: 6px;">
+              ✓ Matched Database Record: <strong>{{ med.name }}</strong>
+            </span>
+            {% endif %}
+          </div>
           <div class="detected-salt-label">ACTIVE SALT</div>
           <div class="detected-salt-value">{{ med.salt }}</div>
           <div class="detected-props">
             <div class="prop-block">
               <div class="prop-block-label">MANUFACTURER</div>
-              <div class="prop-block-value">{{ med.manufacturer }}</div>
+              <div class="prop-block-value">{{ med.manufacturer|default:"Registered Manufacturer" }}</div>
             </div>
             <div class="prop-block mrp-block">
-              <div class="prop-block-label">MRP</div>
-              <div class="mrp-value">₹ {{ med.price }}</div>
+              <div class="prop-block-label">
+                {% if med.price_verification and med.price_verification.verification_status == 'verified' %}
+                  {% if med.price_verification.price_type == 'mrp' %}MRP (VERIFIED){% elif med.price_verification.price_type == 'selling_price' %}SELLING PRICE (VERIFIED){% else %}VERIFIED PRICE{% endif %}
+                {% else %}
+                  PRICE &amp; PACKAGING
+                {% endif %}
+              </div>
+              {% if med.price_verification and med.price_verification.verification_status == 'verified' %}
+                <div class="mrp-value" style="display: flex; flex-direction: column; gap: 2px;">
+                  <div style="font-size: 1.35rem; font-weight: 700; color: #0284c7; display: flex; align-items: baseline; gap: 4px;">
+                    ₹ {{ med.price_verification.unit_price_inr|floatformat:2 }}
+                    <span style="font-size: 0.85rem; font-weight: 600; color: #475569;">/ {{ med.price_verification.pack_unit|default:"tablet" }}</span>
+                  </div>
+                  <div style="font-size: 0.78rem; color: #64748b; font-weight: 500; margin-top: 2px;">
+                    ₹ {{ med.price_verification.package_price_inr|default:med.price|floatformat:2 }} for strip of {{ med.price_verification.pack_quantity|default:10 }} {{ med.price_verification.pack_unit|default:"tablet" }}s
+                    {% if med.price_verification.source_url %}
+                    &bull; <a href="{{ med.price_verification.source_url }}" target="_blank" rel="noopener" style="color: #0284c7; text-decoration: underline;">Verified ({{ med.price_verification.source_name|default:"Listing" }})</a>
+                    {% elif med.price_verification.source_name %}
+                    &bull; <span style="color: #64748b;">{{ med.price_verification.source_name }}</span>
+                    {% endif %}
+                  </div>
+                </div>
+              {% else %}
+                <div class="mrp-value" style="display: flex; flex-direction: column; gap: 4px;">
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <span>{% if med.price %}₹ {{ med.price }}{% else %}Unlisted{% endif %}</span>
+                    <span class="unverified-pill" style="font-size: 0.72rem; font-weight: 600; color: #b45309; background: #fef3c7; border: 1px solid #fde68a; padding: 2px 7px; border-radius: 4px;">
+                      ⚠ Price unit not verified
+                    </span>
+                  </div>
+                  <div style="font-size: 0.74rem; color: #94a3b8; font-weight: 400; line-height: 1.2;">
+                    Package quantity and price basis unverified online. Excluded from savings comparisons.
+                  </div>
+                </div>
+              {% endif %}
             </div>
           </div>
           <div class="match-meta-bar">
@@ -172,7 +209,19 @@
 
               {% if med_data.top_medicine %}
                 {% with med=med_data.top_medicine %}
-                <div class="detected-name">{{ med.name }}</div>
+                <div class="detected-name">{{ med.detected_name|default:med_key }}</div>
+                <div class="detected-match-sub" style="margin-top: -0.4rem; margin-bottom: 0.85rem; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+                  {% if med.brand and med.brand != 'Generic' and med.brand|lower not in med.detected_name|lower %}
+                  <span class="brand-matched-tag" style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.78rem; font-weight: 500; color: #475569; background: #f1f5f9; border: 1px solid #cbd5e1; padding: 3px 9px; border-radius: 6px;">
+                    🏷 Brand: <strong>{{ med.brand }}</strong>
+                  </span>
+                  {% endif %}
+                  {% if med.name and med.name != med.detected_name and med.name != med_key %}
+                  <span class="db-matched-tag" style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.78rem; font-weight: 500; color: #0369a1; background: #f0f9ff; border: 1px solid #bae6fd; padding: 3px 9px; border-radius: 6px;">
+                    ✓ Matched Database Record: <strong>{{ med.name }}</strong>
+                  </span>
+                  {% endif %}
+                </div>
 
                 {% if med_data.route %}
                 <span class="route-badge route-{{ med_data.route|lower }}">
@@ -191,12 +240,45 @@
                   <div class="prop-block">
                     <div class="prop-block-label">MANUFACTURER</div>
                     <div class="prop-block-value">
-                      {{ med.manufacturer }}
+                      {{ med.manufacturer|default:"Registered Manufacturer" }}
                     </div>
                   </div>
                   <div class="prop-block mrp-block">
-                    <div class="prop-block-label">MRP</div>
-                    <div class="mrp-value">₹ {{ med.price }}</div>
+                    <div class="prop-block-label">
+                      {% if med.price_verification and med.price_verification.verification_status == 'verified' %}
+                        {% if med.price_verification.price_type == 'mrp' %}MRP (VERIFIED){% elif med.price_verification.price_type == 'selling_price' %}SELLING PRICE (VERIFIED){% else %}VERIFIED PRICE{% endif %}
+                      {% else %}
+                        PRICE &amp; PACKAGING
+                      {% endif %}
+                    </div>
+                    {% if med.price_verification and med.price_verification.verification_status == 'verified' %}
+                      <div class="mrp-value" style="display: flex; flex-direction: column; gap: 2px;">
+                        <div style="font-size: 1.35rem; font-weight: 700; color: #0284c7; display: flex; align-items: baseline; gap: 4px;">
+                          ₹ {{ med.price_verification.unit_price_inr|floatformat:2 }}
+                          <span style="font-size: 0.85rem; font-weight: 600; color: #475569;">/ {{ med.price_verification.pack_unit|default:"tablet" }}</span>
+                        </div>
+                        <div style="font-size: 0.78rem; color: #64748b; font-weight: 500; margin-top: 2px;">
+                          ₹ {{ med.price_verification.package_price_inr|default:med.price|floatformat:2 }} for strip of {{ med.price_verification.pack_quantity|default:10 }} {{ med.price_verification.pack_unit|default:"tablet" }}s
+                          {% if med.price_verification.source_url %}
+                          &bull; <a href="{{ med.price_verification.source_url }}" target="_blank" rel="noopener" style="color: #0284c7; text-decoration: underline;">Verified ({{ med.price_verification.source_name|default:"Listing" }})</a>
+                          {% elif med.price_verification.source_name %}
+                          &bull; <span style="color: #64748b;">{{ med.price_verification.source_name }}</span>
+                          {% endif %}
+                        </div>
+                      </div>
+                    {% else %}
+                      <div class="mrp-value" style="display: flex; flex-direction: column; gap: 4px;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                          <span>{% if med.price %}₹ {{ med.price }}{% else %}Unlisted{% endif %}</span>
+                          <span class="unverified-pill" style="font-size: 0.72rem; font-weight: 600; color: #b45309; background: #fef3c7; border: 1px solid #fde68a; padding: 2px 7px; border-radius: 4px;">
+                            ⚠ Price unit not verified
+                          </span>
+                        </div>
+                        <div style="font-size: 0.74rem; color: #94a3b8; font-weight: 400; line-height: 1.2;">
+                          Package quantity and price basis unverified online. Excluded from savings comparisons.
+                        </div>
+                      </div>
+                    {% endif %}
                   </div>
                 </div>
                 <div class="match-meta-bar">

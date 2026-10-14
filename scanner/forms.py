@@ -30,7 +30,7 @@ class ScanForm(forms.Form):
 
     mode = forms.ChoiceField(
         choices=MODE_CHOICES,
-        initial='auto',
+        initial='medicine_package',
         required=True,
     )
 

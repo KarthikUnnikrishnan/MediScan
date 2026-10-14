@@ -29,6 +29,9 @@ media/uploads/*
 *.bin
 *.pth
 *.pkl
+*.zip
+Datasets/*.zip
+Datasets/*.sqlite
 Datasets/*/raw/
 Datasets/*/images/
 saved_models/*.pt

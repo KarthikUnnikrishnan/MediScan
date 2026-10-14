@@ -160,6 +160,7 @@ def result(request):
         'strip_detected':        scan_result.get('strip_detected', False),
         'timestamp':             timezone.localtime(datetime.fromisoformat(scan_result['timestamp'])) if scan_result.get('timestamp') else '',
         'diagnosis':             scan_result.get('diagnosis', ''),
+        'detected_name':         scan_result.get('detected_name') or (medicines[0].get('detected_name') if medicines and isinstance(medicines[0], dict) else ''),
         'per_medicine_results':  per_meds,
         'default_selected':      scan_result.get('default_selected', ''),
         'total_found':           scan_result.get('total_found', 0),

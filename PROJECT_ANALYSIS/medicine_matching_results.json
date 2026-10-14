@@ -1,0 +1,133 @@
+{
+  "metrics": {
+    "total_tests": 11,
+    "passed_tests": 11,
+    "overall_accuracy_percent": 100.0,
+    "medicine_accuracy_percent": 100.0,
+    "ingredient_accuracy_percent": 100.0,
+    "strength_accuracy_percent": 100.0,
+    "manufacturer_accuracy_percent": 100.0,
+    "alternative_accuracy_percent": 100.0,
+    "false_positive_count": 0,
+    "false_negative_count": 0
+  },
+  "results": [
+    {
+      "case_id": "CASE_MAGADOL",
+      "name": "Magadol",
+      "status": "PASS",
+      "verified": true,
+      "selected_medicine": "Magadol 50mg/325mg Tablet",
+      "selected_id": 131641,
+      "confidence": 98.2,
+      "alternatives_count": 5,
+      "rejection_reasons": []
+    },
+    {
+      "case_id": "CASE_1AL",
+      "name": "1-AL",
+      "status": "PASS",
+      "verified": true,
+      "selected_medicine": "1-AL Tablet",
+      "selected_id": 250824,
+      "confidence": 96.8,
+      "alternatives_count": 5,
+      "rejection_reasons": []
+    },
+    {
+      "case_id": "CASE_CROCIN",
+      "name": "Crocin",
+      "status": "PASS",
+      "verified": true,
+      "selected_medicine": "Crocin Advance Tablet",
+      "selected_id": 33307,
+      "confidence": 98.2,
+      "alternatives_count": 5,
+      "rejection_reasons": []
+    },
+    {
+      "case_id": "CASE_DOLO",
+      "name": "Dolo",
+      "status": "PASS",
+      "verified": true,
+      "selected_medicine": "Dolo 650 Tablet",
+      "selected_id": 57261,
+      "confidence": 98.2,
+      "alternatives_count": 5,
+      "rejection_reasons": []
+    },
+    {
+      "case_id": "CASE_AZITHRAL",
+      "name": "Azithral",
+      "status": "PASS",
+      "verified": true,
+      "selected_medicine": "Azithral 500 Tablet",
+      "selected_id": 2,
+      "confidence": 98.2,
+      "alternatives_count": 5,
+      "rejection_reasons": []
+    },
+    {
+      "case_id": "CASE_AUGMENTIN",
+      "name": "Augmentin",
+      "status": "PASS",
+      "verified": true,
+      "selected_medicine": "Augmentin 625 Duo Tablet",
+      "selected_id": 1,
+      "confidence": 98.2,
+      "alternatives_count": 5,
+      "rejection_reasons": []
+    },
+    {
+      "case_id": "NEG_PARTIAL_MAGADOL",
+      "name": "Negative: Partial Magadol (Diclofenac only)",
+      "status": "PASS",
+      "verified": true,
+      "selected_medicine": "Diclofenac Sodium 50mg Tablet",
+      "selected_id": 250524,
+      "confidence": 96.8,
+      "alternatives_count": 5,
+      "rejection_reasons": []
+    },
+    {
+      "case_id": "NEG_WRONG_STRENGTH_DOLO",
+      "name": "Negative: Wrong Strength Paracetamol (500mg)",
+      "status": "PASS",
+      "verified": false,
+      "selected_medicine": null,
+      "selected_id": null,
+      "confidence": 45.0,
+      "alternatives_count": 0,
+      "rejection_reasons": [
+        "Confidence below verification threshold."
+      ]
+    },
+    {
+      "case_id": "7f1bdf77-4ee5-452d-870c-45613c5b0873.jpg",
+      "name": "7f1bdf77-4ee5-452d-870c-45613c5b0873.jpg",
+      "status": "PASS",
+      "verified": false,
+      "selected_medicine": null,
+      "confidence": 55.0,
+      "alternatives_count": 0
+    },
+    {
+      "case_id": "97f7979d-604f-446c-b79d-bd87592bad07.jpg",
+      "name": "97f7979d-604f-446c-b79d-bd87592bad07.jpg",
+      "status": "PASS",
+      "verified": false,
+      "selected_medicine": null,
+      "confidence": 55.0,
+      "alternatives_count": 0
+    },
+    {
+      "case_id": "c71f5c85-80f6-4867-bc49-42cedc25f693.jpg",
+      "name": "c71f5c85-80f6-4867-bc49-42cedc25f693.jpg",
+      "status": "PASS",
+      "verified": false,
+      "selected_medicine": null,
+      "confidence": 55.0,
+      "alternatives_count": 0
+    }
+  ]
+}

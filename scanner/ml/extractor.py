@@ -201,17 +201,56 @@ def extract_manufacturer(raw_text: str) -> Optional[str]:
     return None
 
 
+def extract_prominent_trade_name(text: str, manufacturer: Optional[str] = None, generic: Optional[str] = None) -> Optional[str]:
+    """
+    Extract high-confidence trade/brand name candidates (e.g. "P-650", "1-AL", "Dolo 650").
+    Differentiates trade names from manufacturer names, generic salts, and dosage forms.
+    """
+    if not text:
+        return None
+
+    generic_words = {
+        'paracetamol', 'levocetirizine', 'ibuprofen', 'amoxicillin', 'azithromycin',
+        'pantoprazole', 'cetirizine', 'metformin', 'atorvastatin', 'omeprazole',
+        'tablets', 'tablet', 'capsule', 'capsules', 'syrup', 'suspension', 'injection',
+        'drops', 'drop', 'ip', 'bp', 'usp', 'each', 'contains', 'uncoated', 'coated',
+        'excipients', 'dosage', 'store', 'warning', 'schedule'
+    }
+    mfr_words = set(re.findall(r'[a-zA-Z]+', (manufacturer or '').lower()))
+
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+
+    # 1. Alphanumeric / hyphenated trade codes (e.g. P-650, 1-AL, PCM-650, Pan-D, Meftal-P, D-650)
+    for line in lines:
+        for match in re.finditer(r'\b([A-Za-z0-9]{1,6}-[A-Za-z0-9]{1,6}(?:\s*(?:Tablets?|Capsules?|Suspension))?)\b', line, re.I):
+            cand = match.group(1).strip()
+            if not re.match(r'^(?:mg|ml|mcg|kg|iu|ph|lic|no|lot|exp|mfg)$', cand, re.I):
+                return cand
+
+    # 2. Prominent Brand + Strength (e.g. Dolo 650, Calpol 500, Crocin 650, Augmentin 625)
+    for line in lines:
+        for match in re.finditer(r'\b([A-Za-z]{3,15}\s+\d{2,4}(?:\s*(?:Tablets?|Capsules?))?)\b', line, re.I):
+            cand = match.group(1).strip()
+            first_w = cand.split()[0].lower()
+            if first_w not in generic_words and first_w not in mfr_words:
+                return cand
+
+    return None
+
+
 def extract_brand_candidate(text: str) -> Optional[str]:
     """
     Heuristically extract the most plausible brand name token from OCR.
     """
-    # Exclude common non-brand words
+    # Exclude common non-brand and pure generic active salt words
     exclude_words = {
         'tab', 'tabs', 'tablet', 'tablets', 'cap', 'caps', 'capsule', 'capsules',
         'syp', 'syrup', 'suspension', 'inj', 'injection', 'ointment', 'gel',
         'cream', 'drops', 'drop', 'ip', 'bp', 'usp', 'rx', 'dr', 'od', 'bd', 'tds', 'hs', 'sos',
         'mg', 'ml', 'mcg', 'g', 'for', 'the', 'use', 'store', 'reach',
-        'composition', 'each', 'contains', 'film', 'coated', 'batch'
+        'composition', 'each', 'contains', 'film', 'coated', 'batch', 'uncoated',
+        'paracetamol', 'levocetirizine', 'ibuprofen', 'amoxicillin', 'azithromycin',
+        'pantoprazole', 'cetirizine', 'metformin', 'atorvastatin', 'omeprazole',
     }
 
     words = text.split()
@@ -240,6 +279,7 @@ def extract_structured_ocr(raw_ocr: str) -> Dict[str, Any]:
     dict:
         {
             "brand": str or None,
+            "detected_label_name": str or None,
             "ingredients": list of dict,
             "manufacturer": str or None,
             "dosage_form": str or None,
@@ -250,16 +290,131 @@ def extract_structured_ocr(raw_ocr: str) -> Dict[str, Any]:
     normalized = normalize_ocr_text(raw_ocr)
     dosage_form = extract_dosage_form(normalized) or extract_dosage_form(raw_ocr)
     manufacturer = extract_manufacturer(raw_ocr)
-    brand = extract_brand_candidate(normalized)
+
+    trade_name = (
+        extract_prominent_trade_name(raw_ocr, manufacturer=manufacturer) or
+        extract_prominent_trade_name(normalized, manufacturer=manufacturer)
+    )
+    brand = trade_name or extract_brand_candidate(normalized)
+    detected_label_name = trade_name or brand
 
     # Attempt to extract ingredients from normalized text
     ingredients = parse_salt(normalized)
 
+    # Check for explicit generic label line (e.g. from structured OCR or prompt format)
+    generic = None
+    gen_match = re.search(r'^\s*GENERIC:\s*(.+)$', raw_ocr, flags=re.MULTILINE | re.IGNORECASE)
+    if gen_match:
+        generic = gen_match.group(1).strip()
+
     return {
         "brand": brand,
+        "generic": generic,
+        "detected_label_name": detected_label_name,
         "ingredients": ingredients,
         "manufacturer": manufacturer,
         "dosage_form": dosage_form,
         "raw_ocr": raw_ocr,
         "normalized_ocr": normalized,
     }
+
+
+def build_descriptive_medicine_name(
+    verified_med: Optional[Dict[str, Any]] = None,
+    extracted: Optional[Dict[str, Any]] = None,
+    generic_text: Optional[str] = None
+) -> str:
+    """
+    Construct a clean, descriptive clinical medicine name (e.g., 'Levocetirizine Tablets 5mg')
+    instead of an isolated brand abbreviation (e.g., '1-AL').
+    Applies across all input types: package scans, generic strips, branded drugs, and prescriptions.
+    """
+    verified_med = verified_med or {}
+    extracted = extracted or {}
+
+    # 1. If explicit generic label text is available from OCR/vision (e.g. 'LEVOCETIRIZINE TABLETS IP 5 mg')
+    raw_generic = (
+        generic_text or
+        extracted.get("generic") or
+        extracted.get("generic_name") or
+        ""
+    ).strip()
+
+    if raw_generic and raw_generic.lower() not in ("none", "null", "blank", "n/a", "generic"):
+        # Strip pharmacopeial tokens: IP, BP, USP with or without dots
+        cleaned = re.sub(r'\b(?:I\.?P\.?|B\.?P\.?|U\.?S\.?P\.?)\b', '', raw_generic, flags=re.IGNORECASE)
+        # Collapse whitespace
+        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+        # Normalize unit spacing: "5 mg" -> "5mg"
+        cleaned = re.sub(r'(\d+(?:\.\d+)?)\s*(mg|ml|mcg|g|iu|%)\b', r'\1\2', cleaned, flags=re.IGNORECASE)
+
+        words = cleaned.split()
+        title_words = []
+        for w in words:
+            if re.match(r'^\d+(?:\.\d+)?(?:mg|ml|mcg|g|iu|%)$', w, re.IGNORECASE):
+                title_words.append(w.lower())
+            elif w.lower() in ('and', '&', 'with', 'for', 'in', 'of'):
+                title_words.append(w.lower())
+            else:
+                title_words.append(w.capitalize())
+        cand_name = " ".join(title_words)
+        if len(cand_name) >= 4 and re.search(r'[a-zA-Z]{3,}', cand_name):
+            return cand_name
+
+    # 2. Determine dosage form
+    dosage_form = (
+        verified_med.get("dosage_form") or
+        extracted.get("dosage_form") or
+        "Tablet"
+    ).strip()
+
+    form_lower = dosage_form.lower()
+    if form_lower in ("tablet", "tablets"):
+        form_str = "Tablets"
+    elif form_lower in ("capsule", "capsules"):
+        form_str = "Capsules"
+    elif form_lower in ("drops", "drop"):
+        form_str = "Drops"
+    elif form_lower in ("syrup", "suspension", "injection", "ointment", "gel", "cream", "solution", "inhaler", "spray", "infusion", "lotion", "respules"):
+        form_str = dosage_form.capitalize()
+    else:
+        form_str = dosage_form.capitalize()
+
+    # 3. Construct from parsed salt composition
+    parsed_salts: List[Dict[str, Any]] = (
+        verified_med.get("parsed_salt") or
+        extracted.get("ingredients") or
+        []
+    )
+
+    if not parsed_salts and verified_med.get("salt"):
+        parsed_salts = parse_salt(verified_med.get("salt", ""))
+
+    if parsed_salts:
+        salt_names = []
+        strengths = []
+        for s in parsed_salts:
+            ing = s.get("canonical_name") or s.get("ingredient") or ""
+            ing = ing.strip().title()
+            if ing and ing not in salt_names:
+                salt_names.append(ing)
+
+            st = s.get("strength")
+            u = (s.get("unit") or "mg").lower()
+            if st is not None:
+                st_str = str(st).strip()
+                if any(unit_tok in st_str.lower() for unit_tok in ("mg", "ml", "mcg", "g", "iu", "%")):
+                    strengths.append(st_str.lower())
+                else:
+                    strengths.append(f"{st_str}{u}")
+
+        if salt_names:
+            combined_salts = " & ".join(salt_names)
+            strength_str = "/".join(strengths) if strengths else ""
+            if strength_str:
+                return f"{combined_salts} {form_str} {strength_str}".strip()
+            return f"{combined_salts} {form_str}".strip()
+
+    # 4. Fallback to verified_med name if available, else label candidate
+    return verified_med.get("name") or extracted.get("detected_label_name") or extracted.get("brand") or "Medication"
+

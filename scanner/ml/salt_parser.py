@@ -37,21 +37,26 @@ _SYNONYM_MAP = {
 }
 
 # Regex to capture: [Ingredient Name] ( [Strength] [Unit] )
-# Supports:
-#  - (500mg), (125 mg)
-#  - (200mg/5ml), (120mg/5ml), (10mg/ml)
-#  - (2% w/w), (1% w/v)
-#  - (2.5million spores), (1000IU), (500mcg)
-# Delimiters: +, and, comma, newline, or immediately following a preceding ')'
+# Units of measure for pharmaceutical active ingredients
+_UNIT_PATTERN = r'(?:mg|ml|mcg|µg|g|gm|iu|units?|spores?|%|%\s*w/[vw]|w/v|w/w)(?:\s*/\s*\d*\s*(?:mg|ml|mcg|µg|g|gm|dose|puff))?'
+
+# Regex to capture: [Ingredient Name] ( [Strength] [Unit] )
 _SALT_BLOCK_RE = re.compile(
-    r'(?:^|\+|\band\b|(?<=\))|[,\n])\s*(.*?)\s*\(\s*([\d\.]+)\s*([a-zA-Z%]+(?:\s*/\s*\d*\s*[a-zA-Z%]+|\s*[a-zA-Z%/\s]+)?)\s*\)',
+    rf'(?:^|\+|\band\b|(?<=\))|[,\n])\s*(.*?)\s*\(\s*([\d\.]+)\s*({_UNIT_PATTERN})\s*\)',
     re.IGNORECASE
 )
 
 # Regex to capture: [Ingredient Name] [Strength] [Unit] without parentheses
 # e.g. "Fexofenadine Hydrochloride 120mg", "Paracetamol 650 mg"
 _SALT_BLOCK_NO_PARENS_RE = re.compile(
-    r'(?:^|\+|\band\b|[,\n])\s*(.*?)\s+([\d\.]+)\s*([a-zA-Z%]+(?:\s*/\s*\d*\s*[a-zA-Z%]+|\s*[a-zA-Z%]+)?)(?=\s*(?:\+|\band\b|[,\n]|$))',
+    rf'(?:^|\+|\band\b|[,\n])\s*(.*?)\s+([\d\.]+)\s*({_UNIT_PATTERN})(?=\s*(?:\+|\band\b|[,\n]|$))',
+    re.IGNORECASE
+)
+
+# Regex to capture prefix concentration: [Strength] [Unit] [Ingredient Name]
+# e.g. "5% Dextrose", "0.5% Timolol", "1% Clotrimazole"
+_PREFIX_CONCENTRATION_RE = re.compile(
+    rf'(?:^|\+|\band\b|[,\n])\s*(?:.*?\b(?:inj|tab|cap|syp|susp)\b[\.\s]*)?\s*([\d\.]+)\s*(%|%\s*w/[vw]|w/v|w/w)\s+([a-zA-Z\s]+?)(?=\s*(?:\+|\band\b|[,\n]|$))',
     re.IGNORECASE
 )
 
@@ -170,14 +175,23 @@ def parse_salt(salt_str: Optional[str]) -> List[Dict[str, Any]]:
         # Note: caller will know this has missing data if components don't match
 
     matches = list(_SALT_BLOCK_RE.finditer(s))
+    is_prefix = False
     if not matches:
         matches = list(_SALT_BLOCK_NO_PARENS_RE.finditer(s))
+    if not matches:
+        matches = list(_PREFIX_CONCENTRATION_RE.finditer(s))
+        is_prefix = bool(matches)
     ingredients: List[Dict[str, Any]] = []
 
     for m in matches:
-        raw_name = m.group(1).strip()
-        raw_strength = m.group(2).strip()
-        raw_unit = m.group(3).strip()
+        if is_prefix:
+            raw_strength = m.group(1).strip()
+            raw_unit = m.group(2).strip()
+            raw_name = m.group(3).strip()
+        else:
+            raw_name = m.group(1).strip()
+            raw_strength = m.group(2).strip()
+            raw_unit = m.group(3).strip()
 
         display_name = clean_display_ingredient(raw_name)
         canonical = normalize_ingredient_name(display_name)

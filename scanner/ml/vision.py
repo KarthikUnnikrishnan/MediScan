@@ -57,30 +57,14 @@ _ocr_model      = None
 _device         = None
 
 
-# ── Anti-hallucination helpers ────────────────────────────────────────────────
+# ── Structural OCR quality helpers ─────────────────────────────────────────────
 
-# High-frequency Indian medicine names that TrOCR hallucinates when
-# it receives a low-information crop instead of a real strip label.
-# These should NEVER appear as the sole output of a strip scan unless
-# the strip actually contains those words — and when they do appear
-# legitimately, they'll also appear alongside other real label tokens.
-_HALLUCINATION_PHRASES = {
-    "aceclofenac paracetamol tablets",
-    "aceclofenac paracetamol",
-    "diclofenac paracetamol tablets",
-    "paracetamol tablets",
-    "amoxycillin capsules",
-    "metformin tablets",
-    "atorvastatin tablets",
-    "amlodipine tablets",
-}
-
-# A realistic strip label should contain at least one of:
-# - a strength value (digits + mg/ml/mcg/g)
-# - a recognizable pharma suffix (IP, BP, USP)
-# - a dosage form word
+# Structural indicators of pharmaceutical packaging / label text:
+# - strength value (digits + mg/ml/mcg/g/iu)
+# - pharmacopeia or dosage schedule suffix (IP, BP, USP, ER, SR, CR)
+# - dosage form indicators (tablet, capsule, syrup, etc.)
 _STRENGTH_RE = re.compile(
-    r'\b\d+\s*(?:mg|ml|mcg|g|iu|units?)\b',
+    r'\b\d+(?:\.\d+)?\s*(?:mg|ml|mcg|g|iu|units?|%)\b',
     re.IGNORECASE,
 )
 _PHARMA_SUFFIX_RE = re.compile(
@@ -95,52 +79,45 @@ _DOSAGE_FORM_RE = re.compile(
 
 def _ocr_output_looks_real(text: str) -> bool:
     """
-    Return True if *text* looks like genuine strip OCR output, False if it
-    looks like a TrOCR hallucination.
-
-    Heuristics (any one pass → real):
-      1. Contains a strength value (e.g. "20mg", "500 mg")
-      2. Contains a pharma suffix (IP, BP, USP, OD, SR, ...)
-      3. Is longer than 30 chars and does NOT match a known hallucination phrase
-
-    A text that is ONLY a short phrase matching a known hallucination is rejected.
+    Evaluate whether *text* has valid structural characteristics for OCR text.
+    Uses purely algorithmic and structural heuristics without hardcoding any
+    specific medicine names.
     """
     if not text:
         return False
 
     t = text.strip()
+    if len(t) < 4:
+        return False
+
+    alnum = re.sub(r'[^a-zA-Z0-9]', '', t)
+    if len(alnum) < 3:
+        return False
+
+    # Check for degenerate repetition (e.g. model looping on a single token)
+    words = [w.lower() for w in t.split() if w]
+    if len(words) >= 4 and len(set(words)) == 1:
+        logger.warning("run_ocr: repetitive token hallucination detected: %r", t[:80])
+        return False
+
     t_lower = t.lower()
 
-    # Immediate reject: exact or near-exact hallucination phrase
-    for phrase in _HALLUCINATION_PHRASES:
-        if t_lower == phrase or t_lower.startswith(phrase + " "):
-            logger.warning(
-                "run_ocr: hallucination detected — output matches known phrase %r",
-                phrase,
-            )
-            return False
-
-    # Pass: contains a strength value
+    # Pass: contains a dosage strength
     if _STRENGTH_RE.search(t):
         return True
 
-    # Pass: contains a pharma suffix
+    # Pass: contains a pharmacopeia / clinical suffix
     if _PHARMA_SUFFIX_RE.search(t):
         return True
 
-    # Pass: longer than 30 chars and not a short hallucination
-    # (legitimate strip labels have brand + manufacturer + strength → many tokens)
-    if len(t) > 30 and not _DOSAGE_FORM_RE.search(t_lower):
-        return True
-
-    # Short text with only a dosage form word and nothing else is suspicious
-    if _DOSAGE_FORM_RE.search(t_lower) and len(t) < 30:
+    # Reject text that is only a single isolated dosage form word without any other context
+    if _DOSAGE_FORM_RE.search(t_lower) and len(t) < 15 and len(words) <= 1:
         logger.warning(
-            "run_ocr: suspicious output — only dosage form word, no strength: %r", t
+            "run_ocr: output contains only an isolated dosage form word: %r", t
         )
         return False
 
-    # Default: accept (don't over-reject legitimate short labels)
+    # Default: accept candidate for downstream matching
     return True
 
 
@@ -163,12 +140,17 @@ def load_models():
         _strip_detector = YOLO(str(settings.STRIP_DETECTOR_PATH))
 
         _ocr_processor = TrOCRProcessor.from_pretrained(
-            str(settings.STRIP_OCR_PATH)
+            str(settings.STRIP_OCR_PATH),
+            use_fast=False,
         )
 
         _ocr_model = VisionEncoderDecoderModel.from_pretrained(
             str(settings.STRIP_OCR_PATH)
         )
+        if hasattr(_ocr_model, "generation_config") and _ocr_model.generation_config:
+            _ocr_model.generation_config.early_stopping = False
+            _ocr_model.generation_config.length_penalty = 1.0
+            _ocr_model.generation_config.num_beams = 1
         _ocr_model.to(_device)
         _ocr_model.eval()
 
@@ -194,7 +176,7 @@ def crop_strip(image_pil):
         W, H = image_pil.size
         img_area = W * H
 
-        results = _strip_detector(image_pil, conf=0.25)
+        results = _strip_detector(image_pil, conf=0.15)
         boxes = results[0].boxes if results else None
 
         if boxes is not None and len(boxes) > 0:
@@ -220,27 +202,33 @@ def crop_strip(image_pil):
                 return crop, True
 
             # Small blister pockets detected — determine foil side
-            mean_x = sum((b[0] + b[2]) / 2 for b in box_list) / len(box_list)
-            logger.info(
-                "crop_strip: %d blister cavities detected (mean_x=%.1f)", len(box_list), mean_x
-            )
+            # Only treat as genuine blister pockets if they meet minimum size & confidence criteria
+            cavity_boxes = [
+                b for b, c in zip(box_list, confs)
+                if c >= 0.40 and 0.005 <= (((b[2] - b[0]) * (b[3] - b[1])) / img_area) <= 0.15
+            ]
+            if len(cavity_boxes) >= 3:
+                mean_x = sum((b[0] + b[2]) / 2 for b in cavity_boxes) / len(cavity_boxes)
+                logger.info(
+                    "crop_strip: %d blister cavities detected (mean_x=%.1f)", len(cavity_boxes), mean_x
+                )
 
-            if mean_x > 0.5 * W:
-                # Cavities on right → foil text on left
-                x1, x2 = int(0.07 * W), int(0.52 * W)
-                y1, y2 = int(0.45 * H), int(0.82 * H)
-            else:
-                # Cavities on left → foil text on right
-                x1, x2 = int(0.48 * W), int(0.93 * W)
-                y1, y2 = int(0.45 * H), int(0.82 * H)
+                if mean_x > 0.5 * W:
+                    # Cavities on right → foil text on left
+                    x1, x2 = int(0.02 * W), int(0.52 * W)
+                    y1, y2 = int(0.05 * H), int(0.95 * H)
+                else:
+                    # Cavities on left → foil text on right
+                    x1, x2 = int(0.48 * W), int(0.98 * W)
+                    y1, y2 = int(0.05 * H), int(0.95 * H)
 
-            crop = image_pil.crop((x1, y1, x2, y2))
-            logger.info("crop_strip: Blister-side foil crop (%dx%d)", crop.size[0], crop.size[1])
-            return crop, True
+                crop = image_pil.crop((x1, y1, x2, y2))
+                logger.info("crop_strip: Blister-side foil crop (%dx%d)", crop.size[0], crop.size[1])
+                return crop, True
 
         # Fallback: crop primary label band on left side
         left_crop = image_pil.crop(
-            (int(0.07 * W), int(0.45 * H), int(0.52 * W), int(0.82 * H))
+            (int(0.02 * W), int(0.05 * H), int(0.52 * W), int(0.95 * H))
         )
         logger.info("crop_strip: Fallback central label crop")
         return left_crop, False
@@ -275,8 +263,8 @@ def run_ocr(image_pil) -> str:
         with torch.no_grad():
             generated_ids = _ocr_model.generate(
                 pixel_values,
-                num_beams=4,
-                max_new_tokens=128,
+                num_beams=1,
+                max_new_tokens=64,
             )
 
         text = _ocr_processor.batch_decode(

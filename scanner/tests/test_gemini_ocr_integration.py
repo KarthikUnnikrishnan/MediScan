@@ -35,6 +35,11 @@ from scanner.ml.gemini_vision import (
     strip_preamble,
     get_gemini_model,
     get_gemini_client,
+    get_gemini_fallback_models,
+    is_model_in_cooldown,
+    set_model_cooldown,
+    reset_model_cooldowns,
+    clear_image_ocr_cache,
     NO_TEXT_DETECTED,
 )
 from scanner.ml import scan_medicine_package, scan_prescription
@@ -47,8 +52,14 @@ class GeminiOCRIntegrationRegressionTests(TestCase):
     """Regression test suite for Gemini Vision OCR and fallback pipeline."""
 
     def setUp(self):
+        clear_image_ocr_cache()
+        reset_model_cooldowns()
         # Create a small dummy image for testing
         self.dummy_image = Image.new("RGB", (200, 200), color="white")
+
+    def tearDown(self):
+        clear_image_ocr_cache()
+        reset_model_cooldowns()
 
     # ── Test A: Correct TrOCR output ──────────────────────────────────────────
     def test_brand_only_without_strength_or_composition_is_unverified(self):
@@ -609,6 +620,279 @@ class GeminiOCRIntegrationRegressionTests(TestCase):
         self.assertContains(resp, "med-selector-section")
         self.assertContains(resp, lipitor_key)
         self.assertContains(resp, other_keys[0])
+
+    def test_brand_mismatch_prevents_false_verification(self):
+        """
+        When a distinct brand like 'P-650' or '1-AL' is detected, candidates with
+        a completely different brand name (e.g. 'Atpera 650 Tablet' or 'Actocet Tablet')
+        must NOT be accepted as verified matches.
+        """
+        # Testing P-650: correct brand P 650 matches, Atpera is rejected
+        extracted_p650 = {
+            "brand": "P-650",
+            "ingredients": [{"canonical_name": "paracetamol", "strength": 650, "unit": "mg"}],
+            "dosage_form": "Tablet",
+            "manufacturer": "Apex Laboratories Pvt Ltd",
+            "raw_ocr": "P-650 Tablets\nParacetamol 650mg\nApex",
+            "normalized_ocr": "P-650 Tablets Paracetamol 650mg Apex"
+        }
+        res_p650 = match_medicine(extracted_p650)
+        self.assertEqual(res_p650.get("status"), "verified")
+        self.assertIn("P 650", res_p650.get("medicine", {}).get("name", ""))
+
+        # Testing 1-AL: correct brand 1-AL matches
+        extracted_1al = {
+            "brand": "1-AL",
+            "ingredients": [{"canonical_name": "levocetirizine", "strength": 5, "unit": "mg"}],
+            "dosage_form": "Tablet",
+            "manufacturer": "FDC Limited",
+            "raw_ocr": "LEVOCETIRIZINE TABLETS IP 5 mg\n1-AL\nFDC Limited",
+            "normalized_ocr": "LEVOCETIRIZINE TABLETS IP 5 mg 1-AL FDC Limited"
+        }
+        res_1al = match_medicine(extracted_1al)
+        self.assertEqual(res_1al.get("status"), "verified")
+        self.assertIn("1-AL", res_1al.get("medicine", {}).get("name", ""))
+
+    def test_alphanumeric_trade_name_extraction(self):
+        """Verify extractor recognizes prominent alphanumeric trade codes (P-650, 1-AL)."""
+        raw_text = "apex\nParacetamol Tablets IP\nP-650 Tablets\nParacetamol IP 650 mg"
+        extracted = extract_structured_ocr(raw_text)
+        self.assertEqual(extracted.get("brand"), "P-650 Tablets")
+        self.assertEqual(extracted.get("detected_label_name"), "P-650 Tablets")
+
+    # ── Section 10: Mandatory Scenarios ───────────────────────────────────────
+
+    def test_primary_gemini_model_succeeds(self):
+        """1. Primary Gemini model succeeds on first attempt."""
+        client = MagicMock()
+        client.models.generate_content.return_value = MagicMock(text="BRAND: 1-AL\nGENERIC: Levocetirizine\nSTRENGTH: 5mg")
+        with patch("scanner.ml.gemini_vision.get_gemini_client", return_value=client), \
+             patch("django.conf.settings.GEMINI_MODEL", "gemini-3.1-flash-lite"), \
+             patch("django.conf.settings.GEMINI_FALLBACK_MODELS", "gemini-3.5-flash-lite,gemini-3.8-flash"), \
+             patch("google.genai.types.Part.from_bytes", return_value=MagicMock()):
+            result = gemini_vision_ocr_structured(self.dummy_image)
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["model"], "gemini-3.1-flash-lite")
+        self.assertEqual(client.models.generate_content.call_count, 1)
+
+    def test_primary_model_returns_429_daily_quota_exhaustion(self):
+        """2. Primary model returns HTTP 429 due to daily quota exhaustion -> marks cooldown and switches to secondary."""
+        class Quota429Error(Exception):
+            code = 429
+            status = "RESOURCE_EXHAUSTED"
+            details = {
+                "error": {
+                    "code": 429,
+                    "message": "Quota exceeded for quota metric 'GenerateRequestsPerDayPerProjectPerModel-FreeTier'",
+                    "details": [{"retryDelay": "86400s"}]
+                }
+            }
+
+        client = MagicMock()
+        client.models.generate_content.side_effect = [
+            Quota429Error("Daily quota exhausted"),
+            MagicMock(text="BRAND: 1-AL\nGENERIC: Levocetirizine\nSTRENGTH: 5mg")
+        ]
+
+        with patch("scanner.ml.gemini_vision.get_gemini_client", return_value=client), \
+             patch("django.conf.settings.GEMINI_MODEL", "gemini-3.1-flash-lite"), \
+             patch("django.conf.settings.GEMINI_FALLBACK_MODELS", "gemini-3.5-flash-lite"), \
+             patch("google.genai.types.Part.from_bytes", return_value=MagicMock()):
+            result = gemini_vision_ocr_structured(self.dummy_image)
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["model"], "gemini-3.5-flash-lite")
+        # Check that primary model was placed in cooldown
+        in_cd, reason, _ = is_model_in_cooldown("gemini-3.1-flash-lite")
+        self.assertTrue(in_cd)
+        self.assertEqual(reason, "daily_quota_exhausted")
+
+    def test_primary_model_returns_503_and_retries_with_backoff(self):
+        """3. Primary model returns HTTP 503 -> retries bounded with backoff, then moves to secondary."""
+        class Unavailable503Error(Exception):
+            code = 503
+            status = "UNAVAILABLE"
+            details = {"error": {"code": 503, "message": "Service Unavailable"}}
+
+        client = MagicMock()
+        # Primary fails with 503 three times (1 initial + 2 retries), then secondary succeeds
+        client.models.generate_content.side_effect = [
+            Unavailable503Error("Service Unavailable"),
+            Unavailable503Error("Service Unavailable"),
+            Unavailable503Error("Service Unavailable"),
+            MagicMock(text="BRAND: 1-AL\nGENERIC: Levocetirizine\nSTRENGTH: 5mg"),
+        ]
+
+        with patch("scanner.ml.gemini_vision.get_gemini_client", return_value=client), \
+             patch("django.conf.settings.GEMINI_MODEL", "gemini-3.1-flash-lite"), \
+             patch("django.conf.settings.GEMINI_FALLBACK_MODELS", "gemini-3.5-flash-lite"), \
+             patch("django.conf.settings.GEMINI_MAX_503_RETRIES", 2), \
+             patch("time.sleep", return_value=None), \
+             patch("google.genai.types.Part.from_bytes", return_value=MagicMock()):
+            result = gemini_vision_ocr_structured(self.dummy_image)
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["model"], "gemini-3.5-flash-lite")
+        # Primary attempted 3 times (1 initial + 2 retries), secondary attempted 1 time
+        self.assertEqual(client.models.generate_content.call_count, 4)
+
+    def test_secondary_model_succeeds_when_primary_unavailable(self):
+        """4. Secondary model succeeds when primary model is unavailable."""
+        class ServiceError(Exception):
+            code = 503
+            status = "UNAVAILABLE"
+
+        client = MagicMock()
+        client.models.generate_content.side_effect = [
+            ServiceError("Server overloaded"),
+            MagicMock(text="BRAND: Calpol 500\nINGREDIENTS: Paracetamol (500mg)"),
+        ]
+
+        with patch("scanner.ml.gemini_vision.get_gemini_client", return_value=client), \
+             patch("django.conf.settings.GEMINI_MODEL", "gemini-3.1-flash-lite"), \
+             patch("django.conf.settings.GEMINI_FALLBACK_MODELS", "gemini-3.5-flash-lite"), \
+             patch("django.conf.settings.GEMINI_MAX_503_RETRIES", 0), \
+             patch("google.genai.types.Part.from_bytes", return_value=MagicMock()):
+            result = gemini_vision_ocr_structured(self.dummy_image)
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["model"], "gemini-3.5-flash-lite")
+        self.assertEqual(result["structured"]["brand"], "Calpol 500")
+
+    def test_both_gemini_models_unavailable_safe_fallback(self):
+        """5. Both Gemini models are unavailable -> returns graceful failure without crash."""
+        class ServiceError(Exception):
+            code = 503
+            status = "UNAVAILABLE"
+
+        client = MagicMock()
+        client.models.generate_content.side_effect = ServiceError("Service Overloaded")
+
+        with patch("scanner.ml.gemini_vision.get_gemini_client", return_value=client), \
+             patch("django.conf.settings.GEMINI_MODEL", "gemini-3.1-flash-lite"), \
+             patch("django.conf.settings.GEMINI_FALLBACK_MODELS", "gemini-3.5-flash-lite"), \
+             patch("django.conf.settings.GEMINI_MAX_503_RETRIES", 0), \
+             patch("google.genai.types.Part.from_bytes", return_value=MagicMock()):
+            result = gemini_vision_ocr_structured(self.dummy_image)
+
+        self.assertFalse(result["success"])
+        self.assertEqual(result["error_type"], "SERVICE_UNAVAILABLE")
+        self.assertTrue(result["is_empty"])
+
+    @patch("scanner.ml.gemini_vision_ocr_structured")
+    @patch("scanner.ml.crop_strip")
+    @patch("scanner.ml.run_ocr")
+    def test_local_trocr_succeeds_without_gemini(
+        self, mock_run_ocr, mock_crop_strip, mock_gemini
+    ):
+        """6. Local TrOCR succeeds without Gemini -> Gemini is never invoked."""
+        mock_crop_strip.return_value = (self.dummy_image, True)
+        mock_run_ocr.return_value = "DOLO 650 TABLET\nParacetamol (650mg)\nMicro Labs Ltd"
+
+        result = scan_medicine_package(self.dummy_image)
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["status"], "verified")
+        mock_gemini.assert_not_called()
+        self.assertFalse(result.get("recovery_used"))
+
+    @patch("scanner.ml.gemini_vision_ocr_structured")
+    @patch("scanner.ml.crop_strip")
+    @patch("scanner.ml.run_ocr")
+    def test_ocr_returns_empty_or_incorrect_invokes_recovery(
+        self, mock_run_ocr, mock_crop_strip, mock_gemini
+    ):
+        """7. OCR returns empty or incorrect text -> Gemini recovery is invoked."""
+        mock_crop_strip.return_value = (self.dummy_image, True)
+        mock_run_ocr.return_value = ""  # empty
+        mock_gemini.return_value = {
+            "success": True,
+            "raw_text": "BRAND: 1-AL\nGENERIC: Levocetirizine Tablets IP\nINGREDIENTS: Levocetirizine (5mg)\nSTRENGTH: 5mg\nMANUFACTURER: FDC Limited",
+            "plain_text": "1-AL\nLevocetirizine (5mg)\n5mg\nFDC Limited",
+            "structured": {"brand": "1-AL", "ingredients": "Levocetirizine (5mg)", "strength": "5mg", "manufacturer": "FDC Limited"},
+            "error": None,
+            "is_empty": False,
+            "model": "gemini-3.1-flash-lite",
+        }
+
+        result = scan_medicine_package(self.dummy_image)
+
+        mock_gemini.assert_called_once()
+        self.assertTrue(result.get("recovery_used"))
+        self.assertTrue(result.get("success"))
+
+    def test_database_matching_rejects_conflicting_ingredient_or_strength(self):
+        """8. Database matching rejects candidate with conflicting ingredient or strength."""
+        # OCR indicates 500mg, but database medicine is 650mg
+        extracted = {
+            "brand": "Dolo",
+            "ingredients": [{"canonical_name": "paracetamol", "strength": 500, "unit": "mg"}],
+            "dosage_form": "Tablet",
+            "raw_ocr": "Dolo 500 Paracetamol 500mg",
+        }
+        res = match_medicine(extracted)
+        # Should not falsely match Dolo 650
+        if res.get("medicine"):
+            self.assertNotIn("650", res["medicine"]["name"])
+
+    @patch("scanner.ml.gemini_vision_ocr_structured")
+    @patch("scanner.ml.crop_strip")
+    @patch("scanner.ml.run_ocr")
+    def test_application_shows_unverified_result_when_necessary(
+        self, mock_run_ocr, mock_crop_strip, mock_gemini
+    ):
+        """9. Application returns unverified when neither TrOCR nor Gemini yield verified match."""
+        mock_crop_strip.return_value = (self.dummy_image, True)
+        mock_run_ocr.return_value = "random unreadable foil smudge"
+        mock_gemini.return_value = {
+            "success": False,
+            "raw_text": "",
+            "plain_text": "",
+            "structured": {},
+            "error": "503 Service Unavailable",
+            "error_type": "SERVICE_UNAVAILABLE",
+            "is_empty": True,
+            "model": "gemini-3.1-flash-lite",
+        }
+
+        result = scan_medicine_package(self.dummy_image)
+
+        self.assertFalse(result.get("success"))
+        self.assertEqual(result.get("status"), "unverified")
+        self.assertIsNone(result.get("medicine"))
+
+        # Verify HTML rendering displays 'Could Not Confidently Verify'
+        session = self.client.session
+        result["image_url"] = "/media/uploads/test.jpg"
+        result["timestamp"] = timezone.now().isoformat()
+        session["scan_result"] = result
+        session.save()
+
+        response = self.client.get('/result/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Could Not Confidently Verify")
+
+    def test_retry_system_does_not_loop_indefinitely(self):
+        """10. Request-retry system terminates cleanly after bounded attempts without infinite loop."""
+        class FatalError(Exception):
+            code = 503
+            status = "UNAVAILABLE"
+
+        client = MagicMock()
+        client.models.generate_content.side_effect = FatalError("503 Overload")
+
+        with patch("scanner.ml.gemini_vision.get_gemini_client", return_value=client), \
+             patch("django.conf.settings.GEMINI_MODEL", "gemini-3.1-flash-lite"), \
+             patch("django.conf.settings.GEMINI_FALLBACK_MODELS", "gemini-3.5-flash-lite"), \
+             patch("django.conf.settings.GEMINI_MAX_503_RETRIES", 2), \
+             patch("time.sleep", return_value=None), \
+             patch("google.genai.types.Part.from_bytes", return_value=MagicMock()):
+            result = gemini_vision_ocr_structured(self.dummy_image)
+
+        self.assertFalse(result["success"])
+        # Exactly (1 initial + 2 retries) * 2 models = 6 calls total, not an infinite loop
+        self.assertEqual(client.models.generate_content.call_count, 6)
 
 
 if __name__ == "__main__":
