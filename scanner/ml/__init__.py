@@ -129,6 +129,7 @@ def scan_medicine_package(
         match_res = match_printed_lines(lines)
 
         status = match_res.get("status", "unverified")
+        match_type = match_res.get("match_type", "brand")
         candidates = match_res.get("candidates", [])
         raw_ocr = match_res.get("raw_ocr", " ".join(lines))
         confidence_breakdown = match_res.get("confidence_breakdown", {
@@ -140,14 +141,15 @@ def scan_medicine_package(
             return {
                 "success": False,
                 "status": "unverified",
+                "match_type": match_type,
                 "mode": "medicine_package",
                 "message": (
                     "Unable to confidently verify this medicine. "
                     "Returning unverified is safer than returning a wrong result."
                 ),
                 "rejection_reasons": (
-                    ["Top candidate was not confident and corroborated (salt or strength matches)."]
-                    if candidates else ["No readable brand text recognized."]
+                    [match_res.get("message")] if match_res.get("message")
+                    else (["Top candidate was not confident and corroborated."] if candidates else ["No readable brand text recognized."])
                 ),
                 "raw_ocr": raw_ocr,
                 "medicine": None,
@@ -205,6 +207,7 @@ def scan_medicine_package(
         return {
             "success": True,
             "status": "verified",
+            "match_type": match_type,
             "mode": "medicine_package",
             "detected_name": descriptive_name,
             "medicine": {

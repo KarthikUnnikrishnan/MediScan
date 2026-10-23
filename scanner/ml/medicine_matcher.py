@@ -768,6 +768,9 @@ def match_printed_lines(
         confident = bool(score >= cutoff)
 
         first_brand = re.split(r'[\s\-_]+', name.strip())[0]
+        b_norm_cand = re.sub(r'[^A-Z0-9]', '', first_brand.upper())
+        cand_match_type = "ingredient" if (b_word in COMMON_SALTS or b_norm_cand in COMMON_SALTS) else "brand"
+
         scored_candidates.append({
             "id": mid,
             "name": name,
@@ -776,6 +779,7 @@ def match_printed_lines(
             "manufacturer": mfr or "Registered Manufacturer",
             "price": price,
             "score": round(score, 1),
+            "match_type": cand_match_type,
             "confident": confident,
             "corroborated": corroborated,
             "salt_matched": salt_matched,
@@ -799,6 +803,7 @@ def match_printed_lines(
         return {
             "success": False,
             "status": "unverified",
+            "match_type": "brand",
             "medicine": None,
             "candidates": [],
             "medicines": [],
@@ -808,10 +813,16 @@ def match_printed_lines(
             "message": "Unable to find candidate medicines in local database."
         }
 
-    # Requirement A: The result status is "verified" only when the top candidate
-    # is confident AND corroborated (salt or strength matches); otherwise status "unverified".
+    # Requirement 4: When the best candidate comes from active ingredient (salt),
+    # set match_type: "ingredient" and keep status "unverified" unless strength matches.
     top_cand = dedup_candidates[0]
-    is_verified = bool(top_cand.get("confident") and top_cand.get("corroborated"))
+    match_type = top_cand.get("match_type", "brand")
+
+    if match_type == "ingredient":
+        is_verified = bool(top_cand.get("confident") and top_cand.get("strength_matched"))
+    else:
+        is_verified = bool(top_cand.get("confident") and top_cand.get("corroborated"))
+
     status = "verified" if is_verified else "unverified"
 
     breakdown = {
@@ -826,12 +837,17 @@ def match_printed_lines(
     return {
         "success": is_verified,
         "status": status,
+        "match_type": match_type,
         "medicine": top_cand if is_verified else None,
         "candidates": dedup_candidates[:3],
         "medicines": dedup_candidates[:3],
         "top_candidates": dedup_candidates[:5],
         "confidence_breakdown": breakdown,
         "raw_ocr": full_text,
-        "message": None if is_verified else "Top candidate was not confident and corroborated. Top candidate suggestions provided."
+        "message": None if is_verified else (
+            "Ingredient-only match requires verified dosage strength to confirm identity."
+            if match_type == "ingredient"
+            else "Top candidate was not confident and corroborated. Top candidate suggestions provided."
+        )
     }
 

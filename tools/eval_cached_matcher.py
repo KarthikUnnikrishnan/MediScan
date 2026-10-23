@@ -148,45 +148,38 @@ def evaluate_set(
         })
 
     N = len(dataset)
+    verified_items = [d for d in results_detail if d["status"] == "verified"]
+    unverified_items = [d for d in results_detail if d["status"] == "unverified"]
+
+    n_verified = len(verified_items)
+    n_unverified = len(unverified_items)
+
+    verified_correct = sum(1 for d in verified_items if d["h1"])
+    unverified_correct = sum(1 for d in unverified_items if d["h1"])
+
+    verified_precision = (verified_correct / n_verified * 100.0) if n_verified > 0 else 0.0
+    unverified_precision = (unverified_correct / n_unverified * 100.0) if n_unverified > 0 else 0.0
+
     return {
         "total": N,
         "top1_pct": (top1 / N * 100.0) if N > 0 else 0.0,
         "top3_pct": (top3 / N * 100.0) if N > 0 else 0.0,
         "top5_pct": (top5 / N * 100.0) if N > 0 else 0.0,
-        "unverified_count": unverified,
-        "unverified_pct": (unverified / N * 100.0) if N > 0 else 0.0,
-        "confident_count": confident_count,
-        "wrong_confident_count": wrong_confident_count,
-        "wrong_confident_rate": (wrong_confident_count / confident_count * 100.0) if confident_count > 0 else 0.0,
+        "n_verified": n_verified,
+        "verified_precision": verified_precision,
+        "verified_correct": verified_correct,
+        "n_unverified": n_unverified,
+        "unverified_precision": unverified_precision,
+        "unverified_correct": unverified_correct,
         "avg_total_sec": (total_time / N) if N > 0 else 0.0,
         "details": results_detail
     }
 
 
-def diagnose_miss(item: Dict[str, Any], brand_index) -> str:
-    """Diagnose why target brand is missing from top-3."""
-    target = item["target"]
-    lines = item["lines"]
-    full_text = " ".join(lines).upper()
-
-    # Check if target is in DB
-    if target not in brand_index.brand_to_ids:
-        return "Brand missing from medicines.sqlite"
-
-    # Check if target brand word was read in any line
-    if target in full_text:
-        return "Ranking failure: brand word was read in OCR lines, but out-ranked by other tokens"
-
-    # Check if near-spelling was read
-    words = re.findall(r'[A-Za-z0-9]+', full_text)
-    close_words = [w for w in words if fuzz.ratio(w, target) >= 65]
-    if close_words:
-        return f"Reading / degradation: OCR read near-token {close_words[:2]} instead of exact '{target}'"
-
-    return f"Reading failure: brand word '{target}' was not detected in any OCR box"
-
-
 def main():
+    import random
+    import shutil
+
     cache_path = PROJECT_ROOT / "tools" / "eval_lines_cache.json"
     if not cache_path.exists():
         print(f"ERROR: {cache_path} does not exist yet. Please run tools/build_eval_cache.py first.")
@@ -216,62 +209,93 @@ def main():
     for p in sorted(half_b_prods):
         print(f"   - {p}")
 
-    # Tune on Half A: test cutoffs 70 vs 75
-    print("\n" + "=" * 80)
-    print("TUNING ON HALF A (EVALUATING MATCH_CUTOFF 70 vs 75)")
-    print("=" * 80)
-    res_half_a_c70 = evaluate_set(data_half_a, matcher_type="step6", cutoff=70.0, brand_index=brand_index)
-    res_half_a_c75 = evaluate_set(data_half_a, matcher_type="step6", cutoff=75.0, brand_index=brand_index)
-
-    print(f"Half A (Cutoff 70): Top-1={res_half_a_c70['top1_pct']:.1f}% | Top-3={res_half_a_c70['top3_pct']:.1f}% | Wrong-Confident={res_half_a_c70['wrong_confident_rate']:.1f}% | Unverified={res_half_a_c70['unverified_count']}")
-    print(f"Half A (Cutoff 75): Top-1={res_half_a_c75['top1_pct']:.1f}% | Top-3={res_half_a_c75['top3_pct']:.1f}% | Wrong-Confident={res_half_a_c75['wrong_confident_rate']:.1f}% | Unverified={res_half_a_c75['unverified_count']}")
-
     chosen_cutoff = 75.0
 
-    # Evaluate Half B with chosen cutoff
+    # 1. Evaluate Half B
     print("\n" + "=" * 80)
-    print(f"EVALUATING HALF B (TEST SET, CUTOFF={chosen_cutoff})")
+    print("EVALUATION ON HALF B (TEST SET: 18 PRODUCTS, 54 PHOTOS)")
     print("=" * 80)
-    res_half_b = evaluate_set(data_half_b, matcher_type="step6", cutoff=chosen_cutoff, brand_index=brand_index)
     res_half_b_naive = evaluate_set(data_half_b, matcher_type="naive", cutoff=75.0, brand_index=brand_index)
+    res_half_b_step6 = evaluate_set(data_half_b, matcher_type="step6", cutoff=chosen_cutoff, brand_index=brand_index)
 
-    print(f"Half B - Naive Matcher : Top-1={res_half_b_naive['top1_pct']:.1f}% | Top-3={res_half_b_naive['top3_pct']:.1f}% | Wrong-Confident={res_half_b_naive['wrong_confident_rate']:.1f}%")
-    print(f"Half B - Step 6 Matcher: Top-1={res_half_b['top1_pct']:.1f}% | Top-3={res_half_b['top3_pct']:.1f}% | Wrong-Confident={res_half_b['wrong_confident_rate']:.1f}%")
+    print(f"{'Metric':<38} | {'Old Naive':<18} | {'Step 6 Matcher':<18}")
+    print("-" * 80)
+    print(f"{'Top-1 Overall Accuracy':<38} | {res_half_b_naive['top1_pct']:.1f}%{'':<13} | {res_half_b_step6['top1_pct']:.1f}%")
+    print(f"{'Top-3 Overall Accuracy':<38} | {res_half_b_naive['top3_pct']:.1f}%{'':<13} | {res_half_b_step6['top3_pct']:.1f}%")
+    print(f"{'Top-5 Overall Accuracy':<38} | {res_half_b_naive['top5_pct']:.1f}%{'':<13} | {res_half_b_step6['top5_pct']:.1f}%")
+    print(f"{'Verified Photos (Count)':<38} | {res_half_b_naive['n_verified']}/{res_half_b_naive['total']}{'':<13} | {res_half_b_step6['n_verified']}/{res_half_b_step6['total']}")
+    print(f"{'Precision among VERIFIED photos':<38} | {res_half_b_naive['verified_precision']:.1f}% ({res_half_b_naive['verified_correct']}/{res_half_b_naive['n_verified']}){'':<5} | {res_half_b_step6['verified_precision']:.1f}% ({res_half_b_step6['verified_correct']}/{res_half_b_step6['n_verified']})")
+    print(f"{'Unverified Photos (Count)':<38} | {res_half_b_naive['n_unverified']}/{res_half_b_naive['total']}{'':<13} | {res_half_b_step6['n_unverified']}/{res_half_b_step6['total']}")
+    print(f"{'Precision among UNVERIFIED photos (Missed)':<38} | {res_half_b_naive['unverified_precision']:.1f}% ({res_half_b_naive['unverified_correct']}/{res_half_b_naive['n_unverified']}){'':<5} | {res_half_b_step6['unverified_precision']:.1f}% ({res_half_b_step6['unverified_correct']}/{res_half_b_step6['n_unverified']})")
 
-    # Full 108 photo evaluation: Step 6 vs Naive
+    # 2. Full 108 photo evaluation: Step 6 vs Naive
     print("\n" + "=" * 80)
     print("FULL 108-PHOTO BENCHMARK: STEP 6 vs OLD NAIVE ON IDENTICAL CACHED LINES")
     print("=" * 80)
-    full_step6 = evaluate_set(data, matcher_type="step6", cutoff=chosen_cutoff, brand_index=brand_index)
     full_naive = evaluate_set(data, matcher_type="naive", cutoff=75.0, brand_index=brand_index)
+    full_step6 = evaluate_set(data, matcher_type="step6", cutoff=chosen_cutoff, brand_index=brand_index)
 
-    print(f"{'Metric':<32} | {'Old Naive Matcher':<20} | {'Step 6 Matcher':<20} | {'Delta / Status'}")
-    print("-" * 85)
-    print(f"{'Top-1 Accuracy':<32} | {full_naive['top1_pct']:.1f}%{'':<15} | {full_step6['top1_pct']:.1f}%{'':<15} | {full_step6['top1_pct'] - full_naive['top1_pct']:+.1f}%")
-    print(f"{'Top-3 Accuracy':<32} | {full_naive['top3_pct']:.1f}%{'':<15} | {full_step6['top3_pct']:.1f}%{'':<15} | {full_step6['top3_pct'] - full_naive['top3_pct']:+.1f}%")
-    print(f"{'Top-5 Accuracy':<32} | {full_naive['top5_pct']:.1f}%{'':<15} | {full_step6['top5_pct']:.1f}%{'':<15} | {full_step6['top5_pct'] - full_naive['top5_pct']:+.1f}%")
-    print(f"{'Unverified Results':<32} | {full_naive['unverified_count']}/{full_naive['total']} ({full_naive['unverified_pct']:.1f}%){'':<4} | {full_step6['unverified_count']}/{full_step6['total']} ({full_step6['unverified_pct']:.1f}%){'':<4} | Safer rejection")
-    print(f"{'Wrong-but-Confident Rate':<32} | {full_naive['wrong_confident_rate']:.1f}%{'':<15} | {full_step6['wrong_confident_rate']:.1f}%{'':<15} | {full_step6['wrong_confident_rate'] - full_naive['wrong_confident_rate']:+.1f}% (Safety!)")
-    print(f"{'Avg Total Scan Time':<32} | {full_naive['avg_total_sec']:.2f}s{'':<15} | {full_step6['avg_total_sec']:.2f}s{'':<15} | Sub-8s target met")
-    print("=" * 85)
-
-    # Requirement B.5: List every photo where correct brand is missing from top-3
-    print("\n" + "=" * 80)
-    print("REQUIREMENT B.5: ALL PHOTOS MISSING CORRECT BRAND FROM TOP-3 (DIAGNOSIS)")
+    print(f"{'Metric':<38} | {'Old Naive':<18} | {'Step 6 Matcher':<18}")
+    print("-" * 80)
+    print(f"{'Top-1 Overall Accuracy':<38} | {full_naive['top1_pct']:.1f}%{'':<13} | {full_step6['top1_pct']:.1f}%")
+    print(f"{'Top-3 Overall Accuracy':<38} | {full_naive['top3_pct']:.1f}%{'':<13} | {full_step6['top3_pct']:.1f}%")
+    print(f"{'Top-5 Overall Accuracy':<38} | {full_naive['top5_pct']:.1f}%{'':<13} | {full_step6['top5_pct']:.1f}%")
+    print(f"{'Verified Photos (Count)':<38} | {full_naive['n_verified']}/{full_naive['total']}{'':<13} | {full_step6['n_verified']}/{full_step6['total']}")
+    print(f"{'Precision among VERIFIED photos':<38} | {full_naive['verified_precision']:.1f}% ({full_naive['verified_correct']}/{full_naive['n_verified']}){'':<5} | {full_step6['verified_precision']:.1f}% ({full_step6['verified_correct']}/{full_step6['n_verified']})")
+    print(f"{'Unverified Photos (Count)':<38} | {full_naive['n_unverified']}/{full_naive['total']}{'':<13} | {full_step6['n_unverified']}/{full_step6['total']}")
+    print(f"{'Precision among UNVERIFIED photos (Missed)':<38} | {full_naive['unverified_precision']:.1f}% ({full_naive['unverified_correct']}/{full_naive['n_unverified']}){'':<5} | {full_step6['unverified_precision']:.1f}% ({full_step6['unverified_correct']}/{full_step6['n_unverified']})")
+    print(f"{'Average Total Seconds per Photo':<38} | {full_naive['avg_total_sec']:.2f}s{'':<13} | {full_step6['avg_total_sec']:.2f}s")
     print("=" * 80)
 
+    # 3. Requirement 2: Copy 12 random photos from the 43 misses into tools/missed_samples/
     misses = [d for d in full_step6["details"] if not d["h3"]]
-    print(f"Total Top-3 Misses: {len(misses)} / {len(data)}\n")
+    print(f"\nTotal Top-3 Misses: {len(misses)} / {len(data)}")
 
-    for idx, m in enumerate(misses, 1):
-        diagnosis = diagnose_miss(m, brand_index)
-        print(f"[{idx:2d}] Product: {m['prod_name']}")
-        print(f"     Path     : {m['rel_path']}")
-        print(f"     Target   : {m['target']}")
-        print(f"     Top-3 Got: {m['cand_brands'][:3]}")
-        print(f"     Lines ({len(m['lines'])}): {m['lines']}")
-        print(f"     Diagnosis: {diagnosis}")
+    dest_dir = PROJECT_ROOT / "tools" / "missed_samples"
+    if dest_dir.exists():
+        shutil.rmtree(dest_dir)
+    dest_dir.mkdir(parents=True, exist_ok=True)
+
+    # Deterministic reproducible sample of 12
+    random.seed(42)
+    sampled_12 = random.sample(misses, 12) if len(misses) >= 12 else misses
+
+    tsv_rows = ["product_name\tfilename\ttarget_brand\ttop_3_candidates\tlines_read"]
+    dataset_root = Path(r"D:\MediScan_data\ModelA")
+
+    print("\n" + "=" * 80)
+    print("REQUIREMENT 2: 12 SAMPLED MISSED PHOTOS COPIED TO tools/missed_samples/")
+    print("=" * 80)
+
+    for idx, item in enumerate(sampled_12, 1):
+        src_path = dataset_root / item["rel_path"]
+        prod_folder = dest_dir / item["prod_name"]
+        prod_folder.mkdir(parents=True, exist_ok=True)
+        dest_file = prod_folder / src_path.name
+
+        if src_path.exists():
+            shutil.copy2(src_path, dest_file)
+
+        lines_str = " // ".join(item["lines"])
+        cands_str = ", ".join(item["cand_brands"][:3])
+        tsv_rows.append(f"{item['prod_name']}\t{src_path.name}\t{item['target']}\t{cands_str}\t{lines_str}")
+
+        print(f"[{idx:2d}/12] Product : {item['prod_name']}")
+        print(f"       File    : {src_path.name}")
+        print(f"       Target  : {item['target']} | Got Top-3: {item['cand_brands'][:3]}")
+        print(f"       Copied  : tools/missed_samples/{item['prod_name']}/{src_path.name}")
+        print(f"       Lines ({len(item['lines'])}): {item['lines']}")
         print("-" * 80)
+
+    tsv_path = dest_dir / "missed_samples.tsv"
+    with open(tsv_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(tsv_rows))
+
+    # Also save at tools/missed_samples.tsv for direct access
+    with open(PROJECT_ROOT / "tools" / "missed_samples.tsv", "w", encoding="utf-8") as f:
+        f.write("\n".join(tsv_rows))
+
+    print(f"\nSaved TSV of 12 sampled misses to {tsv_path} and tools/missed_samples.tsv")
 
 
 if __name__ == "__main__":
