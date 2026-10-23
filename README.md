@@ -36,10 +36,20 @@ MediScan/
 │   ├── models.py                 # (Optional persistent records)
 │   ├── urls.py                   # Routes: index, scan AJAX endpoint, result redirect
 │   ├── views.py                  # HTTP request handlers & session storage
-│   ├── ml.py                     # ML pipeline (YOLOv8 + TrOCR + SQLite matchers)
+│   ├── ml/                       # Modular 100% Offline Machine Learning Package
+│   │   ├── __init__.py           # Pipeline orchestrator & quality heuristics
+│   │   ├── vision.py             # YOLOv8 strip detector & TrOCR inference
+│   │   ├── salt_parser.py        # Salt composition & strength extraction
+│   │   ├── extractor.py          # Context-aware structured NLP extractor
+│   │   ├── medicine_index.py     # 503k+ Medicine fast search cache
+│   │   ├── medicine_matcher.py   # Multi-tier candidate verification & confidence
+│   │   ├── alternative_matcher.py# Cheaper bioequivalent alternatives & trust tiers
+│   │   ├── price_verifier.py     # Unit price normalizer & persistent price cache
+│   │   └── drug_safety.py        # MedDRA side effects & drug-drug cross-interactions
 │   └── templatetags/             # Custom Django template filters
 │       └── mediscan_tags.py      # Math & formatting template tags
 │
+├── OVERALL_WORKING_AND_ARCHITECTURE.md # Full architecture & roadmap guide for AI/Teams
 ├── templates/                    # HTML UI templates
 │   ├── base.html                 # Main layout, nav, camera modal, history drawer, footer
 │   └── scanner/
@@ -72,7 +82,7 @@ MediScan/
 
 ---
 
-## 🧠 Machine Learning & Data Pipeline (`scanner/ml.py`)
+## 🧠 Machine Learning & Data Pipeline (`scanner/ml/`)
 
 1. **Object Detection**:
    - Model: Custom fine-tuned YOLOv8 (`strip_detector.pt`)

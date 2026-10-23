@@ -38,6 +38,8 @@ saved_models/*.pt
 saved_models/*.safetensors
 saved_models/*.sqlite
 saved_models/*.pkl
+saved_models/model*
+media/*.jpg
 !saved_models/.gitkeep
 
 # Environments & OS

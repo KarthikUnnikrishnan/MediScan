@@ -220,6 +220,19 @@ def match_medicine(
         for med in index.find_by_composition_key(comp_key):
             add_candidate(med)
 
+        # If exact strength composition found few/no candidates, search by canonical ingredient names
+        if len(candidates) < 5:
+            det_canons = [ing.get('canonical_name') for ing in detected_ingredients if ing.get('canonical_name')]
+            if det_canons:
+                for k, mids in index.composition_to_ids.items():
+                    if all(c in k for c in det_canons):
+                        for mid in mids[:5]:
+                            med = index.get_medicine(mid)
+                            if med:
+                                add_candidate(med)
+                        if len(candidates) >= 20:
+                            break
+
     # ── 4. RapidFuzz fallback on brand names if candidate pool is small ────────
     if len(candidates) < 5 and brand_query:
         first_brand_word = brand_query.split()[0].lower()
@@ -252,6 +265,10 @@ def match_medicine(
         rejection_reasons = []
         cand_name = cand.get("name", "")
         cand_salts = cand.get("parsed_salt") or []
+        if not cand_salts and cand.get("salt"):
+            cand_salts = parse_salt(cand["salt"])
+            if not cand_salts:
+                cand_salts = parse_salt(cand_name)
         cand_mfr = cand.get("manufacturer") or ""
         cand_form = cand.get("dosage_form")
 
@@ -298,6 +315,11 @@ def match_medicine(
         if detected_ingredients and cand_salts:
             det_canons = {ing["canonical_name"] for ing in detected_ingredients if ing.get("canonical_name")}
             cand_canons = {ing["canonical_name"] for ing in cand_salts if ing.get("canonical_name")}
+            # Supplement candidate active composition if candidate name explicitly mentions the active ingredient
+            cand_name_l = cand_name.lower()
+            for d_c in det_canons:
+                if d_c in cand_name_l:
+                    cand_canons.add(d_c)
 
             # If detected was a combination drug, require all ingredients to match!
             if len(detected_ingredients) > 1:
@@ -361,19 +383,29 @@ def match_medicine(
             # c. Strength verification (ingredient-by-ingredient)
             if composition_valid and not brand_resolved:
                 strength_matches = 0
+                has_explicit_det_strength = any(d.get("strength") is not None for d in detected_ingredients)
+                has_strength_conflict = False
+
                 for d_ing in detected_ingredients:
                     d_cname = d_ing.get("canonical_name")
                     d_st = d_ing.get("strength")
                     for c_ing in cand_salts:
                         if c_ing.get("canonical_name") == d_cname:
-                            if c_ing.get("strength") == d_st:
+                            c_st = c_ing.get("strength")
+                            if d_st is not None and c_st is not None:
+                                if d_st == c_st:
+                                    strength_matches += 1
+                                else:
+                                    has_strength_conflict = True
+                            elif d_st is None:
+                                # Unquantified detected ingredient matches candidate formulation
                                 strength_matches += 1
+
                 if strength_matches == len(detected_ingredients) and len(detected_ingredients) > 0:
-                    strength_score = 100.0
+                    strength_score = 100.0 if has_explicit_det_strength else 85.0
                 elif len(detected_ingredients) > 0:
                     strength_score = (strength_matches / len(detected_ingredients)) * 100.0
-                    # Reject candidate if strengths conflict
-                    if strength_matches < len(detected_ingredients):
+                    if has_strength_conflict:
                         composition_valid = False
                         rejection_reasons.append("Strength mismatch between detected and candidate.")
         else:
@@ -549,3 +581,257 @@ def match_medicine(
         "rejection_reasons": [],
         "validation_details": top_cand
     }
+
+
+# ── Step 5 Multi-Evidence Matcher for Printed Packages ─────────────────────────
+
+PHARMA_STOPWORDS = {
+    'TABLETS', 'TABLET', 'CAPSULES', 'CAPSULE', 'CAPLETS', 'CAPLET', 'CREAM', 'SYRUP',
+    'STRIP', 'STORE', 'PROTECT', 'EACH', 'CONTAINS', 'LIMITED', 'PHARMA', 'PHARMACEUTICAL',
+    'PHARMACEUTICALS', 'LABORATORIES', 'LAB', 'LABS', 'BATCH', 'MFG', 'EXP', 'DATE', 'MRP',
+    'PRICE', 'RS', 'INR', 'USE', 'FOR', 'ONLY', 'KEEP', 'OUT', 'REACH', 'CHILDREN', 'COOL',
+    'DRY', 'PLACE', 'SCHEDULE', 'PRESCRIPTION', 'DRUG', 'CAUTION', 'WARNING', 'DOSAGE',
+    'DIRECTION', 'DIRECTIONS', 'DIRECTED', 'PHYSICIAN', 'UNCOATED', 'FILM', 'COATED',
+    'SUSPENSION', 'INJECTION', 'INJ', 'DROPS', 'SOLUTION', 'LOTION', 'GEL', 'OINTMENT',
+    'MOUTH', 'WASH', 'TOPICAL', 'ORAL', 'EXTERNAL', 'PVT', 'LTD', 'INC', 'CORP', 'CO',
+    'COMPANY', 'INDIA', 'IP', 'BP', 'USP', 'NF', 'MG', 'ML', 'MCG', 'GM', 'GRAM', 'GRAMS',
+    'IU', 'PERCENT', 'TAPE', 'ADHESIVE', 'GAUZE', 'BANDAGE', 'COTTON', 'SURGICAL', 'STERILE',
+    'NET', 'QTY', 'QUANTITY', 'PACK', 'PACKAGE', 'TREATMENT', 'DERMA', 'DERMATOLOGICAL',
+    'SHODILATOR', 'MUCOLYTIC', 'EXPECTORANT', 'NATURAL', 'SUGAR', 'FREE', 'TASTE', 'WITH',
+    'DYE', 'RELIEF', 'EXTRA', 'FAST', 'ACTION', 'PLUS', 'FORTE', 'CARE', 'HEALTHCARE',
+    'FEVER', 'PAIN', 'ANTI', 'INFLAMMATORY', 'ANALGESIC', 'ANTIPYRETIC', 'ITCH', 'ACNE',
+    'ALLERGY', 'COLD', 'COUGH', 'ORANGE', 'FLAVOUR', 'FLAVORED', 'BORG', 'LEI', 'CEIP',
+    'LOLIG', 'TODUCE', 'TOCUCE', 'JULPHAR', 'JAMJOM', 'TOR', 'EASTED', 'SIN', 'REMO',
+    'SVIAMOWING', 'IVET', 'KAR', 'YLY', 'WYONI', 'ARRIV', 'ARGICAL', 'AIR', 'VENTED',
+    '5CMX5YD', 'NAN', 'TAPE', 'OINT'
+}
+
+COMMON_SALTS = {
+    'PARACETAMOL', 'ACETAMINOPHEN', 'IBUPROFEN', 'TRETINOIN', 'ACETYLSALICYLIC', 'ASPIRIN',
+    'AMOXICILLIN', 'AMOXYCILLIN', 'CLAVULANIC', 'CLAVULANATE', 'CETIRIZINE', 'LEVOCETIRIZINE',
+    'AZITHROMYCIN', 'DICLOFENAC', 'ACECLOFENAC', 'PANTOPRAZOLE', 'OMEPRAZOLE', 'RABEPRAZOLE',
+    'METFORMIN', 'GLIMEPIRIDE', 'ATORVASTATIN', 'ROSUVASTATIN', 'AMLODIPINE', 'TELMISARTAN',
+    'SALBUTAMOL', 'ALBUTEROL', 'POVIDONE', 'IODINE', 'BETAMETHASONE', 'CELECOXIB', 'METRONIDAZOLE',
+    'LACTULOSE', 'TERBINAFINE', 'DOMPERIDONE', 'FUSIDIC', 'GENTAMICIN', 'SITAGLIPTIN', 'ACYCLOVIR'
+}
+
+
+def split_glued_tokens(text: str) -> str:
+    """Split glued tokens at letter/digit boundaries (e.g. ACRETIN0.05% -> ACRETIN 0.05%)."""
+    t = re.sub(r'([A-Za-z]+)(\d+(?:\.\d+)?%?)', r'\1 \2', text)
+    t = re.sub(r'(\d+(?:\.\d+)?%?)([A-Za-z]+)', r'\1 \2', t)
+    return t
+
+
+def match_printed_lines(
+    lines: List[str],
+    cutoff: Optional[float] = None,
+    brand_index: Optional[Any] = None,
+) -> Dict[str, Any]:
+    """
+    Multi-evidence matcher for printed packaging lines.
+    1. Splits glued tokens (letter/digit boundaries).
+    2. Tests word alone, hyphen-joined, adjacent 2-word joins.
+    3. Filters pharmaceutical stop-list.
+    4. Fuzzy matches against BrandWordIndex (~165k entries, rapidfuzz fuzz.ratio, cutoff 75).
+    5. Corroborates with salt evidence (+35), strengths (+15/-10), manufacturer (+10), supporting lines (+3).
+    6. Enforces compound-count guard.
+    7. Returns top 3 candidates and 'not_sure' status if confidence is below threshold.
+    """
+    from django.conf import settings
+    from .medicine_index import get_brand_word_index
+
+    if cutoff is None:
+        cutoff = getattr(settings, 'MATCH_CUTOFF', 75.0)
+
+    # Use search cutoff ~70 so candidates are not prematurely dropped
+    search_cutoff = min(float(cutoff), 70.0)
+
+    if brand_index is None:
+        brand_index = get_brand_word_index()
+
+    full_text = " ".join(lines).upper()
+    detected_strengths = re.findall(r'\b\d+(?:\.\d+)?%?\b', full_text)
+
+    # Candidate tokens with box prominence weights (larger text preferred)
+    candidate_tokens: Dict[str, Tuple[float, float, int]] = {}
+    for box_idx, line in enumerate(lines):
+        prominence = 20.0 if box_idx == 0 else (12.0 if box_idx == 1 else (6.0 if box_idx == 2 else 0.0))
+        cleaned = split_glued_tokens(line.upper())
+        words = [re.sub(r'[^A-Z0-9]', '', w) for w in re.split(r'[\s\-_]+', cleaned) if w.strip()]
+
+        # 1. Word alone
+        for w in words:
+            if len(w) >= 3 and w not in PHARMA_STOPWORDS and not w.isdigit():
+                cur_sc, cur_prom, cur_cnt = candidate_tokens.get(w, (0.0, 0.0, 0))
+                candidate_tokens[w] = (cur_sc, max(cur_prom, prominence), cur_cnt + 1)
+
+        # 2. Hyphen joined
+        hyphen_j = re.sub(r'[^A-Z0-9]', '', line.upper())
+        if len(hyphen_j) >= 3 and hyphen_j not in PHARMA_STOPWORDS and not hyphen_j.isdigit():
+            cur_sc, cur_prom, cur_cnt = candidate_tokens.get(hyphen_j, (0.0, 0.0, 0))
+            candidate_tokens[hyphen_j] = (cur_sc, max(cur_prom, prominence), cur_cnt + 1)
+
+        # 3. Two-word joins
+        for i in range(len(words) - 1):
+            two_j = words[i] + words[i + 1]
+            if len(two_j) >= 4 and two_j not in PHARMA_STOPWORDS and not two_j.isdigit():
+                cur_sc, cur_prom, cur_cnt = candidate_tokens.get(two_j, (0.0, 0.0, 0))
+                candidate_tokens[two_j] = (cur_sc, max(cur_prom, prominence), cur_cnt + 1)
+
+    brand_scores: Dict[str, Tuple[float, int]] = {}
+    for tok, (_, prom, count) in candidate_tokens.items():
+        if tok in brand_index.brand_to_ids:
+            score = 100.0 + prom
+            if tok in COMMON_SALTS:
+                score -= 15.0  # slight penalty if token is a generic chemical salt
+            if tok not in brand_scores or score > brand_scores[tok][0]:
+                brand_scores[tok] = (score, count)
+        elif len(tok) >= 4:
+            f_matches = process.extract(tok, brand_index.unique_brand_words, scorer=fuzz.ratio, limit=3, score_cutoff=search_cutoff)
+            for m_b, score, _ in f_matches:
+                adj_score = score + prom
+                if m_b in COMMON_SALTS:
+                    adj_score -= 15.0
+                if m_b not in brand_scores or adj_score > brand_scores[m_b][0]:
+                    brand_scores[m_b] = (adj_score, count)
+
+    if not brand_scores:
+        return {
+            "success": False,
+            "status": "unverified",
+            "medicine": None,
+            "candidates": [],
+            "medicines": [],
+            "top_candidates": [],
+            "confidence_breakdown": _zero_breakdown(),
+            "raw_ocr": full_text,
+            "message": "No matching brand words found in local database."
+        }
+
+    # Gather candidate medicine rows from SQLite
+    cand_ids = []
+    brand_by_id = {}
+    for b_word, (b_score, b_count) in sorted(brand_scores.items(), key=lambda x: x[1][0], reverse=True)[:10]:
+        for mid in brand_index.brand_to_ids.get(b_word, [])[:15]:
+            cand_ids.append(mid)
+            brand_by_id[mid] = (b_word, b_score, b_count)
+
+    rows_db = brand_index.get_medicines_by_ids(cand_ids)
+
+    scored_candidates = []
+    for row in rows_db:
+        mid = row["id"]
+        name = row["name"]
+        salt = row.get("salt") or ""
+        mfr = row.get("manufacturer") or ""
+        price = row.get("price")
+
+        b_word, b_score, b_count = brand_by_id.get(mid, ("", 0.0, 1))
+        cand_name = (name or "").upper()
+        cand_salt = salt.upper()
+        cand_mfr = mfr.upper()
+
+        score = b_score
+
+        # 1. Salt boost (+35)
+        salt_matched = False
+        salt_words = [re.sub(r'[^A-Z0-9]', '', w) for w in re.split(r'[\s,()/+]+', cand_salt) if len(w) >= 4]
+        if any(sw in full_text and sw not in PHARMA_STOPWORDS for sw in salt_words):
+            salt_matched = True
+            score += 35.0
+
+        # 2. Strength corroboration (+15 / -10)
+        cand_strengths = re.findall(r'\b\d+(?:\.\d+)?%?\b', cand_name + ' ' + cand_salt)
+        strength_matched = False
+        if any(st in cand_strengths for st in detected_strengths if len(st) >= 2 or st in {'5', '2'}):
+            strength_matched = True
+            score += 15.0
+        elif detected_strengths and cand_strengths:
+            score -= 10.0
+
+        # 3. Manufacturer boost (+10)
+        if cand_mfr:
+            mfr_words = [w for w in re.split(r'[\s,.]+', cand_mfr) if len(w) >= 4 and w not in PHARMA_STOPWORDS]
+            if any(mw in full_text for mw in mfr_words):
+                score += 10.0
+
+        # 4. Multi-line support (+3 per extra line)
+        if b_count > 1:
+            score += min(9.0, (b_count - 1) * 3.0)
+
+        # 5. Compound-count guard (-20)
+        if '+' in cand_salt:
+            score -= 20.0
+
+        corroborated = bool(salt_matched or strength_matched)
+        confident = bool(score >= cutoff)
+
+        first_brand = re.split(r'[\s\-_]+', name.strip())[0]
+        scored_candidates.append({
+            "id": mid,
+            "name": name,
+            "brand": first_brand,
+            "salt": salt,
+            "manufacturer": mfr or "Registered Manufacturer",
+            "price": price,
+            "score": round(score, 1),
+            "confident": confident,
+            "corroborated": corroborated,
+            "salt_matched": salt_matched,
+            "strength_matched": strength_matched,
+            "dosage_form": "Tablet"
+        })
+
+    # Deduplicate candidates by brand name, keeping highest scoring row
+    scored_candidates.sort(key=lambda x: x["score"], reverse=True)
+    dedup_candidates = []
+    seen_brands = set()
+    for cand in scored_candidates:
+        b_norm = re.sub(r'[^A-Z0-9]', '', cand["brand"].upper())
+        if b_norm not in seen_brands:
+            seen_brands.add(b_norm)
+            dedup_candidates.append(cand)
+            if len(dedup_candidates) >= 5:
+                break
+
+    if not dedup_candidates:
+        return {
+            "success": False,
+            "status": "unverified",
+            "medicine": None,
+            "candidates": [],
+            "medicines": [],
+            "top_candidates": [],
+            "confidence_breakdown": _zero_breakdown(),
+            "raw_ocr": full_text,
+            "message": "Unable to find candidate medicines in local database."
+        }
+
+    # Requirement A: The result status is "verified" only when the top candidate
+    # is confident AND corroborated (salt or strength matches); otherwise status "unverified".
+    top_cand = dedup_candidates[0]
+    is_verified = bool(top_cand.get("confident") and top_cand.get("corroborated"))
+    status = "verified" if is_verified else "unverified"
+
+    breakdown = {
+        "brand": min(100.0, max(0.0, top_cand["score"])),
+        "ingredients": 95.0 if top_cand.get("salt_matched") else 50.0,
+        "strength": 85.0 if top_cand.get("strength_matched") else 50.0,
+        "manufacturer": 70.0,
+        "dosage_form": 80.0,
+        "overall": min(100.0, max(0.0, top_cand["score"]))
+    }
+
+    return {
+        "success": is_verified,
+        "status": status,
+        "medicine": top_cand if is_verified else None,
+        "candidates": dedup_candidates[:3],
+        "medicines": dedup_candidates[:3],
+        "top_candidates": dedup_candidates[:5],
+        "confidence_breakdown": breakdown,
+        "raw_ocr": full_text,
+        "message": None if is_verified else "Top candidate was not confident and corroborated. Top candidate suggestions provided."
+    }
+

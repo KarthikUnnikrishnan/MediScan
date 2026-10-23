@@ -120,20 +120,24 @@ def normalize_ocr_text(raw_text: str) -> str:
     )
 
     # 3. Contextual word repairs for known pharmaceutical OCR corruptions
-    tokens = text.split()
-    repaired_tokens = []
-    for token in tokens:
-        clean_tok = re.sub(r'[^a-zA-Z0-9]', '', token).lower()
-        if clean_tok in _COMMON_OCR_WORD_CORRECTIONS:
-            # Replace token while preserving casing
-            replacement = _COMMON_OCR_WORD_CORRECTIONS[clean_tok]
-            repaired_tokens.append(replacement)
-        else:
-            repaired_tokens.append(token)
+    lines = text.splitlines()
+    repaired_lines = []
+    for line in lines:
+        tokens = line.split()
+        repaired_tokens = []
+        for token in tokens:
+            clean_tok = re.sub(r'[^a-zA-Z0-9]', '', token).lower()
+            if clean_tok in _COMMON_OCR_WORD_CORRECTIONS:
+                # Replace token while preserving casing
+                replacement = _COMMON_OCR_WORD_CORRECTIONS[clean_tok]
+                repaired_tokens.append(replacement)
+            else:
+                repaired_tokens.append(token)
+        repaired_line = " ".join(repaired_tokens).strip()
+        if repaired_line:
+            repaired_lines.append(repaired_line)
 
-    normalized = " ".join(repaired_tokens)
-    # Normalize excess whitespace
-    normalized = re.sub(r'\s+', ' ', normalized).strip()
+    normalized = "\n".join(repaired_lines).strip()
     return normalized
 
 
@@ -235,6 +239,16 @@ def extract_prominent_trade_name(text: str, manufacturer: Optional[str] = None, 
             if first_w not in generic_words and first_w not in mfr_words:
                 return cand
 
+    # 3. Prominent Brand before dosage form (e.g. "Crocin Advance Tablet", "Augmentin Duo Tablet", "Calpol Tablet")
+    for line in lines:
+        m = re.search(r'^\s*([A-Za-z0-9\s-]{2,25})\s+(?:Tablets?|Capsules?|Suspension|Syrup)\b', line, re.I)
+        if m:
+            cand = m.group(1).strip()
+            words = [w.lower() for w in cand.split()]
+            if not any(w in generic_words for w in words) and not any(w in mfr_words for w in words):
+                if 1 <= len(words) <= 3:
+                    return cand
+
     return None
 
 
@@ -251,20 +265,27 @@ def extract_brand_candidate(text: str) -> Optional[str]:
         'composition', 'each', 'contains', 'film', 'coated', 'batch', 'uncoated',
         'paracetamol', 'levocetirizine', 'ibuprofen', 'amoxicillin', 'azithromycin',
         'pantoprazole', 'cetirizine', 'metformin', 'atorvastatin', 'omeprazole',
+        'aceclofenac', 'diclofenac', 'calcium', 'calcitriol', 'vitamin', 'vit',
+        'd3', 'aspirin', 'clopidogrel', 'telmisartan', 'amlodipine', 'salbutamol',
+        'ciprofloxacin', 'ofloxacin', 'metronidazole', 'tinidazole',
     }
 
     words = text.split()
     for i, w in enumerate(words):
         clean_w = re.sub(r'[^a-zA-Z0-9-]', '', w)
-        if len(clean_w) >= 2 and clean_w.lower() not in exclude_words and not clean_w.isdigit():
-            # Check if immediately following word is a strength number (e.g. "650", "625", "500", "250/5")
-            if i + 1 < len(words):
-                num_match = re.search(r'(\d+(?:\.\d+)?)', words[i + 1])
-                if num_match:
-                    next_clean = num_match.group(1)
-                    if 1 <= len(next_clean) <= 4:
-                        return f"{clean_w} {next_clean}"
-            return clean_w
+        if len(clean_w) < 2 or clean_w.lower() in exclude_words or clean_w.isdigit():
+            continue
+        # Skip pure strength values like 500mg, 650mg, 10ml, etc.
+        if re.match(r'^\d+(?:\.\d+)?(?:mg|ml|mcg|g|iu|%|tabs?|caps?)?$', clean_w, re.IGNORECASE):
+            continue
+        # Check if immediately following word is a strength number (e.g. "650", "625", "500", "250/5")
+        if i + 1 < len(words):
+            num_match = re.search(r'(\d+(?:\.\d+)?)', words[i + 1])
+            if num_match:
+                next_clean = num_match.group(1)
+                if 1 <= len(next_clean) <= 4:
+                    return f"{clean_w} {next_clean}"
+        return clean_w
 
     return None
 
@@ -298,8 +319,20 @@ def extract_structured_ocr(raw_ocr: str) -> Dict[str, Any]:
     brand = trade_name or extract_brand_candidate(normalized)
     detected_label_name = trade_name or brand
 
-    # Attempt to extract ingredients from normalized text
-    ingredients = parse_salt(normalized)
+    # If brand was found, strip it from OCR text before parsing active salts
+    # so brand codes (e.g. 'Dolo-650', '1-AL') do not contaminate active chemical ingredient names
+    salt_search_text = normalized
+    if brand:
+        brand_pattern = re.compile(r'\b' + re.escape(brand) + r'(?:\s*(?:Tablets?|Capsules?|Suspension))?\b', re.IGNORECASE)
+        salt_search_text = brand_pattern.sub(' ', normalized).strip()
+        brand_base = brand.split()[0].strip()
+        if len(brand_base) >= 3 and brand_base.lower() != "tablet":
+            salt_search_text = re.sub(r'\b' + re.escape(brand_base) + r'\b', ' ', salt_search_text, flags=re.IGNORECASE).strip()
+
+    # Attempt to extract ingredients from salt search text
+    ingredients = parse_salt(salt_search_text)
+    if not ingredients or not any(ing.get("canonical_name") for ing in ingredients):
+        ingredients = parse_salt(normalized)
 
     # Check for explicit generic label line (e.g. from structured OCR or prompt format)
     generic = None

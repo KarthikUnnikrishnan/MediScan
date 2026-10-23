@@ -36,6 +36,23 @@ _SYNONYM_MAP = {
     'pantoprazole sodium': 'pantoprazole',
 }
 
+_KNOWN_ACTIVE_NAMES = [
+    'paracetamol', 'acetaminophen', 'diclofenac', 'aceclofenac', 'ibuprofen',
+    'calcium', 'calcitriol', 'vitamin d3', 'cholecalciferol', 'vitamin c',
+    'ascorbic acid', 'vitamin b12', 'methylcobalamin', 'cyanocobalamin',
+    'folic acid', 'pantoprazole', 'rabeprazole', 'omeprazole', 'esomeprazole',
+    'levocetirizine', 'cetirizine', 'fexofenadine', 'loratadine', 'desloratadine',
+    'amoxicillin', 'amoxycillin', 'clavulanic acid', 'clavulanate', 'azithromycin',
+    'ciprofloxacin', 'ofloxacin', 'metronidazole', 'tinidazole',
+    'metformin', 'glimepiride', 'gliclazide', 'vildagliptin', 'sitagliptin',
+    'atorvastatin', 'rosuvastatin', 'simvastatin', 'aspirin', 'clopidogrel',
+    'telmisartan', 'losartan', 'amlodipine', 'atenolol', 'metoprolol',
+    'salbutamol', 'budesonide', 'formoterol', 'montelukast', 'theophylline',
+    'dextromethorphan', 'chlorpheniramine', 'phenylephrine', 'ambroxol',
+    'domperidone', 'ondansetron', 'ranitidine', 'famotidine', 'dicyclomine',
+    'mefenamic acid',
+]
+
 # Regex to capture: [Ingredient Name] ( [Strength] [Unit] )
 # Units of measure for pharmaceutical active ingredients
 _UNIT_PATTERN = r'(?:mg|ml|mcg|µg|g|gm|iu|units?|spores?|%|%\s*w/[vw]|w/v|w/w)(?:\s*/\s*\d*\s*(?:mg|ml|mcg|µg|g|gm|dose|puff))?'
@@ -88,22 +105,39 @@ def normalize_ingredient_name(name: str) -> str:
         flags=re.IGNORECASE
     )
 
-    # Strip leading dosage form words if OCR captured "Brand Tablet Ingredient" or "Syp Brand"
+    # Strip sub-brand marketing modifiers like "advance", "plus", "forte", etc. when prefixed to ingredient
     clean = re.sub(
-        r'^(?:.*?\b(?:syp|syr|tab|tabs|cap|caps|inj|susp|oint|tablet|tablets|capsule|capsules|syrup|suspension|injection|drops|drop|ointment|gel|cream|solution|duo|forte)\b\s*)',
+        r'^\s*(?:advance|plus|forte|duo|ultra|fast|relief|extra|pro|max|cr|sr|er|xr|ds|dt|od|mr)\s+',
         '',
         clean,
         flags=re.IGNORECASE
     )
+
+    # Strip dosage form words and pharmacopoeial designations without discarding preceding ingredient text
+    clean = re.sub(
+        r'\b(?:syp|syr|tab|tabs|cap|caps|inj|susp|oint|tablet|tablets|capsule|capsules|syrup|suspension|injection|drops|drop|ointment|gel|cream|solution|duo|forte)\b',
+        ' ',
+        clean,
+        flags=re.IGNORECASE
+    )
+    clean = re.sub(r'\b(?:ip|bp|usp|i\.p\.|b\.p\.|u\.s\.p\.)\b', ' ', clean, flags=re.IGNORECASE)
     
-    # Strip salt modifiers
-    clean = _SALT_MODIFIERS.sub("", clean)
+    # Strip salt modifiers, but preserve the name if it is an active salt like calcium
+    mod_stripped = _SALT_MODIFIERS.sub("", clean)
+    mod_stripped = re.sub(r"[^a-z0-9\s]", " ", mod_stripped).strip()
+    if mod_stripped:
+        clean = mod_stripped
+    else:
+        clean = re.sub(r"[^a-z0-9\s]", " ", clean).strip()
     
-    # Strip non-alphanumeric except spaces
-    clean = re.sub(r"[^a-z0-9\s]", " ", clean)
     clean = re.sub(r"\s+", " ", clean).strip()
+
+    # Check if a known active chemical name is present in clean (e.g. "advance paracetamol" -> "paracetamol")
+    for act in _KNOWN_ACTIVE_NAMES:
+        if re.search(r'\b' + re.escape(act) + r'\b', clean):
+            clean = act
+            break
     
-    # If multiple words remain and the last word is a known chemical, take the chemical
     # Apply standard synonyms
     return _SYNONYM_MAP.get(clean, clean)
 
@@ -124,13 +158,22 @@ def clean_display_ingredient(name: str) -> str:
         flags=re.IGNORECASE
     )
 
-    # Strip leading dosage form words if OCR captured "Brand Tablet Ingredient"
+    # Strip sub-brand marketing modifiers like "advance", "plus", "forte", etc. when prefixed to ingredient
     clean = re.sub(
-        r'^(?:.*?\b(?:tablet|tablets|capsule|capsules|syrup|suspension|injection|drops|ointment|gel|cream|solution|duo|forte)\b\s*)',
+        r'^\s*(?:advance|plus|forte|duo|ultra|fast|relief|extra|pro|max|cr|sr|er|xr|ds|dt|od|mr)\s+',
         '',
         clean,
         flags=re.IGNORECASE
     )
+
+    # Strip dosage form words and pharmacopoeial designations from the ingredient
+    clean = re.sub(
+        r'\b(?:tablet|tablets|capsule|capsules|syrup|suspension|injection|drops|drop|ointment|gel|cream|solution|duo|forte)\b',
+        ' ',
+        clean,
+        flags=re.IGNORECASE
+    )
+    clean = re.sub(r'\b(?:ip|bp|usp|i\.p\.|b\.p\.|u\.s\.p\.)\b', ' ', clean, flags=re.IGNORECASE)
 
     # Remove common scraped trailing words
     clean = re.sub(r"\badd$", "", clean, flags=re.IGNORECASE)
@@ -219,6 +262,23 @@ def parse_salt(salt_str: Optional[str]) -> List[Dict[str, Any]]:
             "unit": unit_clean,
             "raw": m.group(0).strip(),
         })
+
+    # Unquantified active ingredients fallback: detect named chemical actives even without explicit dosage numbers
+    if not ingredients:
+        s_lower = s.lower()
+        found_canons = set()
+        for act in _KNOWN_ACTIVE_NAMES:
+            if re.search(r'\b' + re.escape(act) + r'\b', s_lower):
+                canon = normalize_ingredient_name(act)
+                if canon and canon not in found_canons:
+                    found_canons.add(canon)
+                    ingredients.append({
+                        "ingredient": act,
+                        "canonical_name": canon,
+                        "strength": None,
+                        "unit": "mg",
+                        "raw": s,
+                    })
 
     return ingredients
 

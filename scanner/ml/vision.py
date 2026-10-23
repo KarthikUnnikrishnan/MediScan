@@ -11,9 +11,8 @@ training phrases instead of declining.
 
 Fix: validate TrOCR output with _ocr_output_looks_real(). The check is
 lightweight (regex + token heuristics) and does NOT require internet access.
-If the output fails validation, run_ocr() returns "" so the caller can fall
-through to Gemini Vision OCR or return unverified rather than presenting a
-hallucinated medicine name.
+If the output fails validation, run_ocr() returns "" so the caller can
+safely return unverified rather than presenting a hallucinated medicine name.
 """
 
 import os
@@ -246,7 +245,7 @@ def run_ocr(image_pil) -> str:
 
     Includes an anti-hallucination guard: if the decoded text matches a
     known hallucination pattern (short phrase with no dosage/suffix info)
-    the function returns "" so callers can fall through to Gemini Vision OCR.
+    the function returns "" so callers can safely handle unverified scans.
 
     Returns
     -------

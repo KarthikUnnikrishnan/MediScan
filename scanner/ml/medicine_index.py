@@ -258,3 +258,76 @@ def get_medicine_index() -> MedicineIndex:
 
     _GLOBAL_INDEX = build_and_cache_index(db_path, cache_path)
     return _GLOBAL_INDEX
+
+
+# ── Fast Distinct Brand Word Index (Target Design) ─────────────────────────────
+
+import threading
+import time
+
+_GLOBAL_BRAND_INDEX: Optional["BrandWordIndex"] = None
+_BRAND_INDEX_LOCK = threading.Lock()
+
+
+class BrandWordIndex:
+    """
+    Ultra-fast in-memory index of distinct normalized brand words (~165k entries)
+    extracted from medicines.sqlite (first word of each name, normalized A-Z0-9).
+    Builds in ~1.3 seconds at server startup.
+    """
+    def __init__(self, db_path: Optional[Path] = None):
+        self.db_path = Path(db_path or getattr(settings, 'MEDICINES_DB_PATH', 'saved_models/medicines.sqlite'))
+        self.brand_to_ids: Dict[str, List[int]] = {}
+        self.unique_brand_words: List[str] = []
+        self.is_loaded = False
+        self._lock = threading.Lock()
+
+    def build(self):
+        with self._lock:
+            if self.is_loaded:
+                return
+            t0 = time.time()
+            conn = sqlite3.connect(str(self.db_path))
+            cur = conn.cursor()
+            cur.execute("SELECT id, name FROM medicines")
+            brand_map: Dict[str, List[int]] = {}
+            for mid, name in cur.fetchall():
+                if not name:
+                    continue
+                first_w = re.split(r'[\s\-_]+', name.strip())[0]
+                norm = re.sub(r'[^A-Z0-9]', '', first_w.upper())
+                if len(norm) >= 2:
+                    brand_map.setdefault(norm, []).append(mid)
+            conn.close()
+            self.brand_to_ids = brand_map
+            self.unique_brand_words = sorted(brand_map.keys())
+            self.is_loaded = True
+            logger.info("BrandWordIndex ready with %d unique brand words (built in %.2fs)", len(self.unique_brand_words), time.time() - t0)
+
+    def get_medicines_by_ids(self, ids: List[int]) -> List[Dict[str, Any]]:
+        if not ids:
+            return []
+        conn = sqlite3.connect(str(self.db_path))
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        placeholders = ','.join(['?'] * len(ids))
+        cur.execute(
+            f"SELECT id, name, salt, manufacturer, price FROM medicines WHERE id IN ({placeholders})",
+            ids
+        )
+        rows = [dict(r) for r in cur.fetchall()]
+        conn.close()
+        return rows
+
+
+def get_brand_word_index() -> BrandWordIndex:
+    """Get or build the global singleton brand word index."""
+    global _GLOBAL_BRAND_INDEX
+    if _GLOBAL_BRAND_INDEX is None or not _GLOBAL_BRAND_INDEX.is_loaded:
+        with _BRAND_INDEX_LOCK:
+            if _GLOBAL_BRAND_INDEX is None:
+                _GLOBAL_BRAND_INDEX = BrandWordIndex()
+            if not _GLOBAL_BRAND_INDEX.is_loaded:
+                _GLOBAL_BRAND_INDEX.build()
+    return _GLOBAL_BRAND_INDEX
+

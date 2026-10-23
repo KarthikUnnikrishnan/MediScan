@@ -102,12 +102,17 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ---------------------------------------------------------------------------
-# MediScan model paths
+# MediScan model paths (100% Offline Models)
 # ---------------------------------------------------------------------------
+MODEL_A_DIR         = BASE_DIR / 'saved_models' / 'modelA_printed_ocr'
+MODEL_B_DIR         = BASE_DIR / 'saved_models' / 'modelB_handwritten_ocr'
 STRIP_DETECTOR_PATH = BASE_DIR / 'saved_models' / 'strip_detector.pt'
 STRIP_OCR_PATH      = BASE_DIR / 'saved_models' / 'strip_ocr_finetuned'
 MEDICINES_DB_PATH   = BASE_DIR / 'saved_models' / 'medicines.sqlite'
 DRUGS_DB_PATH       = BASE_DIR / 'saved_models' / 'drugs.sqlite'
+
+MATCH_CUTOFF        = 75
+USE_STRIP_CROP      = False
 
 # ---------------------------------------------------------------------------
 # Sessions
@@ -120,32 +125,12 @@ SESSION_COOKIE_AGE = 3600  # 1 hour
 # ---------------------------------------------------------------------------
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB
 
-import os
-GROQ_API_KEY   = os.environ.get('GROQ_API_KEY', '')
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
-GEMINI_MODEL   = os.environ.get('GEMINI_MODEL', 'gemini-3.1-flash-lite')
-GEMINI_FALLBACK_MODELS = os.environ.get('GEMINI_FALLBACK_MODELS', 'gemini-3.5-flash-lite,gemini-3.7-flash,gemini-3.8-flash')
-GEMINI_REQUEST_TIMEOUT = float(os.environ.get('GEMINI_REQUEST_TIMEOUT', '25.0'))
-GEMINI_MAX_503_RETRIES = int(os.environ.get('GEMINI_MAX_503_RETRIES', '2'))
-GEMINI_503_BACKOFF_BASE = float(os.environ.get('GEMINI_503_BACKOFF_BASE', '2.0'))
-GEMINI_RATE_LIMIT_RETRIES = int(os.environ.get('GEMINI_RATE_LIMIT_RETRIES', '1'))
-GEMINI_DAILY_COOLDOWN_HOURS = float(os.environ.get('GEMINI_DAILY_COOLDOWN_HOURS', '24.0'))
-GEMINI_QUOTA_STATE_PATH = BASE_DIR / 'saved_models' / 'gemini_quota_status.json'
-
-import sys
-IS_TESTING = any('test' in arg.lower() for arg in sys.argv)
-
-# Price Verification Configuration
-PRICE_SEARCH_PROVIDER      = os.environ.get('PRICE_SEARCH_PROVIDER', 'mock' if IS_TESTING else 'auto')
-PRICE_SEARCH_API_KEY       = os.environ.get('PRICE_SEARCH_API_KEY', '')
+# ---------------------------------------------------------------------------
+# Offline Medicine Price Verification Configuration
+# ---------------------------------------------------------------------------
+ENABLE_WEB_PRICE_CHECK     = False
+PRICE_SEARCH_PROVIDER      = 'offline'
 PRICE_CACHE_TTL_HOURS      = int(os.environ.get('PRICE_CACHE_TTL_HOURS', '168'))
-PRICE_VERIFIER_TIMEOUT     = float(os.environ.get('PRICE_VERIFIER_TIMEOUT', '5.0'))
-PRICE_VERIFIER_MAX_RETRIES = int(os.environ.get('PRICE_VERIFIER_MAX_RETRIES', '2'))
+PRICE_VERIFIER_TIMEOUT     = 0.5
+PRICE_VERIFIER_MAX_RETRIES = 0
 PRICE_CACHE_DB_PATH        = BASE_DIR / 'saved_models' / 'price_cache.sqlite'
-
-
-if 'GEMINI_MODEL=' in GEMINI_API_KEY:
-    raise RuntimeError(
-        'Invalid .env configuration: GEMINI_MODEL was appended to '
-        'GEMINI_API_KEY. Put GEMINI_MODEL on a separate line.'
-    )

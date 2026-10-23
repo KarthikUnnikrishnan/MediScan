@@ -551,83 +551,6 @@ class DirectPharmacySearchProvider(BaseSearchProvider):
         return listings
 
 
-class GeminiGroundingSearchProvider(BaseSearchProvider):
-    """
-    Search provider using Google Search Grounding with Gemini SDK when available and quota exists.
-    Falls back gracefully to DirectPharmacySearchProvider on rate limits, service errors, or empty results.
-    """
-    def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or getattr(settings, 'GEMINI_API_KEY', '') or os.environ.get('GEMINI_API_KEY', '')
-
-    def search(self, query: str) -> List[ProductListing]:
-        if not self.api_key:
-            return DirectPharmacySearchProvider().search(query)
-        try:
-            from google import genai
-            from google.genai import types
-            from google.genai.errors import APIError, ClientError
-
-            client = genai.Client(api_key=self.api_key)
-            model_name = getattr(settings, 'GEMINI_MODEL', 'gemini-3.8-flash')
-
-            prompt = (
-                f"Identify the exact packaging, strip quantity, and MRP in Indian Rupees for:\n"
-                f"{query}\n\n"
-                "Return exact details: Pack Quantity, Pack Unit (tablets/capsules), MRP (Rs), "
-                "Current Selling Price (Rs), and Source URL."
-            )
-            config = types.GenerateContentConfig(tools=[{'google_search': {}}])
-            resp = client.models.generate_content(
-                model=model_name,
-                contents=prompt,
-                config=config,
-            )
-
-            listings = []
-            text = resp.text or ""
-            grounding_chunks = []
-            if resp.candidates and resp.candidates[0].grounding_metadata:
-                grounding_chunks = resp.candidates[0].grounding_metadata.grounding_chunks or []
-
-            # Extract info from grounded text
-            qty, unit, basis = extract_package_details(text)
-            prices = extract_prices_from_text(text)
-
-            source_url = "https://www.google.com"
-            source_name = "Google Grounded Search"
-            for chunk in grounding_chunks:
-                if hasattr(chunk, 'web') and chunk.web and chunk.web.uri:
-                    source_url = chunk.web.uri
-                    source_name = getattr(chunk.web, 'title', 'Indian Pharmacy Database')
-                    break
-
-            if prices["mrp"] or prices["selling_price"] or prices["general_price"]:
-                listings.append(ProductListing(
-                    title=f"Verified online listing for {query}",
-                    snippet=text[:300],
-                    url=source_url,
-                    source_name=source_name,
-                    mrp_inr=prices["mrp"],
-                    selling_price_inr=prices["selling_price"] or prices["general_price"],
-                    pack_quantity=qty,
-                    pack_unit=unit,
-                    price_basis=basis,
-                ))
-
-            if listings:
-                return listings
-
-            # If Gemini grounding produced no priced listings, query direct pharmacy web sources
-            return DirectPharmacySearchProvider().search(query)
-
-        except Exception as exc:
-            logger.info("Gemini Grounding search unavailable (falling back to direct web search): %s", exc)
-            try:
-                return DirectPharmacySearchProvider().search(query)
-            except Exception:
-                return []
-
-
 # ── SQLite Persistent Cache Layer ─────────────────────────────────────────────
 
 class PriceVerificationCache:
@@ -736,12 +659,24 @@ class PriceVerificationCache:
         return f"{medicine_id or 0}_{name_clean}"
 
 
+# ── Offline Price Verification Provider ───────────────────────────────────────
+
+class OfflineSearchProvider(BaseSearchProvider):
+    """
+    Pure offline search provider for MediScan.
+    Relies strictly on local SQLite databases, price cache, and known MRP catalog.
+    Never attempts external internet connections or web scraping.
+    """
+    def search(self, query: str) -> List[ProductListing]:
+        return []
+
+
 # ── Core Price Verification Module ────────────────────────────────────────────
 
 class PriceVerifier:
     """
     Autonomous clinical price verification engine.
-    Verifies medicine identity, package quantity, and price basis against reliable online sources.
+    Verifies medicine identity, package quantity, and price basis against reliable local sources.
     """
     def __init__(
         self,
@@ -754,16 +689,8 @@ class PriceVerifier:
         self.search_provider = search_provider or self._build_default_provider()
 
     def _build_default_provider(self) -> BaseSearchProvider:
-        provider_type = getattr(settings, 'PRICE_SEARCH_PROVIDER', 'auto').lower()
-        if provider_type == 'mock':
-            return MockSearchProvider()
-        if provider_type == 'gemini_grounding':
-            return GeminiGroundingSearchProvider()
-        # Default auto: Gemini if key available, else Direct
-        gemini_key = getattr(settings, 'GEMINI_API_KEY', '') or os.environ.get('GEMINI_API_KEY', '')
-        if gemini_key:
-            return GeminiGroundingSearchProvider(gemini_key)
-        return DirectPharmacySearchProvider()
+        # MediScan operates 100% offline. External network scraping and APIs are disabled.
+        return OfflineSearchProvider()
 
     def _resolve_catalogue_fallback(
         self,
@@ -939,14 +866,17 @@ class PriceVerifier:
         else:
             record.formulation_type = form or "Tablet"
 
-        # 4. Search online for authoritative listings
-        query = f"{name} {mfr}".strip()
-        try:
-            listings = self.search_provider.search(query)
-        except Exception as exc:
-            logger.warning("Online search failed for %r: %s", name, exc)
-            record.notes.append(f"Online search error: {exc}")
-            listings = []
+        # 4. Search online for authoritative listings (only if ENABLE_WEB_PRICE_CHECK is True)
+        listings = []
+        enable_web = getattr(settings, 'ENABLE_WEB_PRICE_CHECK', False)
+        if enable_web:
+            query = f"{name} {mfr}".strip()
+            try:
+                listings = self.search_provider.search(query)
+            except Exception as exc:
+                logger.warning("Online search failed for %r: %s", name, exc)
+                record.notes.append(f"Online search error: {exc}")
+                listings = []
 
         if not listings:
             if isinstance(self.search_provider, MockSearchProvider):
