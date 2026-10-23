@@ -112,7 +112,7 @@ def index(request):
             return render(
                 request,
                 'scanner/index.html',
-                {'form': form, 'error': f"Processing error: {exc}"},
+                {'form': form, 'error': "The scanner is not ready. Please contact the administrator."},
             )
 
     # GET
@@ -211,4 +211,9 @@ def scan(request):
 
     except Exception as exc:
         logger.error("scan AJAX endpoint failed: %s", exc, exc_info=True)
-        return JsonResponse({'success': False, 'status': 'unverified', 'error': str(exc)}, status=500)
+        return JsonResponse({
+            'success': False,
+            'status': 'error',
+            'message': "The scanner is not ready. Please contact the administrator.",
+            'error': "The scanner is not ready. Please contact the administrator.",
+        }, status=500)

@@ -1,9 +1,8 @@
 """
-tools/build_eval_cache.py — Cache OCR lines for 108 benchmark photos.
+tools/build_eval_cache.py — Cache OCR lines for 108 benchmark photos with Rotation Fallback.
 
-Runs PrintedRecogniser once over the 108 photos in e2e_eval.tsv and saves
-the recognized lines and timings to tools/eval_lines_cache.json so matcher
-experiments and evaluations run in sub-second offline time without GPU inference.
+Applies PIL.ImageOps.exif_transpose and evaluates rotation fallback (0, 180, 90, 270 degrees).
+Saves recognized lines, chosen rotation, timings, and metadata to tools/eval_lines_cache.json.
 """
 
 import os
@@ -12,7 +11,9 @@ import csv
 import re
 import json
 import time
+import shutil
 from pathlib import Path
+from PIL import Image, ImageOps
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -23,20 +24,27 @@ django.setup()
 
 from scanner.ml.recognisers import get_printed_recogniser
 from scanner.ml.medicine_index import get_brand_word_index
+from scanner.ml.medicine_matcher import match_printed_lines
 
 DATASET_DIR = Path(r"D:\MediScan_data\ModelA")
 TSV_PATH = DATASET_DIR / "final" / "e2e_eval.tsv"
 CACHE_PATH = PROJECT_ROOT / "tools" / "eval_lines_cache.json"
+CACHE_BACKUP = PROJECT_ROOT / "tools" / "eval_lines_cache_old.json"
 PER_PRODUCT = 3
 
 
 def main():
-    print("=" * 70)
-    print("BUILDING OCR LINES CACHE FOR 108 BENCHMARK PHOTOS")
-    print("=" * 70)
+    print("=" * 75, flush=True)
+    print("BUILDING OCR LINES CACHE FOR 108 BENCHMARK PHOTOS (WITH ROTATION FALLBACK)", flush=True)
+    print("=" * 75, flush=True)
+
+    # Backup existing cache if present
+    if CACHE_PATH.exists() and not CACHE_BACKUP.exists():
+        shutil.copy2(CACHE_PATH, CACHE_BACKUP)
+        print(f"Backed up previous cache to {CACHE_BACKUP}", flush=True)
 
     brand_index = get_brand_word_index()
-    print(f"Loaded BrandWordIndex ({len(brand_index.unique_brand_words)} words)")
+    print(f"Loaded BrandWordIndex ({len(brand_index.unique_brand_words)} words, {len(brand_index.unique_salt_words)} salt words)", flush=True)
 
     by_product = {}
     with open(TSV_PATH, encoding='utf-8', newline='') as f:
@@ -61,41 +69,112 @@ def main():
     for prod_name in sorted(by_product.keys()):
         sample.extend(by_product[prod_name][:PER_PRODUCT])
 
-    print(f"Selected {len(sample)} photos across {len(by_product)} products.")
+    print(f"Selected {len(sample)} photos across {len(by_product)} products.", flush=True)
 
     rec_a = get_printed_recogniser()
     rec_a._ensure_loaded()
-    print("PrintedRecogniser (Model A) warmed up.")
+    print("PrintedRecogniser (Model A) warmed up.\n", flush=True)
 
     cached_entries = []
     t_start = time.time()
+    per_photo_times = []
 
     for idx, item in enumerate(sample, 1):
         img_path = DATASET_DIR / item["rel_path"]
-        t0 = time.time()
-        lines, details = rec_a.read_lines(str(img_path), beams=1, return_details=True)
-        elapsed = time.time() - t0
+        raw_img = Image.open(img_path)
+        img_exif = ImageOps.exif_transpose(raw_img)
+
+        # FIX 1b: Rotation fallback (0, 180, 90, 270)
+        # Read at 0 degrees; if not confident (top candidate not confident, or < 2 read tokens >= 90),
+        # also try 180, then 90, then 270 degrees. Stop at first confident result;
+        # otherwise keep rotation whose best candidate score is highest.
+        angles = [0, 180, 90, 270]
+        rotations_attempted = []
+        rotations_data = []
+
+        chosen_angle = 0
+        chosen_lines = []
+        chosen_details = {}
+        total_ocr_sec = 0.0
+
+        for angle in angles:
+            rotations_attempted.append(angle)
+            t_rot0 = time.time()
+            rot_img = img_exif.rotate(angle, expand=True) if angle != 0 else img_exif
+            lines, details = rec_a.read_lines(rot_img, beams=1, return_details=True)
+            elapsed_rot = time.time() - t_rot0
+            total_ocr_sec += elapsed_rot
+
+            match_res = match_printed_lines(lines, brand_index=brand_index)
+            top_cand = match_res.get("candidates") and match_res["candidates"][0]
+            top_score = top_cand.get("score", 0.0) if top_cand else 0.0
+            top_conf = bool(top_cand and top_cand.get("confident"))
+            n_matching_tokens = match_res.get("n_matching_tokens", 0)
+
+            is_confident = top_conf and (n_matching_tokens >= 2)
+
+            rotations_data.append({
+                "angle": angle,
+                "lines": lines,
+                "details": details,
+                "top_score": top_score,
+                "is_confident": is_confident,
+                "n_tokens": n_matching_tokens,
+                "status": match_res.get("status")
+            })
+
+            if is_confident:
+                chosen_angle = angle
+                chosen_lines = lines
+                chosen_details = details
+                break
+
+        if not chosen_lines:
+            # Fallback to rotation with highest candidate score
+            best_rot = max(rotations_data, key=lambda x: x["top_score"])
+            chosen_angle = best_rot["angle"]
+            chosen_lines = best_rot["lines"]
+            chosen_details = best_rot["details"]
+
+        per_photo_times.append(total_ocr_sec)
 
         entry = {
             "rel_path": item["rel_path"],
             "target_brand": item["target_brand"],
             "prod_name": item["prod_name"],
-            "lines": lines,
-            "box_find_sec": details["box_find_sec"],
-            "reading_sec": details["reading_sec"],
-            "total_ocr_sec": elapsed,
-            "box_count": details["box_count"]
+            "lines": chosen_lines,
+            "rotation": chosen_angle,
+            "rotations_attempted": rotations_attempted,
+            "box_find_sec": chosen_details.get("box_find_sec", 0.0),
+            "reading_sec": chosen_details.get("reading_sec", 0.0),
+            "total_ocr_sec": total_ocr_sec,
+            "box_count": chosen_details.get("box_count", len(chosen_lines))
         }
         cached_entries.append(entry)
 
-        if idx % 10 == 0 or idx == len(sample):
-            print(f"[{idx:3d}/{len(sample)}] Processed: {item['target_brand']:12} | Time: {elapsed:.2f}s | Cumulative: {time.time() - t_start:.1f}s")
+        # Print progress per photo
+        rot_str = f"{chosen_angle}° (tried {rotations_attempted})"
+        print(
+            f"[{idx:3d}/{len(sample)}] {item['target_brand']:12} | Rot: {rot_str:<18} | "
+            f"Time: {total_ocr_sec:5.2f}s | Avg: {sum(per_photo_times)/len(per_photo_times):5.2f}s",
+            flush=True
+        )
 
     with open(CACHE_PATH, "w", encoding="utf-8") as f:
         json.dump(cached_entries, f, indent=2)
 
-    print(f"\nSaved {len(cached_entries)} cached photo lines to {CACHE_PATH}")
-    print(f"Total time: {time.time() - t_start:.2f}s (Average: {(time.time() - t_start) / len(cached_entries):.2f}s/photo)")
+    total_time = time.time() - t_start
+    avg_time = total_time / len(cached_entries)
+    worst_time = max(per_photo_times)
+
+    print("\n" + "=" * 75, flush=True)
+    print("CACHE GENERATION COMPLETE", flush=True)
+    print(f"Total Photos Processed: {len(cached_entries)}", flush=True)
+    print(f"Total Elapsed Time    : {total_time:.2f}s ({total_time/60:.2f} mins)", flush=True)
+    print(f"Average Seconds/Photo : {avg_time:.2f}s (Target: < 12s)", flush=True)
+    print(f"Worst Case Photo Time : {worst_time:.2f}s", flush=True)
+    print(f"Saved to              : {CACHE_PATH}", flush=True)
+    print("=" * 75 + "\n", flush=True)
 
 
 if __name__ == "__main__":

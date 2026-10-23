@@ -272,13 +272,17 @@ _BRAND_INDEX_LOCK = threading.Lock()
 class BrandWordIndex:
     """
     Ultra-fast in-memory index of distinct normalized brand words (~165k entries)
-    extracted from medicines.sqlite (first word of each name, normalized A-Z0-9).
-    Builds in ~1.3 seconds at server startup.
+    extracted from medicines.sqlite (first word of each name, normalized A-Z0-9),
+    with brand popularity counts, junk-word filtering, and salt-to-brand mapping.
+    Builds in ~2.5 seconds at server startup.
     """
     def __init__(self, db_path: Optional[Path] = None):
         self.db_path = Path(db_path or getattr(settings, 'MEDICINES_DB_PATH', 'saved_models/medicines.sqlite'))
         self.brand_to_ids: Dict[str, List[int]] = {}
+        self.brand_counts: Dict[str, int] = {}
         self.unique_brand_words: List[str] = []
+        self.salt_to_brand_words: Dict[str, Set[str]] = {}
+        self.unique_salt_words: List[str] = []
         self.is_loaded = False
         self._lock = threading.Lock()
 
@@ -289,20 +293,63 @@ class BrandWordIndex:
             t0 = time.time()
             conn = sqlite3.connect(str(self.db_path))
             cur = conn.cursor()
-            cur.execute("SELECT id, name FROM medicines")
-            brand_map: Dict[str, List[int]] = {}
-            for mid, name in cur.fetchall():
+            cur.execute("SELECT id, name, salt FROM medicines")
+            raw_brand_map: Dict[str, List[int]] = {}
+            salt_map: Dict[str, Set[str]] = {}
+
+            salt_stop = {
+                'acid', 'salt', 'sodium', 'potassium', 'chloride', 'hydrate',
+                'tablet', 'tablets', 'capsule', 'capsules', 'syrup', 'suspension',
+                'injection', 'drop', 'drops', 'cream', 'ointment', 'solution',
+                'gel', 'lotion', 'dispersible', 'extended', 'release', 'oral'
+            }
+
+            for mid, name, salt in cur.fetchall():
                 if not name:
                     continue
                 first_w = re.split(r'[\s\-_]+', name.strip())[0]
                 norm = re.sub(r'[^A-Z0-9]', '', first_w.upper())
                 if len(norm) >= 2:
-                    brand_map.setdefault(norm, []).append(mid)
+                    raw_brand_map.setdefault(norm, []).append(mid)
+
+                if salt:
+                    clean_salt = re.sub(r'\([^\)]*\)', ' ', salt.lower())
+                    clean_salt = re.sub(r'[^a-z\s]', ' ', clean_salt)
+                    for sw in clean_salt.split():
+                        if len(sw) >= 4 and sw not in salt_stop:
+                            if len(norm) >= 2:
+                                salt_map.setdefault(sw, set()).add(norm)
+
             conn.close()
-            self.brand_to_ids = brand_map
-            self.unique_brand_words = sorted(brand_map.keys())
+
+            # FIX 2b: Drop index words that occur once and do not look like normal brand words
+            def is_normal_brand_word(w: str) -> bool:
+                if len(w) < 3 or not w.isalpha():
+                    return False
+                if not any(c in 'AEIOUY' for c in w):
+                    return False
+                if re.search(r'[^AEIOUY]{5,}', w):
+                    return False
+                return True
+
+            filtered_brand_map: Dict[str, List[int]] = {}
+            for w, ids in raw_brand_map.items():
+                if len(ids) == 1 and not is_normal_brand_word(w):
+                    continue
+                filtered_brand_map[w] = ids
+
+            self.brand_to_ids = filtered_brand_map
+            self.brand_counts = {b: len(ids) for b, ids in filtered_brand_map.items()}
+            self.unique_brand_words = sorted(filtered_brand_map.keys())
+            self.salt_to_brand_words = salt_map
+            self.unique_salt_words = sorted(salt_map.keys())
             self.is_loaded = True
-            logger.info("BrandWordIndex ready with %d unique brand words (built in %.2fs)", len(self.unique_brand_words), time.time() - t0)
+            logger.info(
+                "BrandWordIndex ready with %d unique brand words and %d unique salt words (built in %.2fs)",
+                len(self.unique_brand_words),
+                len(self.unique_salt_words),
+                time.time() - t0,
+            )
 
     def get_medicines_by_ids(self, ids: List[int]) -> List[Dict[str, Any]]:
         if not ids:

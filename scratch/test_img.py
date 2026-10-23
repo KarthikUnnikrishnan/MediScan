@@ -19,6 +19,5 @@ for p in uploads[:2]:
     print("STATUS:", res.get("status"))
     print("DETECTED NAME:", res.get("medicine", {}).get("name") if res.get("medicine") else "None")
     print("RAW_TROCR:", res.get("raw_ocr_trocr"))
-    print("RAW_GEMINI:", res.get("raw_ocr_gemini")[:150] if res.get("raw_ocr_gemini") else "None")
     print("CONFIDENCE:", res.get("confidence_breakdown"))
     print("-" * 50)

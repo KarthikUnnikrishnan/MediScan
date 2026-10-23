@@ -106,6 +106,7 @@ def scan_medicine_package(
     4. If unverified: returns unverified status with top 3 candidates and rejection reasons.
     """
     try:
+        from PIL import ImageOps
         from .recognisers import get_printed_recogniser
         from .medicine_matcher import match_printed_lines
         from .salt_parser import parse_salt
@@ -113,20 +114,62 @@ def scan_medicine_package(
         from .drug_safety import get_drug_safety_info
         from django.conf import settings
 
+        target_img = ImageOps.exif_transpose(image_pil)
         use_crop = getattr(settings, 'USE_STRIP_CROP', False)
-        target_img = image_pil
         if use_crop:
             try:
                 from .vision import crop_strip
-                cropped, hit = crop_strip(image_pil)
+                cropped, hit = crop_strip(target_img)
                 if hit and cropped:
                     target_img = cropped
             except Exception as e:
                 logger.debug("Strip crop skipped: %s", e)
 
         rec_a = get_printed_recogniser()
-        lines = rec_a.read_lines(target_img, beams=1)
-        match_res = match_printed_lines(lines)
+
+        # FIX 1b: Rotation fallback (0, 180, 90, 270)
+        # Read at 0 degrees; if not confident (top candidate not confident or < 2 read tokens >= 90),
+        # also try 180, then 90, then 270. Stop at first confident result; otherwise keep rotation
+        # with highest candidate score.
+        angles = [0, 180, 90, 270]
+        chosen_angle = 0
+        chosen_res = None
+        chosen_lines = []
+        rot_candidates = []
+
+        for angle in angles:
+            rot_img = target_img.rotate(angle, expand=True) if angle != 0 else target_img
+            lines = rec_a.read_lines(rot_img, beams=1)
+            res = match_printed_lines(lines)
+
+            top_cand = res.get("candidates") and res["candidates"][0]
+            top_score = top_cand.get("score", 0.0) if top_cand else 0.0
+            top_conf = bool(top_cand and top_cand.get("confident"))
+            n_tokens = res.get("n_matching_tokens", 0)
+
+            is_confident = top_conf and (n_tokens >= 2)
+            rot_candidates.append({
+                "angle": angle,
+                "lines": lines,
+                "res": res,
+                "top_score": top_score,
+                "is_confident": is_confident
+            })
+
+            if is_confident:
+                chosen_angle = angle
+                chosen_res = res
+                chosen_lines = lines
+                break
+
+        if chosen_res is None:
+            best_rot = max(rot_candidates, key=lambda x: x["top_score"])
+            chosen_angle = best_rot["angle"]
+            chosen_res = best_rot["res"]
+            chosen_lines = best_rot["lines"]
+
+        match_res = chosen_res
+        lines = chosen_lines
 
         status = match_res.get("status", "unverified")
         match_type = match_res.get("match_type", "brand")
@@ -143,6 +186,7 @@ def scan_medicine_package(
                 "status": "unverified",
                 "match_type": match_type,
                 "mode": "medicine_package",
+                "rotation": chosen_angle,
                 "message": (
                     "Unable to confidently verify this medicine. "
                     "Returning unverified is safer than returning a wrong result."
@@ -209,6 +253,7 @@ def scan_medicine_package(
             "status": "verified",
             "match_type": match_type,
             "mode": "medicine_package",
+            "rotation": chosen_angle,
             "detected_name": descriptive_name,
             "medicine": {
                 "id": verified_med.get("id"),
@@ -245,97 +290,12 @@ def scan_medicine_package(
         logger.error("scan_medicine_package failed: %s", exc, exc_info=True)
         return {
             "success": False,
-            "status": "unverified",
-            "error": str(exc),
+            "status": "error",
+            "message": "The scanner is not ready. Please contact the administrator.",
+            "error": "The scanner is not ready. Please contact the administrator.",
             "raw_ocr": "",
+            "rotation": 0,
             "candidates": [],
-            "medicines": [],
-        }
-
-        # Clinical Safety Lookup (Local SQLite)
-        ingredients_list = (
-            verified_med.get("parsed_salt") or
-            (best_extracted.get("ingredients") if best_extracted else []) or []
-        )
-        safety_info = get_drug_safety_info(ingredients_list)
-
-        schedule = "Schedule H"
-        for ing in ingredients_list:
-            cname = ing.get("canonical_name", "").lower()
-            if any(k in cname for k in ["paracetamol", "calcium", "vitamin", "cholecalciferol"]):
-                schedule = "General / OTC"
-
-        display_ingredients = [
-            {
-                "name": ing.get("ingredient", "").title(),
-                "canonical_name": ing.get("canonical_name", ""),
-                "strength": ing.get("strength"),
-                "unit": ing.get("unit", "mg"),
-            }
-            for ing in ingredients_list
-        ]
-
-        brand_display = (
-            (best_extracted.get("brand") if best_extracted else None) or
-            verified_med.get("name", "").split()[0]
-        )
-
-        generic_label = best_extracted.get("generic") if best_extracted else None
-        descriptive_name = build_descriptive_medicine_name(
-            verified_med=verified_med,
-            extracted=best_extracted,
-            generic_text=generic_label,
-        )
-
-        verified_med["detected_name"] = descriptive_name
-        verified_med["brand"] = brand_display
-
-        return {
-            "success": True,
-            "status": "verified",
-            "mode": "medicine_package",
-            "detected_name": descriptive_name,
-            "medicine": {
-                "id": verified_med.get("id"),
-                "name": verified_med.get("name"),
-                "detected_name": descriptive_name,
-                "brand": brand_display,
-                "manufacturer": verified_med.get("manufacturer") or "Registered Manufacturer",
-                "dosage_form": verified_med.get("dosage_form") or (best_extracted.get("dosage_form") if best_extracted else None) or "Tablet",
-                "price": verified_med.get("price"),
-                "salt": verified_med.get("salt"),
-                "schedule": schedule,
-                "confidence": confidence.get("overall", 0.0),
-                "price_verification": verified_med.get("price_verification"),
-            },
-            "medicines": [verified_med],
-            "ingredients": display_ingredients,
-            "alternatives": alternatives,
-            "max_savings": max_savings,
-            "max_savings_percent": max_savings_percent,
-            "side_effects": safety_info.get("side_effects", []),
-            "interactions": safety_info.get("interactions", []),
-            "raw_ocr": best_ocr_text,
-            "raw_ocr_trocr": ocr_crop or ocr_full or "",
-            "recovery_used": False,
-            "recovery_reason": None,
-            "disagreement_detected": False,
-            "normalized_ocr": best_extracted.get("normalized_ocr", "") if best_extracted else "",
-            "confidence_breakdown": confidence,
-            "verification": {
-                "matched_by": "Deep Learning Vision (YOLOv8 + TrOCR) & Local Database Validation",
-                "confidence": confidence.get("overall", 0.0),
-                "breakdown": confidence,
-            }
-        }
-
-    except Exception as exc:
-        logger.error("scan_medicine_package failed: %s", exc, exc_info=True)
-        return {
-            "success": False,
-            "status": "unverified",
-            "error": str(exc),
-            "raw_ocr": "",
             "medicines": [],
         }
 
@@ -446,10 +406,10 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
         logger.error("scan_prescription failed: %s", exc, exc_info=True)
         return {
             "success": False,
-            "status": "unverified",
+            "status": "error",
             "mode": "prescription",
-            "error": str(exc),
-            "message": str(exc),
+            "message": "The scanner is not ready. Please contact the administrator.",
+            "error": "The scanner is not ready. Please contact the administrator.",
             "candidates": [],
             "medicines": [],
             "per_medicine_results": {},
@@ -464,8 +424,9 @@ def scan_image(image_path: str, mode: str = "medicine_package") -> Dict[str, Any
     Executes 100% offline with separate models per mode.
     """
     try:
-        from PIL import Image
+        from PIL import Image, ImageOps
         image_pil = Image.open(image_path)
+        image_pil = ImageOps.exif_transpose(image_pil)
         if mode == "prescription":
             return scan_prescription(image_pil)
         return scan_medicine_package(image_pil)
@@ -473,8 +434,9 @@ def scan_image(image_path: str, mode: str = "medicine_package") -> Dict[str, Any
         logger.error("scan_image failed on %s: %s", image_path, exc, exc_info=True)
         return {
             "success": False,
-            "status": "unverified",
-            "error": str(exc),
+            "status": "error",
+            "message": "The scanner is not ready. Please contact the administrator.",
+            "error": "The scanner is not ready. Please contact the administrator.",
             "candidates": [],
             "medicines": []
         }

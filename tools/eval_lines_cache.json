@@ -17,9 +17,13 @@
       "IVET",
       "S"
     ],
-    "box_find_sec": 5.281412124633789,
-    "reading_sec": 1.216552972793579,
-    "total_ocr_sec": 6.539452791213989,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 9.86234164237976,
+    "reading_sec": 1.9046950340270996,
+    "total_ocr_sec": 11.774371862411499,
     "box_count": 12
   },
   {
@@ -40,9 +44,13 @@
       "FOR EASIER",
       "CAPLETS"
     ],
-    "box_find_sec": 5.390151023864746,
-    "reading_sec": 0.9527928829193115,
-    "total_ocr_sec": 6.411482334136963,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 6.364053964614868,
+    "reading_sec": 1.2434718608856201,
+    "total_ocr_sec": 7.637063026428223,
     "box_count": 12
   },
   {
@@ -50,25 +58,29 @@
     "target_brand": "ADOL",
     "prod_name": "Adol 24 caplets",
     "lines": [
-      "ADOL",
-      "ISNOLIC",
-      "500",
+      "IOPE",
+      "CAPLETS",
+      "RECEIPT",
+      "CAPLES",
+      "PARACETAMOL",
       "24",
-      "REDUCER",
-      "CAPLEASIER",
-      "PUPHAR",
-      "40NA3",
-      "SWALLOWING",
-      "REI",
-      "MG",
-      "FOR",
-      "IN",
-      "R"
+      "REDUCE",
+      "500",
+      "FEVER",
+      "JEVDIN",
+      "6W",
+      "SIN",
+      "FOR"
     ],
-    "box_find_sec": 5.348077058792114,
-    "reading_sec": 0.9294369220733643,
-    "total_ocr_sec": 6.350112199783325,
-    "box_count": 14
+    "rotation": 180,
+    "rotations_attempted": [
+      0,
+      180
+    ],
+    "box_find_sec": 5.70179557800293,
+    "reading_sec": 1.0328118801116943,
+    "total_ocr_sec": 13.850968599319458,
+    "box_count": 13
   },
   {
     "rel_path": "raw/mobile_pharma_packages/bjy2svvmn8-1/Apidone nan syrup/huawei cn (56).jpg",
@@ -76,15 +88,22 @@
     "prod_name": "Apidone nan syrup",
     "lines": [
       "APIDONE",
-      "ANTI-MASTAMATORY",
-      "ANTIHISTAMINE",
+      "NIDISCIENCES",
+      "ANTHISULIC ACID",
       "SYRUP",
-      "AMOUN",
-      "&Y"
+      "ENOWH",
+      "RX"
     ],
-    "box_find_sec": 5.26865029335022,
-    "reading_sec": 0.535557746887207,
-    "total_ocr_sec": 5.8398756980896,
+    "rotation": 270,
+    "rotations_attempted": [
+      0,
+      180,
+      90,
+      270
+    ],
+    "box_find_sec": 5.6314377784729,
+    "reading_sec": 0.6521556377410889,
+    "total_ocr_sec": 25.527547359466553,
     "box_count": 6
   },
   {
@@ -100,9 +119,16 @@
       "&Y",
       "R"
     ],
-    "box_find_sec": 5.285955190658569,
-    "reading_sec": 0.6216003894805908,
-    "total_ocr_sec": 5.974346876144409,
+    "rotation": 0,
+    "rotations_attempted": [
+      0,
+      180,
+      90,
+      270
+    ],
+    "box_find_sec": 5.6539201736450195,
+    "reading_sec": 0.7834713459014893,
+    "total_ocr_sec": 25.94042181968689,
     "box_count": 7
   },
   {
@@ -110,16 +136,23 @@
     "target_brand": "APIDONE",
     "prod_name": "Apidone nan syrup",
     "lines": [
-      "SUOPIDY",
-      "STOREUTICALS PVT LTD",
-      "SULUKISIUMIUMIUMIUMIUMIUM",
-      "ONIAXS",
-      "NDOWB",
-      "P"
+      "APIDONE",
+      "ANTI-NAFAMETONE",
+      "ARCHISTAMINE",
+      "SYRUP",
+      "AMOUN",
+      "E"
     ],
-    "box_find_sec": 5.294290065765381,
-    "reading_sec": 0.6096608638763428,
-    "total_ocr_sec": 5.969266414642334,
+    "rotation": 180,
+    "rotations_attempted": [
+      0,
+      180,
+      90,
+      270
+    ],
+    "box_find_sec": 5.613857746124268,
+    "reading_sec": 0.7677040100097656,
+    "total_ocr_sec": 26.135349988937378,
     "box_count": 6
   },
   {
@@ -142,9 +175,13 @@
       "CLAVULANIC",
       "FILIM"
     ],
-    "box_find_sec": 5.521320343017578,
-    "reading_sec": 0.977447509765625,
-    "total_ocr_sec": 6.538806915283203,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 6.081851243972778,
+    "reading_sec": 1.1247444152832031,
+    "total_ocr_sec": 7.2379841804504395,
     "box_count": 14
   },
   {
@@ -167,9 +204,13 @@
       "TRIHYDRATE",
       "KSK"
     ],
-    "box_find_sec": 5.480417966842651,
-    "reading_sec": 1.0404446125030518,
-    "total_ocr_sec": 6.59240984916687,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 6.099550485610962,
+    "reading_sec": 1.1913185119628906,
+    "total_ocr_sec": 7.315173387527466,
     "box_count": 14
   },
   {
@@ -192,9 +233,13 @@
       "TRIHYDRATE",
       "AMOXICILLIN"
     ],
-    "box_find_sec": 5.488253593444824,
-    "reading_sec": 1.0407812595367432,
-    "total_ocr_sec": 6.604511499404907,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 6.1621644496917725,
+    "reading_sec": 1.1978402137756348,
+    "total_ocr_sec": 7.376121759414673,
     "box_count": 14
   },
   {
@@ -217,9 +262,13 @@
       "INDUSTRIAL",
       "0554/499199"
     ],
-    "box_find_sec": 5.46920371055603,
-    "reading_sec": 1.1476807594299316,
-    "total_ocr_sec": 6.6663689613342285,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 6.016164064407349,
+    "reading_sec": 1.3019051551818848,
+    "total_ocr_sec": 7.343761682510376,
     "box_count": 14
   },
   {
@@ -227,24 +276,29 @@
     "target_brand": "BETADERM",
     "prod_name": "Betaderm 30  gm cream",
     "lines": [
-      "NYZOVIZE",
-      "NOGEMUSULUSULUS",
-      "IMM",
-      "SUOSEUTICS",
-      "IMM",
-      "NOLNEOVYMYHOL",
-      "IESIDOL",
-      "XNOXYNEXINI",
-      "PEMIDEINUEM",
-      "661664/1990",
-      "905669/1990",
-      "MISIONI",
-      "EEE",
-      "CEAID"
+      "BETADERM",
+      "EM",
+      "ARTHASONE 0.1% WARDY",
+      "BETAMETHASONE",
+      "PHARMACEUTICAL",
+      "GM/100",
+      "TOPICAL",
+      "INTERNATIONAL",
+      "MANUFACTURED BY:",
+      "ES COC/499199",
+      "0554/499306",
+      "INDUSTRIAL",
+      "CREAM",
+      "REE"
     ],
-    "box_find_sec": 5.51349401473999,
-    "reading_sec": 1.236445426940918,
-    "total_ocr_sec": 6.8191399574279785,
+    "rotation": 180,
+    "rotations_attempted": [
+      0,
+      180
+    ],
+    "box_find_sec": 6.104147434234619,
+    "reading_sec": 1.5737175941467285,
+    "total_ocr_sec": 15.338879108428955,
     "box_count": 14
   },
   {
@@ -267,9 +321,13 @@
       "EEEE",
       "INDUSTRIAL"
     ],
-    "box_find_sec": 5.492103576660156,
-    "reading_sec": 1.1175072193145752,
-    "total_ocr_sec": 6.677531719207764,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 6.121715307235718,
+    "reading_sec": 1.3127822875976562,
+    "total_ocr_sec": 7.488814830780029,
     "box_count": 14
   },
   {
@@ -291,9 +349,13 @@
       "%",
       "7"
     ],
-    "box_find_sec": 5.294821739196777,
-    "reading_sec": 0.955481767654419,
-    "total_ocr_sec": 6.287723779678345,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.750096321105957,
+    "reading_sec": 1.0888941287994385,
+    "total_ocr_sec": 6.8550872802734375,
     "box_count": 13
   },
   {
@@ -316,9 +378,13 @@
       "1%",
       "D"
     ],
-    "box_find_sec": 5.3457090854644775,
-    "reading_sec": 1.0924036502838135,
-    "total_ocr_sec": 6.50187873840332,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.821544885635376,
+    "reading_sec": 1.2573091983795166,
+    "total_ocr_sec": 7.106565713882446,
     "box_count": 14
   },
   {
@@ -340,9 +406,13 @@
       "1/MG",
       "% L"
     ],
-    "box_find_sec": 5.339908838272095,
-    "reading_sec": 1.0289018154144287,
-    "total_ocr_sec": 6.4393885135650635,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.776037216186523,
+    "reading_sec": 1.1768553256988525,
+    "total_ocr_sec": 6.983125448226929,
     "box_count": 13
   },
   {
@@ -362,9 +432,13 @@
       "MI",
       "10%"
     ],
-    "box_find_sec": 5.36203670501709,
-    "reading_sec": 0.8689002990722656,
-    "total_ocr_sec": 6.26938533782959,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.701967000961304,
+    "reading_sec": 1.0008244514465332,
+    "total_ocr_sec": 6.7236974239349365,
     "box_count": 11
   },
   {
@@ -372,41 +446,50 @@
     "target_brand": "BETADINE",
     "prod_name": "Betadine 120 ml solution",
     "lines": [
-      "ONDESPUE",
-      "ENIDV138",
-      "UOTINJOS",
-      "VIVELOVA",
-      "JU OZ L",
-      "AUIPOL-SUOPIAOD",
-      "SASNUIA",
-      "IPNA",
-      "90 L"
+      "ANTISEPTIC",
+      "BETADINE",
+      "SOLUTION",
+      "POVIDONE-LODINE 10%",
+      "120 ML",
+      "BACTERIA",
+      "VIRUSES",
+      "FUNGI"
     ],
-    "box_find_sec": 5.357777118682861,
-    "reading_sec": 0.7713906764984131,
-    "total_ocr_sec": 6.203026294708252,
-    "box_count": 9
+    "rotation": 180,
+    "rotations_attempted": [
+      0,
+      180
+    ],
+    "box_find_sec": 5.6751532554626465,
+    "reading_sec": 0.8945202827453613,
+    "total_ocr_sec": 13.319080829620361,
+    "box_count": 8
   },
   {
     "rel_path": "raw/mobile_pharma_packages/bjy2svvmn8-1/Betadine 120 ml solution/huawei p30 (609).jpg",
     "target_brand": "BETADINE",
     "prod_name": "Betadine 120 ml solution",
     "lines": [
-      "SINASSILUS",
-      "ONIOVLDE",
-      "ULSINICS",
-      "VISOLOVA",
-      "SASNUIA",
-      "-SUOPINOD",
-      "IOZL",
-      "SONDZ",
-      "SUIPOL",
-      "JULI",
-      "%OL"
+      "SOLUSEPTIC",
+      "BETADINE",
+      "SOLUTION",
+      "VIRUTERIA",
+      "FURGESERIA",
+      "120 MG",
+      "POVIDONE",
+      "FUNGIS",
+      "-LODINE",
+      "M/",
+      "10%"
     ],
-    "box_find_sec": 5.309767961502075,
-    "reading_sec": 0.7740733623504639,
-    "total_ocr_sec": 6.147242307662964,
+    "rotation": 180,
+    "rotations_attempted": [
+      0,
+      180
+    ],
+    "box_find_sec": 5.714155197143555,
+    "reading_sec": 0.9424231052398682,
+    "total_ocr_sec": 13.39601469039917,
     "box_count": 11
   },
   {
@@ -415,23 +498,28 @@
     "prod_name": "Betadine 60  g ointment",
     "lines": [
       "BETADINE",
-      "TOPIMENT",
-      "PARNESIA",
-      "INIMIUM",
-      "60 G",
-      "FUNGICIDAL &",
+      "TIPTMENT",
+      "VARUSES",
+      "AMIN",
+      "POVIDONE-LODINE",
+      "EZON/2027 TABLET",
       "SPORICIDAL",
-      "OINT 15.75",
-      "MUNOLIPHARMA",
-      "BACTERICIDAL",
-      "VIRUCIDAL",
+      "BACTERIDAL",
+      "FUNGIDAL",
+      "MUNOLPHARMA",
+      "10%",
       "PHARMACY",
-      "ANTISEPTIC",
-      "ZOGHBI"
+      "VIRUCIDAL",
+      "TICI 60"
     ],
-    "box_find_sec": 5.39481782913208,
-    "reading_sec": 1.0901057720184326,
-    "total_ocr_sec": 6.527235984802246,
+    "rotation": 180,
+    "rotations_attempted": [
+      0,
+      180
+    ],
+    "box_find_sec": 5.939053297042847,
+    "reading_sec": 1.3008418083190918,
+    "total_ocr_sec": 14.518485307693481,
     "box_count": 14
   },
   {
@@ -439,24 +527,29 @@
     "target_brand": "BETADINE",
     "prod_name": "Betadine 60  g ointment",
     "lines": [
-      "ENIGV138",
-      "LEPPULIA & HEPRIBURES 'EPIPINOLOLDS 'EPIPIPTIDINE",
-      "JUBUTUIO",
-      "AUJPOJ-AUOPIAOD",
-      "IESIDOL",
-      "LOVWYYYYYVHYHDHDDIBHDOZ TY",
-      "(150Z) + NIOVISE",
-      "VIBELOVA",
-      "6 09",
-      "SESNUIA",
-      "CILDESTING",
-      "1064ABEZ",
-      "IPNA",
-      "% OL"
+      "BETADINE",
+      "OINTMENT",
+      "BACTERICIDAL, SPORICIDAL, FUNGICIDAL",
+      "POVIDONE-LODINE 10%",
+      "AL ZOGHBI PHARMACY 23824901",
+      "TOPICAL",
+      "ANTISEPTIC) 60 MG OINT",
+      "BACTERIA",
+      "60 G",
+      "VIRUSES",
+      "BETADINE",
+      "VIRUCIDAL",
+      "01/06/2022 101",
+      "FUNGI"
     ],
-    "box_find_sec": 5.474624395370483,
-    "reading_sec": 2.211083173751831,
-    "total_ocr_sec": 7.755565404891968,
+    "rotation": 180,
+    "rotations_attempted": [
+      0,
+      180
+    ],
+    "box_find_sec": 6.068458318710327,
+    "reading_sec": 2.0347118377685547,
+    "total_ocr_sec": 16.735458374023438,
     "box_count": 14
   },
   {
@@ -479,9 +572,13 @@
       "01/06/2022 181",
       "15.75"
     ],
-    "box_find_sec": 5.477665662765503,
-    "reading_sec": 2.292564630508423,
-    "total_ocr_sec": 7.839767932891846,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.9151365756988525,
+    "reading_sec": 2.2913272380828857,
+    "total_ocr_sec": 8.2417311668396,
     "box_count": 14
   },
   {
@@ -504,9 +601,13 @@
       "100",
       "150"
     ],
-    "box_find_sec": 5.322150468826294,
-    "reading_sec": 1.1326332092285156,
-    "total_ocr_sec": 6.48722505569458,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.722021102905273,
+    "reading_sec": 1.1961355209350586,
+    "total_ocr_sec": 6.924788951873779,
     "box_count": 14
   },
   {
@@ -529,9 +630,13 @@
       "SYRUP",
       "ANTI-"
     ],
-    "box_find_sec": 5.354874134063721,
-    "reading_sec": 0.9775238037109375,
-    "total_ocr_sec": 6.401659727096558,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.560016870498657,
+    "reading_sec": 0.9853501319885254,
+    "total_ocr_sec": 6.5615105628967285,
     "box_count": 14
   },
   {
@@ -552,9 +657,13 @@
       "OOL",
       "JW OSL"
     ],
-    "box_find_sec": 5.391927003860474,
-    "reading_sec": 1.1498923301696777,
-    "total_ocr_sec": 6.610376596450806,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.561739206314087,
+    "reading_sec": 1.1525700092315674,
+    "total_ocr_sec": 6.7421698570251465,
     "box_count": 12
   },
   {
@@ -575,9 +684,13 @@
       "FEVER",
       "30"
     ],
-    "box_find_sec": 5.33256983757019,
-    "reading_sec": 0.8429019451141357,
-    "total_ocr_sec": 6.205723762512207,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.541300058364868,
+    "reading_sec": 0.839658260345459,
+    "total_ocr_sec": 6.394904136657715,
     "box_count": 12
   },
   {
@@ -585,24 +698,29 @@
     "target_brand": "BRUFEN",
     "prod_name": "Brufen 30 tablets",
     "lines": [
-      "NIFUYS",
-      "UEJOLDNAI",
-      "D",
-      "INFAMETION",
-      "SEVEIJEY",
-      "SIEMOT",
+      "BRUFEN",
+      "IBUPROFEN",
+      "UJ",
+      "INFLAMMATION",
+      "RELIEVES",
       "400",
-      "SURELL -",
-      "8W",
-      "JEBNS",
-      "STAJQET",
-      "JENEJ",
-      "PAJEOZ",
-      "UJED"
+      "LOWERS",
+      "MG",
+      "SUGAR",
+      "TREATS",
+      "TABLETS",
+      "FEVER",
+      "COATED",
+      "PAIN"
     ],
-    "box_find_sec": 5.338599681854248,
-    "reading_sec": 0.9831476211547852,
-    "total_ocr_sec": 6.3965911865234375,
+    "rotation": 180,
+    "rotations_attempted": [
+      0,
+      180
+    ],
+    "box_find_sec": 5.568969011306763,
+    "reading_sec": 0.9854657649993896,
+    "total_ocr_sec": 13.162019968032837,
     "box_count": 14
   },
   {
@@ -610,54 +728,76 @@
     "target_brand": "BRUFEN",
     "prod_name": "Brufen 30 tablets",
     "lines": [
-      "NIFUYS",
-      "UEJOJDNQI SW OOT",
-      "D",
-      "UOFERIS INFAMATORIES",
-      "JEVEJ SLEMOL",
-      "UJED SEVEVEYLEY",
-      "JEBNG 0E",
-      "PAJEOZ",
-      "SIAJGET"
+      "BRUFEN",
+      "400 MG IBUPROFEN",
+      "U",
+      "TREATS INFLAMMATION",
+      "LOWERS FEVER",
+      "RELIEVES",
+      "SUGAR",
+      "PAIN",
+      "TABLETS",
+      "COATED",
+      "30"
     ],
-    "box_find_sec": 5.370348930358887,
-    "reading_sec": 0.8007516860961914,
-    "total_ocr_sec": 6.245224475860596,
-    "box_count": 9
+    "rotation": 180,
+    "rotations_attempted": [
+      0,
+      180
+    ],
+    "box_find_sec": 5.541035413742065,
+    "reading_sec": 0.916306734085083,
+    "total_ocr_sec": 12.900973081588745,
+    "box_count": 11
   },
   {
     "rel_path": "raw/mobile_pharma_packages/bjy2svvmn8-1/Celebrex 15 capsules/huawei cn (113).jpg",
     "target_brand": "CELEBREX",
     "prod_name": "Celebrex 15 capsules",
     "lines": [
-      "CELEBREY",
-      "CELECOXIB",
+      "CELEXB",
+      "EBEX",
       "CAPSULES",
-      "PHZER",
       "200 MG",
-      "15"
+      "PHZER",
+      "15",
+      "X"
     ],
-    "box_find_sec": 5.251556634902954,
-    "reading_sec": 0.4405858516693115,
-    "total_ocr_sec": 5.728115558624268,
-    "box_count": 6
+    "rotation": 270,
+    "rotations_attempted": [
+      0,
+      180,
+      90,
+      270
+    ],
+    "box_find_sec": 5.499502658843994,
+    "reading_sec": 0.464977502822876,
+    "total_ocr_sec": 23.773707389831543,
+    "box_count": 7
   },
   {
     "rel_path": "raw/mobile_pharma_packages/bjy2svvmn8-1/Celebrex 15 capsules/huawei p30 (803).jpg",
     "target_brand": "CELEBREX",
     "prod_name": "Celebrex 15 capsules",
     "lines": [
-      "LEBREAM",
-      "CEIECLIPTIN",
-      "CEL",
-      "CAPSULE'S",
+      "CELEBREX",
+      "CELECOXIB",
+      "CAPSULES",
       "PHIZER",
       "200 MG",
-      "15"
+      "15",
+      "X"
     ],
-    "box_find_sec": 5.301968812942505,
-    "reading_sec": 0.5725874900817871,
-    "total_ocr_sec": 5.936935901641846,
+    "rotation": 270,
+    "rotations_attempted": [
+      0,
+      180,
+      90,
+      270
+    ],
+    "box_find_sec": 5.527493953704834,
+    "reading_sec": 0.506739616394043,
+    "total_ocr_sec": 24.522682189941406,
     "box_count": 7
   },
   {
@@ -665,17 +805,22 @@
     "target_brand": "CELEBREX",
     "prod_name": "Celebrex 15 capsules",
     "lines": [
-      "CELERRY",
-      "CELECOXIME",
-      "CAPSULE",
+      "CELEBRE",
+      "CELECOXIB",
+      "CAPSULES",
       "200 MG",
-      "PEXI",
+      "PHZER",
       "15",
       "X"
     ],
-    "box_find_sec": 5.2901082038879395,
-    "reading_sec": 0.5128929615020752,
-    "total_ocr_sec": 5.86187481880188,
+    "rotation": 180,
+    "rotations_attempted": [
+      0,
+      180
+    ],
+    "box_find_sec": 5.492142677307129,
+    "reading_sec": 0.5138638019561768,
+    "total_ocr_sec": 12.094383001327515,
     "box_count": 7
   },
   {
@@ -698,9 +843,13 @@
       "ONT",
       "6W"
     ],
-    "box_find_sec": 5.386575698852539,
-    "reading_sec": 1.2144355773925781,
-    "total_ocr_sec": 6.631121397018433,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.596871376037598,
+    "reading_sec": 1.214921236038208,
+    "total_ocr_sec": 6.836907148361206,
     "box_count": 14
   },
   {
@@ -708,20 +857,24 @@
     "target_brand": "DAFLON",
     "prod_name": "Daflon 30 tablets",
     "lines": [
-      "OOS UOIJEP",
-      "UEIPIITO JO YCEEL JO NO DEEX",
-      "6W OOG UOCIOCIN PIQUOVELL",
-      "SIEIPEL COATED WITHOUT ADULTS",
-      "PEZJUOJOJOIN",
-      "6UU",
-      "PEYJUND",
-      "ORB",
-      "M"
+      "DAFLON 500 MG",
+      "KEEP OUT OF REACH OF CHILDREN.",
+      "30 FILM COATED TABLETS",
+      "FLAVONOID FRACTION 500 MG",
+      "MICRONIZED",
+      "PURIFIED",
+      "BRO",
+      "IF"
     ],
-    "box_find_sec": 5.380945682525635,
-    "reading_sec": 1.0299921035766602,
-    "total_ocr_sec": 6.504861116409302,
-    "box_count": 9
+    "rotation": 180,
+    "rotations_attempted": [
+      0,
+      180
+    ],
+    "box_find_sec": 5.569102048873901,
+    "reading_sec": 0.9209883213043213,
+    "total_ocr_sec": 13.101987838745117,
+    "box_count": 8
   },
   {
     "rel_path": "raw/mobile_pharma_packages/bjy2svvmn8-1/Daflon 30 tablets/huawei p30 (702).jpg",
@@ -734,9 +887,13 @@
       "30 FILM COATED TABLETS",
       "BRO"
     ],
-    "box_find_sec": 5.375611066818237,
-    "reading_sec": 0.720740556716919,
-    "total_ocr_sec": 6.160924196243286,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.540802478790283,
+    "reading_sec": 0.6943552494049072,
+    "total_ocr_sec": 6.257833242416382,
     "box_count": 5
   },
   {
@@ -759,9 +916,13 @@
       "6",
       "1"
     ],
-    "box_find_sec": 5.311128377914429,
-    "reading_sec": 0.9606401920318604,
-    "total_ocr_sec": 6.312723875045776,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.501633167266846,
+    "reading_sec": 0.9650189876556396,
+    "total_ocr_sec": 6.4847424030303955,
     "box_count": 14
   },
   {
@@ -784,9 +945,13 @@
       "Q",
       "1"
     ],
-    "box_find_sec": 5.777254104614258,
-    "reading_sec": 1.110180377960205,
-    "total_ocr_sec": 6.955984354019165,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.519562482833862,
+    "reading_sec": 0.9173009395599365,
+    "total_ocr_sec": 6.452562093734741,
     "box_count": 14
   },
   {
@@ -794,22 +959,27 @@
     "target_brand": "DAKTARIN",
     "prod_name": "Daktarin 40 g gel oral",
     "lines": [
-      "ULJEXED",
-      "IEJO",
-      "UASSUEL",
-      "D E6B",
-      "IOZEUOSIU",
-      "6 07",
-      "106",
-      "OP",
-      "EJED",
-      "OW",
-      "6 V",
-      "OZ"
+      "DAKTARIN",
+      "ORAL",
+      "JANSSEN",
+      "GEL O",
+      "MICONAZOL",
+      "GEL",
+      "40 G",
+      "DE",
+      "PARA",
+      "MG",
+      "19",
+      "20"
     ],
-    "box_find_sec": 5.76259446144104,
-    "reading_sec": 1.0925748348236084,
-    "total_ocr_sec": 6.939695835113525,
+    "rotation": 180,
+    "rotations_attempted": [
+      0,
+      180
+    ],
+    "box_find_sec": 5.498355150222778,
+    "reading_sec": 0.7908601760864258,
+    "total_ocr_sec": 12.72896957397461,
     "box_count": 12
   },
   {
@@ -829,9 +999,13 @@
       "A NOVARTIS",
       "DIVISION"
     ],
-    "box_find_sec": 5.78145432472229,
-    "reading_sec": 1.1124775409698486,
-    "total_ocr_sec": 6.954596042633057,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.562007188796997,
+    "reading_sec": 0.96449875831604,
+    "total_ocr_sec": 6.540304183959961,
     "box_count": 11
   },
   {
@@ -854,9 +1028,13 @@
       "UM6",
       "SUBXON"
     ],
-    "box_find_sec": 5.75811243057251,
-    "reading_sec": 1.2525687217712402,
-    "total_ocr_sec": 7.099255561828613,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.55481219291687,
+    "reading_sec": 1.0643446445465088,
+    "total_ocr_sec": 6.636017799377441,
     "box_count": 14
   },
   {
@@ -879,9 +1057,13 @@
       "GEI",
       "OM"
     ],
-    "box_find_sec": 5.849420547485352,
-    "reading_sec": 1.3211619853973389,
-    "total_ocr_sec": 7.247447729110718,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.589336633682251,
+    "reading_sec": 1.11793851852417,
+    "total_ocr_sec": 6.728101015090942,
     "box_count": 14
   },
   {
@@ -896,9 +1078,13 @@
       "SANOFI AVENTIS",
       "METRONIDAZOLE"
     ],
-    "box_find_sec": 5.724256992340088,
-    "reading_sec": 0.99180006980896,
-    "total_ocr_sec": 6.761446237564087,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.523653507232666,
+    "reading_sec": 0.8465092182159424,
+    "total_ocr_sec": 6.380764484405518,
     "box_count": 6
   },
   {
@@ -920,9 +1106,13 @@
       "FILM",
       "20"
     ],
-    "box_find_sec": 5.703457355499268,
-    "reading_sec": 1.1872341632843018,
-    "total_ocr_sec": 6.9640491008758545,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.543058633804321,
+    "reading_sec": 1.0063841342926025,
+    "total_ocr_sec": 6.56837272644043,
     "box_count": 13
   },
   {
@@ -930,24 +1120,30 @@
     "target_brand": "FLAGYL",
     "prod_name": "Flagyl 20 tablets",
     "lines": [
-      "FLASY!",
+      "FLAYLOR",
       "METRONIDAZOLE",
-      "ANTIPROTOZOLE",
-      "MS",
       "500",
+      "ANTIPROTOZOLE",
+      "SM",
       "ANTISEPTIC",
       "OVENTIS",
-      "SONOFI",
+      "SONOF",
       "INTESTINAL",
-      "TABLETS",
+      "STABLETS",
       "COATED",
       "FILM",
-      "20"
+      "20",
+      "/8"
     ],
-    "box_find_sec": 5.712391376495361,
-    "reading_sec": 1.1890928745269775,
-    "total_ocr_sec": 6.981403112411499,
-    "box_count": 13
+    "rotation": 180,
+    "rotations_attempted": [
+      0,
+      180
+    ],
+    "box_find_sec": 5.574930191040039,
+    "reading_sec": 1.0966544151306152,
+    "total_ocr_sec": 13.310650825500488,
+    "box_count": 14
   },
   {
     "rel_path": "raw/mobile_pharma_packages/bjy2svvmn8-1/Fucidin 15 g cream/huawei cn (124).jpg",
@@ -967,9 +1163,13 @@
       "UNDER LICENCE OF",
       "LE"
     ],
-    "box_find_sec": 5.860527276992798,
-    "reading_sec": 1.4373767375946045,
-    "total_ocr_sec": 7.334222793579102,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.617270469665527,
+    "reading_sec": 1.2566688060760498,
+    "total_ocr_sec": 6.893184423446655,
     "box_count": 12
   },
   {
@@ -992,9 +1192,13 @@
       "IEUTREU",
       "PIDE"
     ],
-    "box_find_sec": 5.8576438426971436,
-    "reading_sec": 1.4734225273132324,
-    "total_ocr_sec": 7.3980937004089355,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.664190769195557,
+    "reading_sec": 1.277510166168213,
+    "total_ocr_sec": 6.957393169403076,
     "box_count": 14
   },
   {
@@ -1017,9 +1221,13 @@
       "LICENCE",
       "BASE"
     ],
-    "box_find_sec": 5.838996887207031,
-    "reading_sec": 1.3437106609344482,
-    "total_ocr_sec": 7.253584146499634,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.638105154037476,
+    "reading_sec": 1.1526780128479004,
+    "total_ocr_sec": 6.804563999176025,
     "box_count": 14
   },
   {
@@ -1042,9 +1250,13 @@
       "KQ PELNICEINUEIN",
       "WOO.WINEPHARM.COM"
     ],
-    "box_find_sec": 5.9347875118255615,
-    "reading_sec": 3.6926026344299316,
-    "total_ocr_sec": 9.669678211212158,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.722986936569214,
+    "reading_sec": 1.9931557178497314,
+    "total_ocr_sec": 7.722995042800903,
     "box_count": 14
   },
   {
@@ -1067,9 +1279,13 @@
       "FUSIDIC",
       "DENMARK"
     ],
-    "box_find_sec": 5.7046730518341064,
-    "reading_sec": 1.334263801574707,
-    "total_ocr_sec": 7.115127801895142,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.742240905761719,
+    "reading_sec": 1.3402581214904785,
+    "total_ocr_sec": 7.096231937408447,
     "box_count": 14
   },
   {
@@ -1092,9 +1308,13 @@
       "IGLIPHENIC",
       "200"
     ],
-    "box_find_sec": 5.503833532333374,
-    "reading_sec": 1.2153379917144775,
-    "total_ocr_sec": 6.78729510307312,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.74138617515564,
+    "reading_sec": 1.2220678329467773,
+    "total_ocr_sec": 6.979606866836548,
     "box_count": 14
   },
   {
@@ -1117,9 +1337,13 @@
       "BASE",
       "EUR"
     ],
-    "box_find_sec": 5.579344749450684,
-    "reading_sec": 0.9707920551300049,
-    "total_ocr_sec": 6.58506178855896,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.7578125,
+    "reading_sec": 0.9764783382415771,
+    "total_ocr_sec": 6.741778373718262,
     "box_count": 14
   },
   {
@@ -1142,9 +1366,13 @@
       "E 250 MG",
       ".23783/2005"
     ],
-    "box_find_sec": 5.575213193893433,
-    "reading_sec": 1.1460912227630615,
-    "total_ocr_sec": 6.798935174942017,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.769970655441284,
+    "reading_sec": 1.1504018306732178,
+    "total_ocr_sec": 6.9365503787994385,
     "box_count": 14
   },
   {
@@ -1167,9 +1395,13 @@
       "DICREAM",
       "CREAM"
     ],
-    "box_find_sec": 5.5581865310668945,
-    "reading_sec": 1.1492352485656738,
-    "total_ocr_sec": 6.770158529281616,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.769657850265503,
+    "reading_sec": 1.1537535190582275,
+    "total_ocr_sec": 6.957197904586792,
     "box_count": 14
   },
   {
@@ -1177,15 +1409,22 @@
     "target_brand": "GTN",
     "prod_name": "GTN 50 ml cream",
     "lines": [
-      "T-N",
-      "METAX",
-      "A-C",
-      "ML",
-      "50"
+      "AG T.N.",
+      "MEGA",
+      "STAR",
+      "CREAM",
+      "50 ML"
     ],
-    "box_find_sec": 5.25636100769043,
-    "reading_sec": 0.31953001022338867,
-    "total_ocr_sec": 5.6271326541900635,
+    "rotation": 270,
+    "rotations_attempted": [
+      0,
+      180,
+      90,
+      270
+    ],
+    "box_find_sec": 5.485884428024292,
+    "reading_sec": 0.37813472747802734,
+    "total_ocr_sec": 24.266965627670288,
     "box_count": 5
   },
   {
@@ -1193,15 +1432,23 @@
     "target_brand": "GTN",
     "prod_name": "GTN 50 ml cream",
     "lines": [
-      "T-N",
-      "METAR",
-      "MFG",
+      "FG T.N.",
+      "MEGA",
+      "STAR",
+      "CREAM",
       "50 ML"
     ],
-    "box_find_sec": 5.299822092056274,
-    "reading_sec": 0.2810933589935303,
-    "total_ocr_sec": 5.645120859146118,
-    "box_count": 4
+    "rotation": 270,
+    "rotations_attempted": [
+      0,
+      180,
+      90,
+      270
+    ],
+    "box_find_sec": 5.520112991333008,
+    "reading_sec": 0.38182830810546875,
+    "total_ocr_sec": 23.767397165298462,
+    "box_count": 5
   },
   {
     "rel_path": "raw/mobile_pharma_packages/bjy2svvmn8-1/GTN 50 ml cream/huawei p30 (457).jpg",
@@ -1216,9 +1463,13 @@
       "NL",
       "50"
     ],
-    "box_find_sec": 5.399400472640991,
-    "reading_sec": 0.5921471118927002,
-    "total_ocr_sec": 6.052271366119385,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.520089626312256,
+    "reading_sec": 0.45819973945617676,
+    "total_ocr_sec": 5.99905252456665,
     "box_count": 7
   },
   {
@@ -1241,9 +1492,13 @@
       "& CHEMICOL INDIA",
       "CO"
     ],
-    "box_find_sec": 5.472570180892944,
-    "reading_sec": 1.0739548206329346,
-    "total_ocr_sec": 6.647244453430176,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.5270586013793945,
+    "reading_sec": 1.0900132656097412,
+    "total_ocr_sec": 6.630893230438232,
     "box_count": 14
   },
   {
@@ -1266,9 +1521,13 @@
       "O.",
       "6"
     ],
-    "box_find_sec": 5.32353401184082,
-    "reading_sec": 0.9656431674957275,
-    "total_ocr_sec": 6.362033128738403,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.541533708572388,
+    "reading_sec": 0.9783720970153809,
+    "total_ocr_sec": 6.531721830368042,
     "box_count": 14
   },
   {
@@ -1284,9 +1543,13 @@
       "MEMPHIS",
       "0.1%"
     ],
-    "box_find_sec": 5.330066204071045,
-    "reading_sec": 0.8639838695526123,
-    "total_ocr_sec": 6.269432783126831,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.554898977279663,
+    "reading_sec": 0.8748528957366943,
+    "total_ocr_sec": 6.450426816940308,
     "box_count": 7
   },
   {
@@ -1309,9 +1572,13 @@
       "BX",
       "OF MERCH &"
     ],
-    "box_find_sec": 5.392585515975952,
-    "reading_sec": 1.3386638164520264,
-    "total_ocr_sec": 6.758257627487183,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.610192060470581,
+    "reading_sec": 1.3352560997009277,
+    "total_ocr_sec": 6.959277629852295,
     "box_count": 14
   },
   {
@@ -1334,9 +1601,13 @@
       "MG",
       "TABLETS"
     ],
-    "box_find_sec": 5.4036688804626465,
-    "reading_sec": 1.1504673957824707,
-    "total_ocr_sec": 6.617157220840454,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.610324382781982,
+    "reading_sec": 1.1595392227172852,
+    "total_ocr_sec": 6.783506631851196,
     "box_count": 14
   },
   {
@@ -1359,9 +1630,13 @@
       "ITHROMYCIN",
       "STABET"
     ],
-    "box_find_sec": 5.392491817474365,
-    "reading_sec": 1.0346450805664062,
-    "total_ocr_sec": 6.500425338745117,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.617195129394531,
+    "reading_sec": 1.048548698425293,
+    "total_ocr_sec": 6.686573505401611,
     "box_count": 14
   },
   {
@@ -1384,9 +1659,13 @@
       "0554/499306",
       "0554/499199"
     ],
-    "box_find_sec": 5.4438183307647705,
-    "reading_sec": 1.270005702972412,
-    "total_ocr_sec": 6.767485618591309,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.651623964309692,
+    "reading_sec": 1.2707140445709229,
+    "total_ocr_sec": 6.943421840667725,
     "box_count": 14
   },
   {
@@ -1409,9 +1688,13 @@
       "0564/499306",
       "0564/499199"
     ],
-    "box_find_sec": 5.475707292556763,
-    "reading_sec": 1.1050560474395752,
-    "total_ocr_sec": 6.657927751541138,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.66619086265564,
+    "reading_sec": 1.1040587425231934,
+    "total_ocr_sec": 6.797675371170044,
     "box_count": 14
   },
   {
@@ -1434,9 +1717,13 @@
       "SNINESILYL",
       "SEL06V/1990"
     ],
-    "box_find_sec": 5.545438289642334,
-    "reading_sec": 1.369736909866333,
-    "total_ocr_sec": 6.984428882598877,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.698135852813721,
+    "reading_sec": 1.3431801795959473,
+    "total_ocr_sec": 7.056517124176025,
     "box_count": 14
   },
   {
@@ -1459,9 +1746,13 @@
       "ZOXI",
       "ASK"
     ],
-    "box_find_sec": 5.39536190032959,
-    "reading_sec": 1.4556167125701904,
-    "total_ocr_sec": 6.897056818008423,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.5379462242126465,
+    "reading_sec": 1.4541761875152588,
+    "total_ocr_sec": 6.992122411727905,
     "box_count": 14
   },
   {
@@ -1482,9 +1773,13 @@
       "S",
       "X"
     ],
-    "box_find_sec": 5.3464038372039795,
-    "reading_sec": 1.4893977642059326,
-    "total_ocr_sec": 6.906846761703491,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.583461046218872,
+    "reading_sec": 1.5039129257202148,
+    "total_ocr_sec": 7.110194683074951,
     "box_count": 12
   },
   {
@@ -1507,9 +1802,13 @@
       "ROX",
       "100"
     ],
-    "box_find_sec": 5.3574371337890625,
-    "reading_sec": 1.2260255813598633,
-    "total_ocr_sec": 6.645195007324219,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.5825440883636475,
+    "reading_sec": 1.2360079288482666,
+    "total_ocr_sec": 6.836734771728516,
     "box_count": 14
   },
   {
@@ -1530,9 +1829,13 @@
       "ORAL",
       "10"
     ],
-    "box_find_sec": 5.277191400527954,
-    "reading_sec": 0.8315043449401855,
-    "total_ocr_sec": 6.146826982498169,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.5093138217926025,
+    "reading_sec": 0.8397793769836426,
+    "total_ocr_sec": 6.360028266906738,
     "box_count": 12
   },
   {
@@ -1553,9 +1856,13 @@
       "6W",
       "10"
     ],
-    "box_find_sec": 5.32135272026062,
-    "reading_sec": 0.8315515518188477,
-    "total_ocr_sec": 6.245213508605957,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.539103031158447,
+    "reading_sec": 0.8390142917633057,
+    "total_ocr_sec": 6.397488355636597,
     "box_count": 12
   },
   {
@@ -1576,9 +1883,13 @@
       "6W",
       "10"
     ],
-    "box_find_sec": 5.326783180236816,
-    "reading_sec": 0.8450007438659668,
-    "total_ocr_sec": 6.237657308578491,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.517390012741089,
+    "reading_sec": 0.8395168781280518,
+    "total_ocr_sec": 6.3761608600616455,
     "box_count": 12
   },
   {
@@ -1594,9 +1905,13 @@
       "BROAD SPECTRUM ANTIBIOTIC",
       "14 FILM COATED TABLETS"
     ],
-    "box_find_sec": 5.306424379348755,
-    "reading_sec": 0.6610479354858398,
-    "total_ocr_sec": 5.998159408569336,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.544058322906494,
+    "reading_sec": 0.6652655601501465,
+    "total_ocr_sec": 6.216216802597046,
     "box_count": 7
   },
   {
@@ -1612,9 +1927,13 @@
       "BROAD SPECTRUM ANTIBIOTIC",
       "14 FILM COATED TABLETS"
     ],
-    "box_find_sec": 5.358897686004639,
-    "reading_sec": 0.6741158962249756,
-    "total_ocr_sec": 6.105292320251465,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.582087278366089,
+    "reading_sec": 0.6795139312744141,
+    "total_ocr_sec": 6.276627540588379,
     "box_count": 7
   },
   {
@@ -1637,9 +1956,13 @@
       "FILM",
       "14"
     ],
-    "box_find_sec": 5.379650831222534,
-    "reading_sec": 0.9898214340209961,
-    "total_ocr_sec": 6.437793970108032,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.568720102310181,
+    "reading_sec": 0.9922935962677002,
+    "total_ocr_sec": 6.5832977294921875,
     "box_count": 14
   },
   {
@@ -1658,9 +1981,13 @@
       "UNDER LICENCE OF",
       "BELGIUM"
     ],
-    "box_find_sec": 5.37983250617981,
-    "reading_sec": 1.4210689067840576,
-    "total_ocr_sec": 6.841097116470337,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.629409313201904,
+    "reading_sec": 1.2707099914550781,
+    "total_ocr_sec": 6.90883207321167,
     "box_count": 10
   },
   {
@@ -1683,9 +2010,13 @@
       "TABIET",
       "UNDER LICENCE"
     ],
-    "box_find_sec": 5.877305507659912,
-    "reading_sec": 1.2474725246429443,
-    "total_ocr_sec": 7.32038426399231,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.679937362670898,
+    "reading_sec": 1.110929250717163,
+    "total_ocr_sec": 6.804692506790161,
     "box_count": 14
   },
   {
@@ -1693,24 +2024,29 @@
     "target_brand": "MOTILIUM",
     "prod_name": "Motilium 40 tablets",
     "lines": [
-      "UNIGON",
-      "UASSUEL",
-      "NEXHYMYLINEIN",
-      "SUOPUADUOP",
-      "SUOPUADUOC",
-      "YOUREDYMEYS",
-      "SUBLEXINBA",
-      "DOMPERIENCEN",
-      "IEJO OT",
-      "SIAIGET",
-      "ALEATEU",
-      "NASSNVI",
-      "13IGET",
-      "UNIGIES"
+      "NOTILIUM",
+      "JANSSEN",
+      "MANUFACTURAL ON THE PHYSICIAN",
+      "DOMPERIDONE",
+      "DOMPERIDONE",
+      "EQUIVALENT",
+      "PHARMACEUTICALS",
+      "MANUFACTURED BY:",
+      "TABLETS",
+      "MALEATE",
+      "JANSEN",
+      "TABLET",
+      "BELGIUM",
+      "ORAL"
     ],
-    "box_find_sec": 5.796874284744263,
-    "reading_sec": 1.2001211643218994,
-    "total_ocr_sec": 7.185456037521362,
+    "rotation": 180,
+    "rotations_attempted": [
+      0,
+      180
+    ],
+    "box_find_sec": 5.624193429946899,
+    "reading_sec": 1.3559527397155762,
+    "total_ocr_sec": 13.730945587158203,
     "box_count": 14
   },
   {
@@ -1727,9 +2063,13 @@
       "DERMA",
       "WWW."
     ],
-    "box_find_sec": 5.6460349559783936,
-    "reading_sec": 1.1384985446929932,
-    "total_ocr_sec": 6.903841733932495,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.541071653366089,
+    "reading_sec": 0.9934854507446289,
+    "total_ocr_sec": 6.548373699188232,
     "box_count": 8
   },
   {
@@ -1752,9 +2092,13 @@
       "COM",
       "%"
     ],
-    "box_find_sec": 5.7231433391571045,
-    "reading_sec": 1.2524497509002686,
-    "total_ocr_sec": 7.1527111530303955,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.54337739944458,
+    "reading_sec": 1.0876953601837158,
+    "total_ocr_sec": 6.6463189125061035,
     "box_count": 14
   },
   {
@@ -1762,24 +2106,29 @@
     "target_brand": "MUPIRAX",
     "prod_name": "Mupirax 10 g ointment",
     "lines": [
-      "XDAIDOW",
-      "STVOLUSED BY: DIVESVES",
-      "ZUOUIUIO",
-      "OIESIDOL B",
-      "SUSIONIVE",
-      "VORVBOID",
-      "IVBOTO",
-      "VICLIPHICION",
-      "WXIO",
-      "ISVN",
-      "AND",
-      "IDVN",
-      "OMM",
-      "UOD"
+      "MUDIROX",
+      "PHARMACEUTICALS",
+      "MANUFOLOLEPHAROLIC ACID",
+      "I OINTMENT",
+      "TOPICAL O",
+      "GLOBAL",
+      "BALIORICOIN",
+      "GLOBAL",
+      "DERMA",
+      "NAPIP",
+      "GAP",
+      "NAPI",
+      "100",
+      "I.COM"
     ],
-    "box_find_sec": 5.6911301612854,
-    "reading_sec": 1.5262060165405273,
-    "total_ocr_sec": 7.417698383331299,
+    "rotation": 180,
+    "rotations_attempted": [
+      0,
+      180
+    ],
+    "box_find_sec": 5.603485584259033,
+    "reading_sec": 1.3466463088989258,
+    "total_ocr_sec": 13.952411413192749,
     "box_count": 14
   },
   {
@@ -1800,9 +2149,13 @@
       "JEBNS",
       "IVDILNID"
     ],
-    "box_find_sec": 5.570836544036865,
-    "reading_sec": 1.0996372699737549,
-    "total_ocr_sec": 6.764146327972412,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.55372428894043,
+    "reading_sec": 0.9859187602996826,
+    "total_ocr_sec": 6.552771329879761,
     "box_count": 12
   },
   {
@@ -1822,9 +2175,13 @@
       "6W OOL",
       "JEONS"
     ],
-    "box_find_sec": 5.5725250244140625,
-    "reading_sec": 0.8634994029998779,
-    "total_ocr_sec": 6.596448659896851,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.562239646911621,
+    "reading_sec": 0.8602478504180908,
+    "total_ocr_sec": 6.443444728851318,
     "box_count": 11
   },
   {
@@ -1847,9 +2204,13 @@
       "PHENIC",
       "SUNO"
     ],
-    "box_find_sec": 5.331671714782715,
-    "reading_sec": 0.9764409065246582,
-    "total_ocr_sec": 6.388141393661499,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.55494499206543,
+    "reading_sec": 0.9898624420166016,
+    "total_ocr_sec": 6.567746639251709,
     "box_count": 14
   },
   {
@@ -1872,9 +2233,13 @@
       "DOSAGE: S",
       "RELIEF"
     ],
-    "box_find_sec": 5.402582168579102,
-    "reading_sec": 0.9061679840087891,
-    "total_ocr_sec": 6.34835958480835,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.617264986038208,
+    "reading_sec": 0.9164237976074219,
+    "total_ocr_sec": 6.547579526901245,
     "box_count": 14
   },
   {
@@ -1897,9 +2262,13 @@
       "FROM",
       "WARNING"
     ],
-    "box_find_sec": 5.4685046672821045,
-    "reading_sec": 1.2604038715362549,
-    "total_ocr_sec": 6.799030303955078,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.651989459991455,
+    "reading_sec": 1.2798080444335938,
+    "total_ocr_sec": 6.943418741226196,
     "box_count": 14
   },
   {
@@ -1922,9 +2291,13 @@
       "RELIEF",
       "MOUTH"
     ],
-    "box_find_sec": 5.469911098480225,
-    "reading_sec": 0.9693169593811035,
-    "total_ocr_sec": 6.509134531021118,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.679763555526733,
+    "reading_sec": 0.9720444679260254,
+    "total_ocr_sec": 6.677882194519043,
     "box_count": 14
   },
   {
@@ -1945,9 +2318,13 @@
       "INAL",
       "D"
     ],
-    "box_find_sec": 5.354402303695679,
-    "reading_sec": 1.0265491008758545,
-    "total_ocr_sec": 6.420110464096069,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.5975751876831055,
+    "reading_sec": 1.0465054512023926,
+    "total_ocr_sec": 6.65187406539917,
     "box_count": 12
   },
   {
@@ -1970,9 +2347,13 @@
       "FOR",
       "M/"
     ],
-    "box_find_sec": 5.35747504234314,
-    "reading_sec": 0.9716360569000244,
-    "total_ocr_sec": 6.3999645709991455,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.658218622207642,
+    "reading_sec": 0.9861066341400146,
+    "total_ocr_sec": 6.66508150100708,
     "box_count": 14
   },
   {
@@ -1980,24 +2361,29 @@
     "target_brand": "OREX",
     "prod_name": "Orex 60 ml solution",
     "lines": [
-      "XIDIA",
-      "SINTR",
-      "SULED BY:",
-      "ORXION",
-      "U09%",
-      "RIRO",
-      "ITORRIP",
-      "AUSO",
-      "ZHBY",
-      "RISBY",
-      "INVY",
-      "ROVY",
-      "RZO",
-      "SOV"
+      "ORREX",
+      "ILLY",
+      "VAYORATORIES",
+      "URIZO",
+      "YSON",
+      "GLICLIP",
+      "REIL",
+      "CAYRY",
+      "SUL",
+      "SAFF",
+      "FASTE",
+      "PORAL",
+      "CARE",
+      "TOP"
     ],
-    "box_find_sec": 5.347966432571411,
-    "reading_sec": 0.9823417663574219,
-    "total_ocr_sec": 6.398093223571777,
+    "rotation": 180,
+    "rotations_attempted": [
+      0,
+      180
+    ],
+    "box_find_sec": 5.570378065109253,
+    "reading_sec": 0.9822933673858643,
+    "total_ocr_sec": 13.240400314331055,
     "box_count": 14
   },
   {
@@ -2020,9 +2406,13 @@
       "%",
       "FOR"
     ],
-    "box_find_sec": 5.3443052768707275,
-    "reading_sec": 1.0390112400054932,
-    "total_ocr_sec": 6.425801992416382,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.555440187454224,
+    "reading_sec": 1.0477008819580078,
+    "total_ocr_sec": 6.616715431213379,
     "box_count": 14
   },
   {
@@ -2044,9 +2434,13 @@
       "KOR",
       "Y"
     ],
-    "box_find_sec": 5.324882745742798,
-    "reading_sec": 1.0158891677856445,
-    "total_ocr_sec": 6.413828372955322,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.539535045623779,
+    "reading_sec": 1.0204901695251465,
+    "total_ocr_sec": 6.576896905899048,
     "box_count": 13
   },
   {
@@ -2069,9 +2463,13 @@
       "B",
       "XX"
     ],
-    "box_find_sec": 5.346059799194336,
-    "reading_sec": 1.4610252380371094,
-    "total_ocr_sec": 6.8730833530426025,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.548739194869995,
+    "reading_sec": 1.471890926361084,
+    "total_ocr_sec": 7.047714710235596,
     "box_count": 14
   },
   {
@@ -2094,9 +2492,13 @@
       "MG/6W",
       "ORAL"
     ],
-    "box_find_sec": 5.417279958724976,
-    "reading_sec": 1.0399291515350342,
-    "total_ocr_sec": 6.488607883453369,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.658934116363525,
+    "reading_sec": 1.028111219406128,
+    "total_ocr_sec": 6.694988489151001,
     "box_count": 14
   },
   {
@@ -2119,9 +2521,13 @@
       "BOX",
       "INDUSTRIAL"
     ],
-    "box_find_sec": 5.499769926071167,
-    "reading_sec": 1.0462570190429688,
-    "total_ocr_sec": 6.613723039627075,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.754466533660889,
+    "reading_sec": 1.0410985946655273,
+    "total_ocr_sec": 6.8112359046936035,
     "box_count": 14
   },
   {
@@ -2129,24 +2535,29 @@
     "target_brand": "PICOLAX",
     "prod_name": "Picolax 15 ml oral drops",
     "lines": [
-      "INIT",
-      "XV100ID",
-      "ZALIVXET",
-      "OSIS",
-      "133",
-      "SIBINSODIL",
-      "EBS",
-      "METHYLINEYMETHYLINE",
-      "SDOIP",
-      "UNIPOS",
-      "PYNOLYNEININ",
-      "SELEOV/1990",
-      "IVIBLSIONI",
-      "BLINEOV/1990"
+      "INE",
+      "ITM",
+      "PICOLAX",
+      "LAXATIVE",
+      "ECYPTIAZOLEIPTINTERNATIONAL PVT LTD",
+      "EEEE",
+      "CIPICO",
+      "EEEE",
+      "PICOSULFATE",
+      "LPHARMACEUTICAL INDUSTRIES",
+      "I DROPS",
+      "SODIUM",
+      "0.554/49306",
+      "INDUSTRIAL A"
     ],
-    "box_find_sec": 5.488710165023804,
-    "reading_sec": 1.2118196487426758,
-    "total_ocr_sec": 6.768624544143677,
+    "rotation": 180,
+    "rotations_attempted": [
+      0,
+      180
+    ],
+    "box_find_sec": 5.702907085418701,
+    "reading_sec": 1.669975996017456,
+    "total_ocr_sec": 14.395188570022583,
     "box_count": 14
   },
   {
@@ -2163,9 +2574,13 @@
       "ISOLONE",
       "BORG"
     ],
-    "box_find_sec": 5.2725231647491455,
-    "reading_sec": 0.7228960990905762,
-    "total_ocr_sec": 6.04209303855896,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.438725233078003,
+    "reading_sec": 0.7311577796936035,
+    "total_ocr_sec": 6.192722320556641,
     "box_count": 8
   },
   {
@@ -2187,9 +2602,13 @@
       "D",
       "D"
     ],
-    "box_find_sec": 5.306438684463501,
-    "reading_sec": 1.2477076053619385,
-    "total_ocr_sec": 6.619351625442505,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.521580696105957,
+    "reading_sec": 1.2789294719696045,
+    "total_ocr_sec": 6.812425374984741,
     "box_count": 13
   },
   {
@@ -2209,9 +2628,13 @@
       "I LI CEL",
       "ITICA"
     ],
-    "box_find_sec": 5.366805553436279,
-    "reading_sec": 1.0289332866668701,
-    "total_ocr_sec": 6.4709343910217285,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.54833722114563,
+    "reading_sec": 1.0409610271453857,
+    "total_ocr_sec": 6.617164134979248,
     "box_count": 11
   },
   {
@@ -2233,9 +2656,13 @@
       "OF",
       "5%"
     ],
-    "box_find_sec": 5.301751375198364,
-    "reading_sec": 0.9463047981262207,
-    "total_ocr_sec": 6.282260417938232,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.544379949569702,
+    "reading_sec": 0.9511802196502686,
+    "total_ocr_sec": 6.506744146347046,
     "box_count": 13
   },
   {
@@ -2256,9 +2683,13 @@
       "OF",
       "5%"
     ],
-    "box_find_sec": 5.3189215660095215,
-    "reading_sec": 0.8928191661834717,
-    "total_ocr_sec": 6.283681154251099,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.550860404968262,
+    "reading_sec": 0.895383358001709,
+    "total_ocr_sec": 6.464324712753296,
     "box_count": 12
   },
   {
@@ -2281,9 +2712,13 @@
       "%",
       "KX"
     ],
-    "box_find_sec": 5.340323448181152,
-    "reading_sec": 1.335292100906372,
-    "total_ocr_sec": 6.738080739974976,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 6.219205856323242,
+    "reading_sec": 1.5203742980957031,
+    "total_ocr_sec": 7.7831339836120605,
     "box_count": 14
   },
   {
@@ -2300,9 +2735,13 @@
       "100",
       "GM"
     ],
-    "box_find_sec": 5.272645711898804,
-    "reading_sec": 0.5407118797302246,
-    "total_ocr_sec": 5.853682994842529,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 6.046258926391602,
+    "reading_sec": 0.6747405529022217,
+    "total_ocr_sec": 6.748867988586426,
     "box_count": 8
   },
   {
@@ -2318,9 +2757,13 @@
       "100",
       "GM"
     ],
-    "box_find_sec": 5.320026874542236,
-    "reading_sec": 0.5024399757385254,
-    "total_ocr_sec": 5.902337551116943,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 6.110047817230225,
+    "reading_sec": 0.837960958480835,
+    "total_ocr_sec": 7.0014472007751465,
     "box_count": 7
   },
   {
@@ -2328,18 +2771,24 @@
     "target_brand": "ZENTA",
     "prod_name": "Zenta 100  gm cream",
     "lines": [
-      "ENTA",
-      "SS",
+      "ZENTA",
+      "RE 25",
       "FORMULA",
-      "CREAM",
-      "UITRA",
+      "MEL",
+      "ULTRA",
       "FAST",
-      "100 GM"
+      "100",
+      "GM"
     ],
-    "box_find_sec": 5.306258678436279,
-    "reading_sec": 0.4748070240020752,
-    "total_ocr_sec": 5.864829778671265,
-    "box_count": 7
+    "rotation": 180,
+    "rotations_attempted": [
+      0,
+      180
+    ],
+    "box_find_sec": 5.542776584625244,
+    "reading_sec": 0.5754354000091553,
+    "total_ocr_sec": 12.538511276245117,
+    "box_count": 8
   },
   {
     "rel_path": "raw/mobile_pharma_packages/bjy2svvmn8-1/Zyrtec 10 ml oral drops/huawei cn (8).jpg",
@@ -2361,9 +2810,13 @@
       "2023",
       "2020"
     ],
-    "box_find_sec": 5.399296998977661,
-    "reading_sec": 1.142374038696289,
-    "total_ocr_sec": 6.577221632003784,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.616998672485352,
+    "reading_sec": 1.1472420692443848,
+    "total_ocr_sec": 6.783694267272949,
     "box_count": 14
   },
   {
@@ -2386,9 +2839,13 @@
       "2023",
       "GTIN"
     ],
-    "box_find_sec": 5.823991775512695,
-    "reading_sec": 1.2978298664093018,
-    "total_ocr_sec": 7.228400945663452,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.651116609573364,
+    "reading_sec": 1.1454277038574219,
+    "total_ocr_sec": 6.819401741027832,
     "box_count": 14
   },
   {
@@ -2411,9 +2868,13 @@
       "2023",
       "GTIN"
     ],
-    "box_find_sec": 5.865665912628174,
-    "reading_sec": 1.334068775177002,
-    "total_ocr_sec": 7.348487615585327,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.629615068435669,
+    "reading_sec": 1.2151973247528076,
+    "total_ocr_sec": 6.869275093078613,
     "box_count": 14
   },
   {
@@ -2436,9 +2897,13 @@
       "6WOL",
       "AZIS JENIDE"
     ],
-    "box_find_sec": 6.389369249343872,
-    "reading_sec": 1.596306324005127,
-    "total_ocr_sec": 8.067095756530762,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.8044188022613525,
+    "reading_sec": 1.4638464450836182,
+    "total_ocr_sec": 7.281917095184326,
     "box_count": 14
   },
   {
@@ -2446,24 +2911,29 @@
     "target_brand": "ZYRTEC",
     "prod_name": "Zyrtec 20 tablets",
     "lines": [
-      "JEXHZ",
-      "PIPHOLYDROCHLORIDE",
-      "CLORESIME DROP",
-      "PATEOS-WIJ",
-      "EUTIRIZINE",
-      "06220",
+      "ZYRTEC",
+      "DIHYDROCHLORIDE",
+      "06221045001",
+      "FILM-COATED",
+      "SCHEDULET",
+      "CETIRIZINE",
+      "5GONDY",
+      "OYM370",
       "PRICE",
-      "SGONDY",
-      "1045001",
-      "1829",
-      "STELQET",
-      "YM37D",
+      "TABLETS",
       "2023",
-      "2020"
+      "2020",
+      "J6ZA",
+      "10 MG"
     ],
-    "box_find_sec": 6.14167857170105,
-    "reading_sec": 1.48134446144104,
-    "total_ocr_sec": 7.800724506378174,
+    "rotation": 180,
+    "rotations_attempted": [
+      0,
+      180
+    ],
+    "box_find_sec": 5.726128101348877,
+    "reading_sec": 1.1525523662567139,
+    "total_ocr_sec": 13.975718975067139,
     "box_count": 14
   },
   {
@@ -2486,9 +2956,13 @@
       "NT19",
       "AXE"
     ],
-    "box_find_sec": 5.959573030471802,
-    "reading_sec": 1.4932630062103271,
-    "total_ocr_sec": 7.621306657791138,
+    "rotation": 0,
+    "rotations_attempted": [
+      0
+    ],
+    "box_find_sec": 5.688551187515259,
+    "reading_sec": 1.3417832851409912,
+    "total_ocr_sec": 7.053100824356079,
     "box_count": 14
   }
 ]

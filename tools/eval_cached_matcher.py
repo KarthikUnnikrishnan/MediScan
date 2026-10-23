@@ -247,55 +247,22 @@ def main():
     print(f"{'Average Total Seconds per Photo':<38} | {full_naive['avg_total_sec']:.2f}s{'':<13} | {full_step6['avg_total_sec']:.2f}s")
     print("=" * 80)
 
-    # 3. Requirement 2: Copy 12 random photos from the 43 misses into tools/missed_samples/
+    # List photos that are STILL missed in the top 3 (max 15) with the lines read
     misses = [d for d in full_step6["details"] if not d["h3"]]
-    print(f"\nTotal Top-3 Misses: {len(misses)} / {len(data)}")
-
-    dest_dir = PROJECT_ROOT / "tools" / "missed_samples"
-    if dest_dir.exists():
-        shutil.rmtree(dest_dir)
-    dest_dir.mkdir(parents=True, exist_ok=True)
-
-    # Deterministic reproducible sample of 12
-    random.seed(42)
-    sampled_12 = random.sample(misses, 12) if len(misses) >= 12 else misses
-
-    tsv_rows = ["product_name\tfilename\ttarget_brand\ttop_3_candidates\tlines_read"]
-    dataset_root = Path(r"D:\MediScan_data\ModelA")
-
     print("\n" + "=" * 80)
-    print("REQUIREMENT 2: 12 SAMPLED MISSED PHOTOS COPIED TO tools/missed_samples/")
+    print(f"PHOTOS STILL MISSED IN TOP-3 AFTER FIX 1 & FIX 2: {len(misses)} / {len(data)}")
     print("=" * 80)
-
-    for idx, item in enumerate(sampled_12, 1):
-        src_path = dataset_root / item["rel_path"]
-        prod_folder = dest_dir / item["prod_name"]
-        prod_folder.mkdir(parents=True, exist_ok=True)
-        dest_file = prod_folder / src_path.name
-
-        if src_path.exists():
-            shutil.copy2(src_path, dest_file)
-
-        lines_str = " // ".join(item["lines"])
-        cands_str = ", ".join(item["cand_brands"][:3])
-        tsv_rows.append(f"{item['prod_name']}\t{src_path.name}\t{item['target']}\t{cands_str}\t{lines_str}")
-
-        print(f"[{idx:2d}/12] Product : {item['prod_name']}")
-        print(f"       File    : {src_path.name}")
-        print(f"       Target  : {item['target']} | Got Top-3: {item['cand_brands'][:3]}")
-        print(f"       Copied  : tools/missed_samples/{item['prod_name']}/{src_path.name}")
-        print(f"       Lines ({len(item['lines'])}): {item['lines']}")
+    for idx, item in enumerate(misses[:15], 1):
+        print(f"[{idx:2d}] Product : {item['prod_name']}")
+        print(f"     Target  : {item['target']} | Got Top-3: {item['cand_brands'][:3]}")
+        print(f"     File    : {item['rel_path']}")
+        print(f"     Lines ({len(item['lines'])}): {' // '.join(item['lines'][:6])}")
         print("-" * 80)
 
-    tsv_path = dest_dir / "missed_samples.tsv"
-    with open(tsv_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(tsv_rows))
-
-    # Also save at tools/missed_samples.tsv for direct access
-    with open(PROJECT_ROOT / "tools" / "missed_samples.tsv", "w", encoding="utf-8") as f:
-        f.write("\n".join(tsv_rows))
-
-    print(f"\nSaved TSV of 12 sampled misses to {tsv_path} and tools/missed_samples.tsv")
+    # Worst case photo time
+    worst_item = max(data, key=lambda x: x.get("total_ocr_sec", 0.0))
+    print(f"\nWorst case photo time: {worst_item.get('total_ocr_sec', 0.0):.2f}s ({worst_item['rel_path']})")
+    print("=" * 80 + "\n")
 
 
 if __name__ == "__main__":

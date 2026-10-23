@@ -1,7 +1,7 @@
 {
   "metrics": {
-    "total_tests": 11,
-    "passed_tests": 11,
+    "total_tests": 14,
+    "passed_tests": 14,
     "overall_accuracy_percent": 100.0,
     "medicine_accuracy_percent": 100.0,
     "ingredient_accuracy_percent": 100.0,
@@ -82,29 +82,31 @@
       "case_id": "NEG_PARTIAL_MAGADOL",
       "name": "Negative: Partial Magadol (Diclofenac only)",
       "status": "PASS",
-      "verified": true,
-      "selected_medicine": "Diclofenac Sodium 50mg Tablet",
-      "selected_id": 250524,
-      "confidence": 96.8,
-      "alternatives_count": 5,
-      "rejection_reasons": []
-    },
-    {
-      "case_id": "NEG_WRONG_STRENGTH_DOLO",
-      "name": "Negative: Wrong Strength Paracetamol (500mg)",
-      "status": "PASS",
       "verified": false,
       "selected_medicine": null,
       "selected_id": null,
       "confidence": 45.0,
       "alternatives_count": 0,
       "rejection_reasons": [
-        "Confidence below verification threshold."
+        "Candidate has no parseable active composition.",
+        "Visible strength/number 50 does not match candidate name.",
+        "Incompatible dosage form: detected Tablet vs Injection"
       ]
     },
     {
-      "case_id": "7f1bdf77-4ee5-452d-870c-45613c5b0873.jpg",
-      "name": "7f1bdf77-4ee5-452d-870c-45613c5b0873.jpg",
+      "case_id": "NEG_WRONG_STRENGTH_DOLO",
+      "name": "Negative: Wrong Strength Paracetamol (500mg)",
+      "status": "PASS",
+      "verified": true,
+      "selected_medicine": "Genericart Paracetamol 500mg Tablet",
+      "selected_id": 94233,
+      "confidence": 96.8,
+      "alternatives_count": 5,
+      "rejection_reasons": []
+    },
+    {
+      "case_id": "387bf23f-50fe-4397-b7fe-d2441e517365.jpg",
+      "name": "387bf23f-50fe-4397-b7fe-d2441e517365.jpg",
       "status": "PASS",
       "verified": false,
       "selected_medicine": null,
@@ -112,8 +114,26 @@
       "alternatives_count": 0
     },
     {
-      "case_id": "97f7979d-604f-446c-b79d-bd87592bad07.jpg",
-      "name": "97f7979d-604f-446c-b79d-bd87592bad07.jpg",
+      "case_id": "58229723-31c1-4560-b5dd-50cc378adbd3.jpg",
+      "name": "58229723-31c1-4560-b5dd-50cc378adbd3.jpg",
+      "status": "PASS",
+      "verified": false,
+      "selected_medicine": null,
+      "confidence": 0.0,
+      "alternatives_count": 0
+    },
+    {
+      "case_id": "696854a3-4577-46c6-8ccd-cdc7ccaa2977.jpg",
+      "name": "696854a3-4577-46c6-8ccd-cdc7ccaa2977.jpg",
+      "status": "PASS",
+      "verified": true,
+      "selected_medicine": "Shelcal - HD Tablet with Calcium & Vitamin D3 | Bone, Joint & Muscle Care",
+      "confidence": 86.8,
+      "alternatives_count": 5
+    },
+    {
+      "case_id": "b11ee646-127d-4038-b717-58dafd814d3e.jpg",
+      "name": "b11ee646-127d-4038-b717-58dafd814d3e.jpg",
       "status": "PASS",
       "verified": false,
       "selected_medicine": null,
@@ -121,8 +141,17 @@
       "alternatives_count": 0
     },
     {
-      "case_id": "c71f5c85-80f6-4867-bc49-42cedc25f693.jpg",
-      "name": "c71f5c85-80f6-4867-bc49-42cedc25f693.jpg",
+      "case_id": "bab4c882-0e20-4721-aa80-34585511cb63.jpg",
+      "name": "bab4c882-0e20-4721-aa80-34585511cb63.jpg",
+      "status": "PASS",
+      "verified": true,
+      "selected_medicine": "Shelcal - HD Tablet with Calcium & Vitamin D3 | Bone, Joint & Muscle Care",
+      "confidence": 86.8,
+      "alternatives_count": 5
+    },
+    {
+      "case_id": "fd7d28b1-606e-4b95-85e8-5e23d1c56dc4.jpg",
+      "name": "fd7d28b1-606e-4b95-85e8-5e23d1c56dc4.jpg",
       "status": "PASS",
       "verified": false,
       "selected_medicine": null,

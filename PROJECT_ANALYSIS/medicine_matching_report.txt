@@ -10,7 +10,10 @@ MAGADOL TABLET
 Mfg by: Alembic Pharmaceuticals Ltd
 Diclofenac Sodium (50mg) + Paracetamol (325mg)
 Batch: M102 Exp: 2027
-NORMALIZED OCR: MAGADOL TABLET Mfg by: Alembic Pharmaceuticals Ltd diclofenac Sodium (50mg) + Paracetamol (325mg) Batch: M102 Exp: 2027
+NORMALIZED OCR: MAGADOL TABLET
+Mfg by: Alembic Pharmaceuticals Ltd
+diclofenac Sodium (50mg) + Paracetamol (325mg)
+Batch: M102 Exp: 2027
 EXTRACTED BRAND: MAGADOL
 EXTRACTED INGREDIENTS: ['diclofenac sodium', '+ paracetamol']
 EXTRACTED STRENGTHS: [50, 325]
@@ -23,12 +26,12 @@ CANDIDATE PRICE: Rs 72.05
 CONFIDENCE: 98.2% (Breakdown: {'brand': 95.0, 'ingredients': 100.0, 'strength': 100.0, 'manufacturer': 100.0, 'dosage_form': 100.0, 'overall': 98.2})
 REJECTION REASONS: []
 TOP 5 ALTERNATIVES (5 found):
-  * Angenec Plus 250 mg/50 mg/325 mg Tablet | Rs 3.0 | Mfr: Manufacturer unavailable | Save: Rs None (None%) | Same Comp: True
-  * Dolopee Tablet | Rs 4.26 | Mfr: Agron Remedies Pvt Ltd | Save: Rs None (None%) | Same Comp: True
-  * Neurogesic Tablet | Rs 4.68 | Mfr: Torque Pharmaceuticals Pvt Ltd | Save: Rs None (None%) | Same Comp: True
-  * POWERFLAM XP  50 MG/325 MG TABLET | Rs 4.75 | Mfr: Alkem Laboratories Ltd | Save: Rs None (None%) | Same Comp: True
-  * Azet Plus 50 mg/325 mg Tablet | Rs 5.1 | Mfr: Moraceae Pharmaceuticals Pvt Ltd | Save: Rs None (None%) | Same Comp: True
-ALTERNATIVE VALIDATION: [{'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 3.0, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 4.26, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 4.68, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 4.75, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 5.1, 'comparison_eligible': False}]
+  * Angenec Plus 250 mg/50 mg/325 mg Tablet | Rs 3.0 | Mfr: Manufacturer unavailable | Save: Rs 42.05 (58.4%) | Same Comp: True
+  * Dolopee Tablet | Rs 4.26 | Mfr: Agron Remedies Pvt Ltd | Save: Rs 29.45 (40.9%) | Same Comp: True
+  * Neurogesic Tablet | Rs 4.68 | Mfr: Torque Pharmaceuticals Pvt Ltd | Save: Rs 25.25 (35.1%) | Same Comp: True
+  * POWERFLAM XP  50 MG/325 MG TABLET | Rs 4.75 | Mfr: Alkem Laboratories Ltd | Save: Rs 24.55 (34.1%) | Same Comp: True
+  * Azet Plus 50 mg/325 mg Tablet | Rs 5.1 | Mfr: Moraceae Pharmaceuticals Pvt Ltd | Save: Rs 21.05 (29.3%) | Same Comp: True
+ALTERNATIVE VALIDATION: [{'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 3.0, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 4.26, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 4.68, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 4.75, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 5.1, 'comparison_eligible': True}]
 SAFETY LOOKUP: 12 side effects, 12 interactions
   SE: Abdominal cramps (Recorded clinical effect)
   SE: Abdominal pain (Rare)
@@ -44,7 +47,9 @@ OCR OUTPUT:
 1-AL TABLET
 Levocetirizine Dihydrochloride (5mg)
 Exp: 2028
-NORMALIZED OCR: 1-AL TABLET Levocetirizine Dihydrochloride (5mg) Exp: 2028
+NORMALIZED OCR: 1-AL TABLET
+Levocetirizine Dihydrochloride (5mg)
+Exp: 2028
 EXTRACTED BRAND: 1-AL TABLET
 EXTRACTED INGREDIENTS: ['levocetirizine dihydrochloride']
 EXTRACTED STRENGTHS: [5]
@@ -57,12 +62,12 @@ CANDIDATE PRICE: Rs None
 CONFIDENCE: 96.8% (Breakdown: {'brand': 95.0, 'ingredients': 100.0, 'strength': 100.0, 'manufacturer': 70.0, 'dosage_form': 100.0, 'overall': 96.8})
 REJECTION REASONS: []
 TOP 5 ALTERNATIVES (5 found):
-  * Levoz 5mg Tablet | Rs 3.0 | Mfr: Ethix Healthcare | Save: Rs None (None%) | Same Comp: True
-  * Levotis 5mg Tablet | Rs 3.12 | Mfr: Allentis Pharmaceuticals Pvt Ltd | Save: Rs None (None%) | Same Comp: True
-  * Levodil 5mg Tablet | Rs 3.2 | Mfr: Psychotropics India Ltd | Save: Rs None (None%) | Same Comp: True
-  * Lecenza 5mg Tablet | Rs 3.56 | Mfr: Shreya Life Sciences Pvt Ltd | Save: Rs None (None%) | Same Comp: True
-  * Allegone 5mg Tablet | Rs 3.57 | Mfr: Agron Remedies Pvt Ltd | Save: Rs None (None%) | Same Comp: True
-ALTERNATIVE VALIDATION: [{'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 3.0, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 3.12, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 3.2, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 3.56, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 3.57, 'comparison_eligible': False}]
+  * Levoz 5mg Tablet | Rs 3.0 | Mfr: Ethix Healthcare | Save: Rs 30.0 (50.0%) | Same Comp: True
+  * Levotis 5mg Tablet | Rs 3.12 | Mfr: Allentis Pharmaceuticals Pvt Ltd | Save: Rs 28.8 (48.0%) | Same Comp: True
+  * Levodil 5mg Tablet | Rs 3.2 | Mfr: Psychotropics India Ltd | Save: Rs 28.0 (46.7%) | Same Comp: True
+  * Lecenza 5mg Tablet | Rs 3.56 | Mfr: Shreya Life Sciences Pvt Ltd | Save: Rs 24.4 (40.7%) | Same Comp: True
+  * Allegone 5mg Tablet | Rs 3.57 | Mfr: Agron Remedies Pvt Ltd | Save: Rs 24.3 (40.5%) | Same Comp: True
+ALTERNATIVE VALIDATION: [{'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 3.0, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 3.12, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 3.2, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 3.56, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 3.57, 'comparison_eligible': True}]
 SAFETY LOOKUP: 2 side effects, 10 interactions
   SE: Abdominal pain (Rare)
   SE: Gastrointestinal pain (Rare)
@@ -77,8 +82,10 @@ OCR OUTPUT:
 Crocin Advance Tablet
 Paracetamol (500mg)
 GlaxoSmithKline Consumer Healthcare
-NORMALIZED OCR: crocin Advance Tablet Paracetamol (500mg) GlaxoSmithKline Consumer Healthcare
-EXTRACTED BRAND: crocin
+NORMALIZED OCR: crocin Advance Tablet
+Paracetamol (500mg)
+GlaxoSmithKline Consumer Healthcare
+EXTRACTED BRAND: Crocin Advance
 EXTRACTED INGREDIENTS: ['paracetamol']
 EXTRACTED STRENGTHS: [500]
 EXTRACTED MANUFACTURER: GlaxoSmithKline Consumer Healthcare
@@ -90,12 +97,12 @@ CANDIDATE PRICE: Rs 22.62
 CONFIDENCE: 98.2% (Breakdown: {'brand': 95.0, 'ingredients': 100.0, 'strength': 100.0, 'manufacturer': 100.0, 'dosage_form': 100.0, 'overall': 98.2})
 REJECTION REASONS: []
 TOP 5 ALTERNATIVES (5 found):
-  * Active 2mg/500mg Tablet | Rs 2.0 | Mfr: Manufacturer unavailable | Save: Rs None (None%) | Same Comp: True
-  * Theraflam 100mg/500mg Tablet | Rs 2.0 | Mfr: Manufacturer unavailable | Save: Rs None (None%) | Same Comp: True
-  * Babymol 500mg Tablet | Rs 2.5 | Mfr: Laborate Pharmaceuticals India Ltd | Save: Rs None (None%) | Same Comp: True
-  * Anglopar 500mg Tablet | Rs 2.86 | Mfr: Anglo-French Drugs & Industries Ltd | Save: Rs None (None%) | Same Comp: True
-  * Dagmol 500mg Tablet | Rs 2.9 | Mfr: Dagon Pharmaceuticals Pvt Ltd | Save: Rs None (None%) | Same Comp: True
-ALTERNATIVE VALIDATION: [{'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 2.0, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 2.0, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 2.5, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 2.86, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 2.9, 'comparison_eligible': False}]
+  * Active 2mg/500mg Tablet | Rs 2.0 | Mfr: Manufacturer unavailable | Save: Rs 2.62 (11.5%) | Same Comp: True
+  * Theraflam 100mg/500mg Tablet | Rs 2.0 | Mfr: Manufacturer unavailable | Save: Rs 2.62 (11.5%) | Same Comp: True
+  * Babymol 500mg Tablet | Rs 2.5 | Mfr: Laborate Pharmaceuticals India Ltd | Save: Rs 0.0 (0.0%) | Same Comp: True
+  * Anglopar 500mg Tablet | Rs 2.86 | Mfr: Anglo-French Drugs & Industries Ltd | Save: Rs 0.0 (0.0%) | Same Comp: True
+  * Dagmol 500mg Tablet | Rs 2.9 | Mfr: Dagon Pharmaceuticals Pvt Ltd | Save: Rs 0.0 (0.0%) | Same Comp: True
+ALTERNATIVE VALIDATION: [{'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 2.0, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 2.0, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 2.5, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 2.86, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 2.9, 'comparison_eligible': True}]
 SAFETY LOOKUP: 10 side effects, 10 interactions
   SE: Abdominal pain (Recorded clinical effect)
   SE: Gastrointestinal pain (Recorded clinical effect)
@@ -111,7 +118,9 @@ OCR OUTPUT:
 DOLO 650 TABLET
 Paracetamol (650mg)
 Micro Labs Ltd
-NORMALIZED OCR: dolo 650 TABLET Paracetamol (650mg) Micro Labs Ltd
+NORMALIZED OCR: dolo 650 TABLET
+Paracetamol (650mg)
+Micro Labs Ltd
 EXTRACTED BRAND: DOLO 650 TABLET
 EXTRACTED INGREDIENTS: ['paracetamol']
 EXTRACTED STRENGTHS: [650]
@@ -124,12 +133,12 @@ CANDIDATE PRICE: Rs 34.27
 CONFIDENCE: 98.2% (Breakdown: {'brand': 95.0, 'ingredients': 100.0, 'strength': 100.0, 'manufacturer': 100.0, 'dosage_form': 100.0, 'overall': 98.2})
 REJECTION REASONS: []
 TOP 5 ALTERNATIVES (5 found):
-  * Alice 650mg Tablet | Rs 3.31 | Mfr: Ind Swift Laboratories Ltd | Save: Rs None (None%) | Same Comp: True
-  * Anglopar 650 Tablet | Rs 4.0 | Mfr: Manufacturer unavailable | Save: Rs None (None%) | Same Comp: True
-  * Paranir 650mg Tablet | Rs 5.67 | Mfr: Nirlife Healthcare | Save: Rs None (None%) | Same Comp: True
-  * Pyremol 650mg Tablet | Rs 5.7 | Mfr: Alembic Pharmaceuticals Ltd | Save: Rs None (None%) | Same Comp: True
-  * Parapil 650mg Tablet | Rs 6.25 | Mfr: Psychotropics India Ltd | Save: Rs None (None%) | Same Comp: True
-ALTERNATIVE VALIDATION: [{'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 3.31, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 4.0, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 5.67, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 5.7, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 6.25, 'comparison_eligible': False}]
+  * Alice 650mg Tablet | Rs 3.31 | Mfr: Ind Swift Laboratories Ltd | Save: Rs 0.0 (0.0%) | Same Comp: True
+  * Anglopar 650 Tablet | Rs 4.0 | Mfr: Manufacturer unavailable | Save: Rs 0.0 (0.0%) | Same Comp: True
+  * Paranir 650mg Tablet | Rs 5.67 | Mfr: Nirlife Healthcare | Save: Rs 0.0 (0.0%) | Same Comp: True
+  * Pyremol 650mg Tablet | Rs 5.7 | Mfr: Alembic Pharmaceuticals Ltd | Save: Rs 0.0 (0.0%) | Same Comp: True
+  * Parapil 650mg Tablet | Rs 6.25 | Mfr: Psychotropics India Ltd | Save: Rs 0.0 (0.0%) | Same Comp: True
+ALTERNATIVE VALIDATION: [{'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 3.31, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 4.0, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 5.67, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 5.7, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 6.25, 'comparison_eligible': True}]
 SAFETY LOOKUP: 10 side effects, 10 interactions
   SE: Abdominal pain (Recorded clinical effect)
   SE: Gastrointestinal pain (Recorded clinical effect)
@@ -145,7 +154,9 @@ OCR OUTPUT:
 AZITHRAL 500 TABLET
 Azithromycin (500mg)
 Alembic Pharmaceuticals Ltd
-NORMALIZED OCR: azithral 500 TABLET Azithromycin (500mg) Alembic Pharmaceuticals Ltd
+NORMALIZED OCR: azithral 500 TABLET
+Azithromycin (500mg)
+Alembic Pharmaceuticals Ltd
 EXTRACTED BRAND: AZITHRAL 500 TABLET
 EXTRACTED INGREDIENTS: ['azithromycin']
 EXTRACTED STRENGTHS: [500]
@@ -158,12 +169,12 @@ CANDIDATE PRICE: Rs 132.36
 CONFIDENCE: 98.2% (Breakdown: {'brand': 95.0, 'ingredients': 100.0, 'strength': 100.0, 'manufacturer': 100.0, 'dosage_form': 100.0, 'overall': 98.2})
 REJECTION REASONS: []
 TOP 5 ALTERNATIVES (5 found):
-  * TN 500 Tablet | Rs 11.02 | Mfr: Vhb Life Sciences Inc | Save: Rs None (None%) | Same Comp: True
-  * Zithnu 500mg Tablet | Rs 15.0 | Mfr: Genesis Biotech Inc | Save: Rs None (None%) | Same Comp: True
-  * Azileo 500mg Tablet | Rs 17.32 | Mfr: Leo Pharmaceuticals | Save: Rs None (None%) | Same Comp: True
-  * Izamed 500mg Tablet | Rs 18.7 | Mfr: Medoz Pharmaceutical Pvt. Ltd | Save: Rs None (None%) | Same Comp: True
-  * Azista 500mg Tablet | Rs 19.8 | Mfr: Akesiss Pharma Pvt Ltd | Save: Rs None (None%) | Same Comp: True
-ALTERNATIVE VALIDATION: [{'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 11.02, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 15.0, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 17.32, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 18.7, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 19.8, 'comparison_eligible': False}]
+  * Zithnu 500mg Tablet | Rs 15.0 | Mfr: Genesis Biotech Inc | Save: Rs 24.9 (94.3%) | Same Comp: True
+  * Azileo 500mg Tablet | Rs 17.32 | Mfr: Leo Pharmaceuticals | Save: Rs 24.67 (93.4%) | Same Comp: True
+  * Izamed 500mg Tablet | Rs 18.7 | Mfr: Medoz Pharmaceutical Pvt. Ltd | Save: Rs 24.53 (92.9%) | Same Comp: True
+  * Azista 500mg Tablet | Rs 19.8 | Mfr: Akesiss Pharma Pvt Ltd | Save: Rs 24.42 (92.5%) | Same Comp: True
+  * Pezith 500mg Tablet | Rs 20.8 | Mfr: Penam Pharmaceuticals Pvt Ltd | Save: Rs 24.32 (92.1%) | Same Comp: True
+ALTERNATIVE VALIDATION: [{'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 15.0, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 17.32, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 18.7, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 19.8, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 20.8, 'comparison_eligible': True}]
 SAFETY LOOKUP: 1 side effects, 10 interactions
   SE: Abdominal pain (Rare)
   Warning: Azithromycin + Norfloxacin: Azithromycin may increase the QTc-prolonging activities of Norfloxacin...
@@ -177,9 +188,11 @@ OCR OUTPUT:
 Augmentin 625 Duo Tablet
 Amoxycillin (500mg) + Clavulanic Acid (125mg)
 GlaxoSmithKline Pharmaceuticals Ltd
-NORMALIZED OCR: augmentin 625 Duo Tablet Amoxycillin (500mg) + Clavulanic Acid (125mg) GlaxoSmithKline Pharmaceuticals Ltd
+NORMALIZED OCR: augmentin 625 Duo Tablet
+Amoxycillin (500mg) + Clavulanic Acid (125mg)
+GlaxoSmithKline Pharmaceuticals Ltd
 EXTRACTED BRAND: Augmentin 625
-EXTRACTED INGREDIENTS: ['tablet amoxycillin', '+ clavulanic acid']
+EXTRACTED INGREDIENTS: ['amoxycillin', '+ clavulanic acid']
 EXTRACTED STRENGTHS: [500, 125]
 EXTRACTED MANUFACTURER: GlaxoSmithKline Pharmaceuticals Ltd
 TOP DATABASE CANDIDATES: 2660
@@ -190,12 +203,12 @@ CANDIDATE PRICE: Rs 223.42
 CONFIDENCE: 98.2% (Breakdown: {'brand': 95.0, 'ingredients': 100.0, 'strength': 100.0, 'manufacturer': 98.6, 'dosage_form': 100.0, 'overall': 98.2})
 REJECTION REASONS: []
 TOP 5 ALTERNATIVES (5 found):
-  * Apcil Tablet | Rs 6.98 | Mfr: Juggat Pharma | Save: Rs None (None%) | Same Comp: True
-  * Clavmox 500mg/125mg Tablet | Rs 13.65 | Mfr: Cipla Ltd | Save: Rs None (None%) | Same Comp: True
-  * Sanclav 500mg/125mg Tablet | Rs 15.0 | Mfr: Manufacturer unavailable | Save: Rs None (None%) | Same Comp: True
-  * Redtab 500mg/125mg Tablet | Rs 18.0 | Mfr: Unicorn India | Save: Rs None (None%) | Same Comp: True
-  * Ivamox LB 500mg/125mg Tablet | Rs 27.0 | Mfr: Manufacturer unavailable | Save: Rs None (None%) | Same Comp: True
-ALTERNATIVE VALIDATION: [{'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 6.98, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 13.65, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 15.0, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 18.0, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 27.0, 'comparison_eligible': False}]
+  * Clavmox 500mg/125mg Tablet | Rs 13.65 | Mfr: Cipla Ltd | Save: Rs 209.77 (93.9%) | Same Comp: True
+  * Sanclav 500mg/125mg Tablet | Rs 15.0 | Mfr: Manufacturer unavailable | Save: Rs 208.42 (93.3%) | Same Comp: True
+  * Redtab 500mg/125mg Tablet | Rs 18.0 | Mfr: Unicorn India | Save: Rs 205.42 (91.9%) | Same Comp: True
+  * Ivamox LB 500mg/125mg Tablet | Rs 27.0 | Mfr: Manufacturer unavailable | Save: Rs 196.42 (87.9%) | Same Comp: True
+  * Advaller 500mg/125mg Tablet | Rs 29.76 | Mfr: Brooks Pharmaceuticals | Save: Rs 193.66 (86.7%) | Same Comp: True
+ALTERNATIVE VALIDATION: [{'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 13.65, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 15.0, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 18.0, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 27.0, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 29.76, 'comparison_eligible': True}]
 SAFETY LOOKUP: 4 side effects, 11 interactions
   SE: Abdominal pain (Rare)
   SE: Gastrointestinal pain (Rare)
@@ -210,30 +223,17 @@ IMAGE / TEST CASE: Negative: Partial Magadol (Diclofenac only)
 OCR OUTPUT:
 Diclofenac Sodium (50mg) Tablet
 NORMALIZED OCR: diclofenac Sodium (50mg) Tablet
-EXTRACTED BRAND: diclofenac
-EXTRACTED INGREDIENTS: ['diclofenac sodium']
+EXTRACTED BRAND: Sodium 50
+EXTRACTED INGREDIENTS: ['diclofenac']
 EXTRACTED STRENGTHS: [50]
 EXTRACTED MANUFACTURER: None
-TOP DATABASE CANDIDATES: 184
-SELECTED MEDICINE: Diclofenac Sodium 50mg Tablet (ID: 250524)
-CANDIDATE SALT: diclofenac (50mg)
-CANDIDATE MFR: 
-CANDIDATE PRICE: Rs None
-CONFIDENCE: 96.8% (Breakdown: {'brand': 95.0, 'ingredients': 100.0, 'strength': 100.0, 'manufacturer': 70.0, 'dosage_form': 100.0, 'overall': 96.8})
-REJECTION REASONS: []
-TOP 5 ALTERNATIVES (5 found):
-  * Aglofen 50mg Tablet | Rs 4.0 | Mfr: Manufacturer unavailable | Save: Rs None (None%) | Same Comp: True
-  * Deemol Tablet | Rs 4.76 | Mfr: Sunny Drug Pharma | Save: Rs None (None%) | Same Comp: True
-  * Fin 50mg Tablet | Rs 5.0 | Mfr: Aan Pharma Pvt Ltd | Save: Rs None (None%) | Same Comp: True
-  * Ultramark 1 Tablet | Rs 5.0 | Mfr: Terrace Pharmaceuticals | Save: Rs None (None%) | Same Comp: True
-  * Cannact 50mg Tablet | Rs 5.1 | Mfr: Astra IDL MAX | Save: Rs None (None%) | Same Comp: True
-ALTERNATIVE VALIDATION: [{'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 4.0, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 4.76, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 5.0, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 5.0, 'comparison_eligible': False}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': False, 'price': 5.1, 'comparison_eligible': False}]
-SAFETY LOOKUP: 3 side effects, 10 interactions
-  SE: Abdominal cramps (Recorded clinical effect)
-  SE: Abdominal pain (Rare)
-  SE: Abdominal distension (Recorded clinical effect)
-  Warning: Diclofenac + Gatifloxacin: Diclofenac may increase the neuroexcitatory activities of Gatifloxacin...
-  Warning: Diclofenac + Rosoxacin: Diclofenac may increase the neuroexcitatory activities of Rosoxacin....
+TOP DATABASE CANDIDATES: 189
+SELECTED MEDICINE: None (Unverified)
+CONFIDENCE: 45.0% (Breakdown: {'brand': 95.0, 'ingredients': 20.0, 'strength': 20.0, 'manufacturer': 70.0, 'dosage_form': 0.0, 'overall': 45.0})
+REJECTION REASONS: ['Candidate has no parseable active composition.', 'Visible strength/number 50 does not match candidate name.', 'Incompatible dosage form: detected Tablet vs Injection']
+TOP 5 ALTERNATIVES: [] (None)
+ALTERNATIVE VALIDATION: []
+SAFETY LOOKUP: None
 FINAL STATUS: PASS
 
 --------------------------------------------------------------------------------
@@ -243,35 +243,70 @@ OCR OUTPUT:
 Generic Paracetamol (500mg) Tablet
 NORMALIZED OCR: Generic Paracetamol (500mg) Tablet
 EXTRACTED BRAND: Generic
-EXTRACTED INGREDIENTS: ['generic paracetamol']
+EXTRACTED INGREDIENTS: ['paracetamol']
 EXTRACTED STRENGTHS: [500]
 EXTRACTED MANUFACTURER: None
-TOP DATABASE CANDIDATES: 10
-SELECTED MEDICINE: None (Unverified)
-CONFIDENCE: 45.0% (Breakdown: {'brand': 95.0, 'ingredients': 0.0, 'strength': 0.0, 'manufacturer': 70.0, 'dosage_form': 100.0, 'overall': 45.0})
-REJECTION REASONS: ['Confidence below verification threshold.']
-TOP 5 ALTERNATIVES: [] (None)
-ALTERNATIVE VALIDATION: []
-SAFETY LOOKUP: None
+TOP DATABASE CANDIDATES: 271
+SELECTED MEDICINE: Genericart Paracetamol 500mg Tablet (ID: 94233)
+CANDIDATE SALT: paracetamol (500mg)
+CANDIDATE MFR: Swast Aushadhi Seva Generic Medicine Store
+CANDIDATE PRICE: Rs 9.52
+CONFIDENCE: 96.8% (Breakdown: {'brand': 95.0, 'ingredients': 100.0, 'strength': 100.0, 'manufacturer': 70.0, 'dosage_form': 100.0, 'overall': 96.8})
+REJECTION REASONS: []
+TOP 5 ALTERNATIVES (5 found):
+  * Active 2mg/500mg Tablet | Rs 2.0 | Mfr: Manufacturer unavailable | Save: Rs 75.2 (79.0%) | Same Comp: True
+  * Theraflam 100mg/500mg Tablet | Rs 2.0 | Mfr: Manufacturer unavailable | Save: Rs 75.2 (79.0%) | Same Comp: True
+  * Babymol 500mg Tablet | Rs 2.5 | Mfr: Laborate Pharmaceuticals India Ltd | Save: Rs 70.2 (73.7%) | Same Comp: True
+  * Anglopar 500mg Tablet | Rs 2.86 | Mfr: Anglo-French Drugs & Industries Ltd | Save: Rs 66.6 (70.0%) | Same Comp: True
+  * Dagmol 500mg Tablet | Rs 2.9 | Mfr: Dagon Pharmaceuticals Pvt Ltd | Save: Rs 66.2 (69.5%) | Same Comp: True
+ALTERNATIVE VALIDATION: [{'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 2.0, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 2.0, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 2.5, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 2.86, 'comparison_eligible': True}, {'same_ingredients': True, 'same_strengths': True, 'same_form': True, 'cheaper': True, 'price': 2.9, 'comparison_eligible': True}]
+SAFETY LOOKUP: 10 side effects, 10 interactions
+  SE: Abdominal pain (Recorded clinical effect)
+  SE: Gastrointestinal pain (Recorded clinical effect)
+  SE: Pancreatitis acute (Recorded clinical effect)
+  Warning: Acetaminophen + Haloperidol: The metabolism of Haloperidol can be decreased when combined with Acet...
+  Warning: Acetaminophen + Tenofovir disoproxil: The metabolism of Tenofovir disoproxil can be decreased when combined ...
 FINAL STATUS: PASS
 
 ================================================================================
 TESTING PHYSICAL SAMPLE UPLOADS IN MEDIA/UPLOADS/
 ================================================================================
 
-IMAGE FILE: 7f1bdf77-4ee5-452d-870c-45613c5b0873.jpg
+IMAGE FILE: 387bf23f-50fe-4397-b7fe-d2441e517365.jpg
 RAW OCR: rx only
 STATUS: unverified
 REASON: Unable to confidently verify this medicine. Returning unverified is safer than returning a wrong result.
 FINAL STATUS: PASS
 
-IMAGE FILE: 97f7979d-604f-446c-b79d-bd87592bad07.jpg
-RAW OCR: rx only
+IMAGE FILE: 58229723-31c1-4560-b5dd-50cc378adbd3.jpg
+RAW OCR: miflonide capsules
 STATUS: unverified
 REASON: Unable to confidently verify this medicine. Returning unverified is safer than returning a wrong result.
 FINAL STATUS: PASS
 
-IMAGE FILE: c71f5c85-80f6-4867-bc49-42cedc25f693.jpg
+IMAGE FILE: 696854a3-4577-46c6-8ccd-cdc7ccaa2977.jpg
+RAW OCR: shelcal-hd calcium with vitamin d3 tablets
+STATUS: verified
+SELECTED MEDICINE: Shelcal - HD Tablet with Calcium & Vitamin D3 | Bone, Joint & Muscle Care
+OVERALL CONFIDENCE: 86.8%
+ALTERNATIVES: 5
+FINAL STATUS: PASS
+
+IMAGE FILE: b11ee646-127d-4038-b717-58dafd814d3e.jpg
+RAW OCR: shelcal-ct max soft gelatin capsules
+STATUS: unverified
+REASON: Unable to confidently verify this medicine. Returning unverified is safer than returning a wrong result.
+FINAL STATUS: PASS
+
+IMAGE FILE: bab4c882-0e20-4721-aa80-34585511cb63.jpg
+RAW OCR: shelcal-hd calcium with vitamin d3 tablets
+STATUS: verified
+SELECTED MEDICINE: Shelcal - HD Tablet with Calcium & Vitamin D3 | Bone, Joint & Muscle Care
+OVERALL CONFIDENCE: 86.8%
+ALTERNATIVES: 5
+FINAL STATUS: PASS
+
+IMAGE FILE: fd7d28b1-606e-4b95-85e8-5e23d1c56dc4.jpg
 RAW OCR: rx only
 STATUS: unverified
 REASON: Unable to confidently verify this medicine. Returning unverified is safer than returning a wrong result.
@@ -280,8 +315,8 @@ FINAL STATUS: PASS
 ================================================================================
 FINAL REGRESSION METRICS & SUMMARY
 ================================================================================
-Total Tests Executed: 11
-Tests Passed: 11 / 11 (100.0%)
+Total Tests Executed: 14
+Tests Passed: 14 / 14 (100.0%)
 Medicine Identification Accuracy: 100.0%
 Ingredient Extraction Accuracy: 100.0%
 Strength Accuracy: 100.0%

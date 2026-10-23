@@ -7,6 +7,7 @@ and real confidence scoring.
 """
 
 import re
+import math
 import logging
 from typing import Dict, Any, List, Optional, Tuple
 from rapidfuzz import fuzz, process
@@ -681,8 +682,9 @@ def match_printed_lines(
 
     brand_scores: Dict[str, Tuple[float, int]] = {}
     for tok, (_, prom, count) in candidate_tokens.items():
+        pop_bonus = min(10.0, math.log2(brand_index.brand_counts.get(tok, 1) + 1) * 2.0) if hasattr(brand_index, 'brand_counts') else 0.0
         if tok in brand_index.brand_to_ids:
-            score = 100.0 + prom
+            score = 100.0 + prom + pop_bonus
             if tok in COMMON_SALTS:
                 score -= 15.0  # slight penalty if token is a generic chemical salt
             if tok not in brand_scores or score > brand_scores[tok][0]:
@@ -690,11 +692,78 @@ def match_printed_lines(
         elif len(tok) >= 4:
             f_matches = process.extract(tok, brand_index.unique_brand_words, scorer=fuzz.ratio, limit=3, score_cutoff=search_cutoff)
             for m_b, score, _ in f_matches:
-                adj_score = score + prom
+                let_bonus = 0.0
+                if len(m_b) >= 3 and len(tok) >= 3 and m_b[:3] == tok[:3]:
+                    let_bonus = 15.0
+                elif len(m_b) >= 2 and len(tok) >= 2 and m_b[:2] == tok[:2]:
+                    let_bonus = 10.0
+                elif len(m_b) >= 1 and len(tok) >= 1 and m_b[0] == tok[0]:
+                    let_bonus = 5.0
+                m_pop = min(10.0, math.log2(brand_index.brand_counts.get(m_b, 1) + 1) * 2.0) if hasattr(brand_index, 'brand_counts') else 0.0
+                adj_score = score + prom + let_bonus + m_pop
                 if m_b in COMMON_SALTS:
                     adj_score -= 15.0
                 if m_b not in brand_scores or adj_score > brand_scores[m_b][0]:
                     brand_scores[m_b] = (adj_score, count)
+
+    # FIX 2a: Salt-first retrieval
+    # When read lines contain words that match the salt column of medicines.sqlite (fuzzy >= 85),
+    # retrieve the rows with that salt, take their brand words as candidates, and score each
+    # by fuzzy similarity to the read garbage words (fuzz.ratio and partial_ratio, with a bonus for matching first letters).
+    salt_matched_words = set()
+    if hasattr(brand_index, 'salt_to_brand_words') and hasattr(brand_index, 'unique_salt_words'):
+        for tok in candidate_tokens:
+            tok_lower = tok.lower()
+            if tok_lower in brand_index.salt_to_brand_words:
+                salt_matched_words.add(tok_lower)
+            elif len(tok_lower) >= 4 and brand_index.unique_salt_words:
+                s_hits = process.extract(
+                    tok_lower,
+                    brand_index.unique_salt_words,
+                    scorer=fuzz.ratio,
+                    score_cutoff=85.0,
+                    limit=2
+                )
+                for sw, sc, _ in s_hits:
+                    salt_matched_words.add(sw)
+
+        for sw in salt_matched_words:
+            salt_brands = brand_index.salt_to_brand_words.get(sw, set())
+            for b_cand in salt_brands:
+                for tok, (_, prom, count) in candidate_tokens.items():
+                    r = fuzz.ratio(b_cand, tok)
+                    pr = fuzz.partial_ratio(b_cand, tok)
+                    len_factor = min(len(b_cand), len(tok)) / max(len(b_cand), len(tok))
+                    base_sim = max(r, pr * len_factor)
+                    let_bonus = 0.0
+                    if len(b_cand) >= 3 and len(tok) >= 3 and b_cand[:3] == tok[:3]:
+                        let_bonus = 15.0
+                    elif len(b_cand) >= 2 and len(tok) >= 2 and b_cand[:2] == tok[:2]:
+                        let_bonus = 10.0
+                    elif len(b_cand) >= 1 and len(tok) >= 1 and b_cand[0] == tok[0]:
+                        let_bonus = 5.0
+                    effective_sim = base_sim + let_bonus
+                    if effective_sim >= 65.0:
+                        pop_bonus = min(10.0, math.log2(brand_index.brand_counts.get(b_cand, 1) + 1) * 2.0)
+                        adj_score = effective_sim + prom + pop_bonus
+                        if b_cand in COMMON_SALTS:
+                            adj_score -= 15.0
+                        if b_cand not in brand_scores or adj_score > brand_scores[b_cand][0]:
+                            brand_scores[b_cand] = (adj_score, count)
+
+    # Count read tokens matching brand/salt index with similarity >= 90
+    n_matching_tokens = 0
+    for tok in candidate_tokens:
+        if tok in brand_index.brand_to_ids or (hasattr(brand_index, 'salt_to_brand_words') and tok.lower() in brand_index.salt_to_brand_words):
+            n_matching_tokens += 1
+        elif len(tok) >= 4:
+            b_hit = process.extractOne(tok, brand_index.unique_brand_words, scorer=fuzz.ratio, score_cutoff=90.0)
+            if b_hit:
+                n_matching_tokens += 1
+            elif hasattr(brand_index, 'unique_salt_words') and brand_index.unique_salt_words:
+                s_hit = process.extractOne(tok.lower(), brand_index.unique_salt_words, scorer=fuzz.ratio, score_cutoff=90.0)
+                if s_hit:
+                    n_matching_tokens += 1
 
     if not brand_scores:
         return {
@@ -706,13 +775,14 @@ def match_printed_lines(
             "top_candidates": [],
             "confidence_breakdown": _zero_breakdown(),
             "raw_ocr": full_text,
+            "n_matching_tokens": n_matching_tokens,
             "message": "No matching brand words found in local database."
         }
 
     # Gather candidate medicine rows from SQLite
     cand_ids = []
     brand_by_id = {}
-    for b_word, (b_score, b_count) in sorted(brand_scores.items(), key=lambda x: x[1][0], reverse=True)[:10]:
+    for b_word, (b_score, b_count) in sorted(brand_scores.items(), key=lambda x: x[1][0], reverse=True)[:20]:
         for mid in brand_index.brand_to_ids.get(b_word, [])[:15]:
             cand_ids.append(mid)
             brand_by_id[mid] = (b_word, b_score, b_count)
@@ -737,7 +807,7 @@ def match_printed_lines(
         # 1. Salt boost (+35)
         salt_matched = False
         salt_words = [re.sub(r'[^A-Z0-9]', '', w) for w in re.split(r'[\s,()/+]+', cand_salt) if len(w) >= 4]
-        if any(sw in full_text and sw not in PHARMA_STOPWORDS for sw in salt_words):
+        if any(sw in full_text and sw not in PHARMA_STOPWORDS for sw in salt_words) or any(sw.lower() in salt_matched_words for sw in salt_words):
             salt_matched = True
             score += 35.0
 
@@ -844,6 +914,7 @@ def match_printed_lines(
         "top_candidates": dedup_candidates[:5],
         "confidence_breakdown": breakdown,
         "raw_ocr": full_text,
+        "n_matching_tokens": n_matching_tokens,
         "message": None if is_verified else (
             "Ingredient-only match requires verified dosage strength to confirm identity."
             if match_type == "ingredient"
