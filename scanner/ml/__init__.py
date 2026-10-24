@@ -106,6 +106,7 @@ def scan_medicine_package(
     4. If unverified: returns unverified status with top 3 candidates and rejection reasons.
     """
     try:
+        import time
         from PIL import ImageOps
         from .recognisers import get_printed_recogniser
         from .medicine_matcher import match_printed_lines
@@ -127,17 +128,22 @@ def scan_medicine_package(
 
         rec_a = get_printed_recogniser()
 
-        # FIX 1b: Rotation fallback (0, 180, 90, 270)
-        # Read at 0 degrees; if not confident (top candidate not confident or < 2 read tokens >= 90),
-        # also try 180, then 90, then 270. Stop at first confident result; otherwise keep rotation
-        # with highest candidate score.
-        angles = [0, 180, 90, 270]
+        # FIX 3.4: Early-exit rotation fallback & 15s time budget
+        # Try 0, then 180; only try 90/270 if the first two give no confident result
+        # and fewer than 2 tokens match known words. Set a total time budget of 15 s per photo.
+        t_start = time.time()
+        TIME_BUDGET_SEC = 15.0
+
         chosen_angle = 0
         chosen_res = None
         chosen_lines = []
         rot_candidates = []
+        max_matching_tokens = 0
 
-        for angle in angles:
+        # Phase 1: Try 0, then 180
+        for angle in [0, 180]:
+            if (time.time() - t_start) >= TIME_BUDGET_SEC:
+                break
             rot_img = target_img.rotate(angle, expand=True) if angle != 0 else target_img
             lines = rec_a.read_lines(rot_img, beams=1)
             res = match_printed_lines(lines)
@@ -146,6 +152,7 @@ def scan_medicine_package(
             top_score = top_cand.get("score", 0.0) if top_cand else 0.0
             top_conf = bool(top_cand and top_cand.get("confident"))
             n_tokens = res.get("n_matching_tokens", 0)
+            max_matching_tokens = max(max_matching_tokens, n_tokens)
 
             is_confident = top_conf and (n_tokens >= 2)
             rot_candidates.append({
@@ -162,7 +169,36 @@ def scan_medicine_package(
                 chosen_lines = lines
                 break
 
-        if chosen_res is None:
+        # Phase 2: Only try 90/270 if the first two give no confident result and fewer than 2 tokens match known words
+        if chosen_res is None and max_matching_tokens < 2 and ((time.time() - t_start) < TIME_BUDGET_SEC):
+            for angle in [90, 270]:
+                if (time.time() - t_start) >= TIME_BUDGET_SEC:
+                    break
+                rot_img = target_img.rotate(angle, expand=True)
+                lines = rec_a.read_lines(rot_img, beams=1)
+                res = match_printed_lines(lines)
+
+                top_cand = res.get("candidates") and res["candidates"][0]
+                top_score = top_cand.get("score", 0.0) if top_cand else 0.0
+                top_conf = bool(top_cand and top_cand.get("confident"))
+                n_tokens = res.get("n_matching_tokens", 0)
+
+                is_confident = top_conf and (n_tokens >= 2)
+                rot_candidates.append({
+                    "angle": angle,
+                    "lines": lines,
+                    "res": res,
+                    "top_score": top_score,
+                    "is_confident": is_confident
+                })
+
+                if is_confident:
+                    chosen_angle = angle
+                    chosen_res = res
+                    chosen_lines = lines
+                    break
+
+        if chosen_res is None and rot_candidates:
             best_rot = max(rot_candidates, key=lambda x: x["top_score"])
             chosen_angle = best_rot["angle"]
             chosen_res = best_rot["res"]
@@ -379,28 +415,203 @@ def extract_prescription_candidates(ocr_text: str) -> List[str]:
     return candidates
 
 
+ENGLISH_STOPWORDS = {
+    'WAS', 'THE', 'AND', 'FOR', 'ARE', 'NOT', 'YOU', 'ALL', 'CAN', 'HAS', 'HAD', 'HAVE',
+    'WITH', 'FROM', 'THIS', 'THAT', 'WHO', 'HIS', 'HER', 'SHE', 'HIM', 'BUT', 'OUT', 'DAY', 'DAYS'
+}
+
+
+def match_word(text: str) -> List[Dict[str, Any]]:
+    """
+    Calls the EXISTING brand-word matcher (BrandWordIndex / rapidfuzz) for ONE word (or short phrase).
+    Returns list of [{'name': ..., 'score': 0-100, 'brand': ..., 'salt': ..., 'manufacturer': ..., 'price': ..., 'id': ...}]
+    ranked best first. Does not modify Model A's behavior.
+    """
+    if not text or not text.strip():
+        return []
+    clean = re.sub(r'[^A-Za-z0-9]', '', text).upper()
+    if len(clean) < 3:
+        return []
+
+    from .medicine_matcher import PHARMA_STOPWORDS
+    if clean in PHARMA_STOPWORDS or clean in ENGLISH_STOPWORDS or _RX_METADATA_IGNORE.search(text):
+        return []
+
+    from rapidfuzz import process, fuzz
+    from .medicine_index import get_brand_word_index
+    brand_index = get_brand_word_index()
+    if not brand_index.is_loaded:
+        brand_index.build()
+
+    exact_match = clean in brand_index.brand_to_ids
+    candidates = []
+    seen_brands = set()
+
+    if exact_match:
+        seen_brands.add(clean)
+        mids = brand_index.brand_to_ids.get(clean, [])[:3]
+        rows = brand_index.get_medicines_by_ids(mids)
+        for r in rows:
+            candidates.append({
+                'name': r['name'],
+                'score': 100.0,
+                'brand': clean,
+                'salt': r['salt'] or '',
+                'manufacturer': r['manufacturer'] or 'Registered Manufacturer',
+                'price': r['price'],
+                'id': r['id'],
+            })
+
+    f_matches = process.extract(
+        clean,
+        brand_index.unique_brand_words,
+        scorer=fuzz.ratio,
+        limit=5,
+        score_cutoff=60.0
+    )
+    for b_word, score, _ in f_matches:
+        if b_word in seen_brands:
+            continue
+        if len(b_word) < 3 or (len(clean) <= 4 and abs(len(clean) - len(b_word)) > 1):
+            continue
+        seen_brands.add(b_word)
+        mids = brand_index.brand_to_ids.get(b_word, [])[:2]
+        rows = brand_index.get_medicines_by_ids(mids)
+        for r in rows:
+            candidates.append({
+                'name': r['name'],
+                'score': round(float(score), 1),
+                'brand': b_word,
+                'salt': r['salt'] or '',
+                'manufacturer': r['manufacturer'] or 'Registered Manufacturer',
+                'price': r['price'],
+                'id': r['id'],
+            })
+
+    candidates.sort(key=lambda x: x['score'], reverse=True)
+    return candidates
+
+
 # ── Prescription scan (100% Offline Model Driven) ─────────────────────────────
 
 def scan_prescription(image_pil) -> Dict[str, Any]:
     """
-    Execute prescription scan workflow using Model B stub (or model when installed).
+    Execute prescription scan workflow using Model B (HandwrittenTrOCR) and local SQLite validation.
+    Returns structured result with per-medicine entries, candidates, dosage instructions,
+    safety data, and bioequivalent cheaper alternatives. 100% offline.
     """
     try:
         from .recognisers import get_handwritten_recogniser
         rec_b = get_handwritten_recogniser()
-        res_b = rec_b.read_prescription(image_pil)
+        res_b = rec_b.read_prescription(image_pil, matcher=match_word, min_score=80.0)
 
-        msg = res_b.get("message", "Handwritten model is not installed yet")
+        if not res_b.get("ok"):
+            msg = res_b.get("message") or "Could not read this prescription reliably"
+            return {
+                "success": False,
+                "status": "unverified",
+                "mode": "prescription",
+                "message": msg,
+                "error": msg,
+                "raw_ocr": "",
+                "ocr_text": "",
+                "candidates": [],
+                "medicines": [],
+                "per_medicine_results": {},
+                "disclaimer": "Handwriting can be misread - confirm every medicine with your doctor or pharmacist",
+            }
+
+        lines = res_b.get("lines", [])
+        raw_ocr_lines = [l["text"] for l in lines if l.get("text")]
+        raw_ocr = "\n".join(raw_ocr_lines)
+
+        meds = res_b.get("medicines", [])
+        matched_meds = [m for m in meds if m.get("candidates") and m["candidates"][0].get("score", 0) >= 80.0]
+
+        if not matched_meds:
+            return {
+                "success": False,
+                "status": "unverified",
+                "mode": "prescription",
+                "message": "Could not read this prescription reliably",
+                "raw_ocr": raw_ocr,
+                "ocr_text": raw_ocr,
+                "candidates": [],
+                "medicines": [],
+                "per_medicine_results": {},
+                "disclaimer": "Handwriting can be misread - confirm every medicine with your doctor or pharmacist",
+            }
+
+        per_medicine_results: Dict[str, Any] = {}
+        medicines_list: List[Dict[str, Any]] = []
+        all_salts_for_interaction: List[List[Dict[str, Any]]] = []
+
+        for p in matched_meds:
+            top_cand = p["candidates"][0]
+            med_key = top_cand.get("brand") or top_cand.get("name", "").split()[0]
+            if med_key in per_medicine_results:
+                med_key = f"{med_key} ({p.get('dose') or len(per_medicine_results)+1})"
+
+            salt_str = top_cand.get("salt", "")
+            parsed_salt = parse_salt(salt_str) if salt_str else []
+            top_cand["parsed_salt"] = parsed_salt
+            if parsed_salt:
+                all_salts_for_interaction.append(parsed_salt)
+
+            safety_info = get_drug_safety_info(parsed_salt)
+            alternatives = find_top_cheaper_alternatives(top_cand, limit=5)
+
+            med_entry = {
+                "line": p.get("line", 0),
+                "text_read": p.get("read", ""),
+                "read": p.get("read", ""),
+                "text": p.get("text", ""),
+                "form": p.get("form"),
+                "dosage_form": p.get("form") or top_cand.get("dosage_form", "Tablet"),
+                "dose": p.get("dose"),
+                "dosage_given": p.get("dose"),
+                "frequency": p.get("frequency"),
+                "duration": p.get("duration"),
+                "confidence": top_cand.get("score", 80.0),
+                "top_medicine": top_cand,
+                "candidates": p.get("candidates", [])[:3],
+                "top_3_candidates": p.get("candidates", [])[:3],
+                "db_matches": p.get("candidates", [])[:3],
+                "alternatives": alternatives,
+                "side_effects": safety_info.get("side_effects", []),
+                "interactions": safety_info.get("interactions", []),
+            }
+
+            per_medicine_results[med_key] = med_entry
+            medicines_list.append(top_cand)
+
+        cross_interactions = []
+        if len(all_salts_for_interaction) >= 2:
+            try:
+                cross_interactions = get_cross_drug_interactions(all_salts_for_interaction)
+            except Exception as e:
+                logger.debug("Cross interaction lookup error: %s", e)
+
+        first_key = next(iter(per_medicine_results.keys())) if per_medicine_results else ""
+        first_alts = per_medicine_results[first_key]["alternatives"] if first_key else []
+
         return {
-            "success": False,
-            "status": "unverified",
+            "success": True,
+            "status": "verified",
             "mode": "prescription",
-            "message": msg,
-            "error": msg,
-            "raw_ocr": "",
-            "candidates": [],
-            "medicines": [],
-            "per_medicine_results": {},
+            "message": "Prescription parsed successfully.",
+            "raw_ocr": raw_ocr,
+            "ocr_text": raw_ocr,
+            "detected_name": first_key,
+            "medicine": medicines_list[0] if medicines_list else None,
+            "medicines": medicines_list,
+            "candidates": medicines_list[:3],
+            "alternatives": first_alts,
+            "cross_interactions": cross_interactions,
+            "per_medicine_results": per_medicine_results,
+            "total_found": len(per_medicine_results),
+            "default_selected": first_key,
+            "disclaimer": "Handwriting can be misread - confirm every medicine with your doctor or pharmacist",
         }
     except Exception as exc:
         logger.error("scan_prescription failed: %s", exc, exc_info=True)
@@ -413,6 +624,9 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
             "candidates": [],
             "medicines": [],
             "per_medicine_results": {},
+            "raw_ocr": "",
+            "ocr_text": "",
+            "disclaimer": "Handwriting can be misread - confirm every medicine with your doctor or pharmacist",
         }
 
 

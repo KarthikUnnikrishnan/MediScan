@@ -154,7 +154,8 @@ def result(request):
         'medicines':             medicines,
         'alternatives':          scan_result.get('alternatives', []),
         'cross_interactions':    scan_result.get('cross_interactions', []),
-        'ocr_text':              scan_result.get('ocr_text', ''),
+        'ocr_text':              scan_result.get('ocr_text', '') or scan_result.get('raw_ocr', ''),
+        'raw_ocr':               scan_result.get('raw_ocr', '') or scan_result.get('ocr_text', ''),
         'extracted_names':       scan_result.get('extracted_names', []),
         'image_url':             scan_result.get('image_url', ''),
         'strip_detected':        scan_result.get('strip_detected', False),
@@ -167,6 +168,7 @@ def result(request):
         'ai_validation':         scan_result.get('ai_validation', {}),
         'ai_suggested_correction': scan_result.get(
                                      'ai_suggested_correction', ''),
+        'disclaimer':            scan_result.get('disclaimer', "Handwriting can be misread - confirm every medicine with your doctor or pharmacist"),
     }
 
     import json as _json

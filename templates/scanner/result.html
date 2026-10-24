@@ -43,8 +43,13 @@
     </div>
   </div>
 
-
-
+  <!-- ── HANDWRITING WARNING BANNER (prescription only) ── -->
+  {% if mode == 'prescription' %}
+  <div class="handwriting-warning-banner" style="background: #fffbeb; border: 1px solid #fef3c7; color: #92400e; padding: 0.85rem 1.25rem; border-radius: 8px; margin: 1.25rem 0; display: flex; align-items: center; gap: 0.75rem; font-size: 0.95rem; font-weight: 500;">
+    <span style="font-size: 1.3rem;">⚠️</span>
+    <span><strong>Handwriting can be misread - confirm every medicine with your doctor or pharmacist</strong></span>
+  </div>
+  {% endif %}
   <!-- ── DIAGNOSIS BANNER (prescription only) ─────────── -->
   {% if mode == 'prescription' and diagnosis %}
   <div class="diagnosis-banner">
@@ -206,6 +211,32 @@
                  style="{% if not forloop.first %}display:none{% endif %}">
 
               <div class="detected-label">DETECTED MEDICINE</div>
+
+              {% if med_data.text or med_data.read %}
+              <div class="presc-line-meta" style="margin-bottom: 0.85rem; padding: 0.65rem 0.85rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.82rem; color: #334155;">
+                <div style="font-weight: 600; color: #475569; margin-bottom: 0.35rem;">Text Read: <span style="font-family: monospace; color: #0284c7; font-weight: 700;">{{ med_data.read|default:med_data.text }}</span></div>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; font-size: 0.78rem; color: #64748b;">
+                  {% if med_data.form %}<span>Form: <strong style="color: #1e293b;">{{ med_data.form }}</strong></span>{% endif %}
+                  {% if med_data.dose %}<span>Dose: <strong style="color: #1e293b;">{{ med_data.dose }}</strong></span>{% endif %}
+                  {% if med_data.frequency %}<span>Frequency: <strong style="color: #1e293b;">{{ med_data.frequency }}</strong></span>{% endif %}
+                  {% if med_data.duration %}<span>Duration: <strong style="color: #1e293b;">{{ med_data.duration }}</strong></span>{% endif %}
+                </div>
+              </div>
+              {% endif %}
+
+              {% if med_data.candidates and med_data.candidates|length > 1 %}
+              <div class="top-candidates-section" style="margin-bottom: 0.85rem;">
+                <div class="prop-block-label" style="font-size: 0.72rem; font-weight: 700; color: #64748b; letter-spacing: 0.05em; margin-bottom: 0.35rem;">TOP CANDIDATES CONSIDERED</div>
+                <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                  {% for cand in med_data.candidates|slice:":3" %}
+                  <div style="display: flex; justify-content: space-between; align-items: center; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.35rem 0.65rem; font-size: 0.8rem;">
+                    <span style="font-weight: 500; color: #1e293b;">{{ cand.name }}</span>
+                    <span style="font-size: 0.75rem; font-weight: 600; color: #0284c7; background: #e0f2fe; padding: 1px 6px; border-radius: 4px;">{{ cand.score }}%</span>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
 
               {% if med_data.top_medicine %}
                 {% with med=med_data.top_medicine %}
@@ -369,7 +400,13 @@
   <!-- SCAN FAILED STATE -->
   <div class="fail-state">
     <div class="fail-icon">✗</div>
-    <div class="fail-title">Could Not Confidently Verify</div>
+    <div class="fail-title">
+      {% if mode == 'prescription' %}
+        Could not read this prescription reliably
+      {% else %}
+        Could Not Confidently Verify
+      {% endif %}
+    </div>
     <div class="fail-msg">
       {% if result.message %}
         {{ result.message }}
@@ -386,7 +423,13 @@
       {% endfor %}
     </div>
     {% endif %}
-    <a href="{% url 'index' %}" class="btn-primary-sm">
+    {% if raw_ocr or ocr_text %}
+    <div class="raw-ocr-box" style="margin-top: 1.25rem; text-align: left; background: #f8fafc; border: 1px solid #e2e8f0; padding: 1rem 1.25rem; border-radius: 8px; max-width: 600px; margin-left: auto; margin-right: auto;">
+      <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">Raw Text Read</div>
+      <pre style="white-space: pre-wrap; font-family: monospace; font-size: 0.85rem; color: #334155; line-height: 1.5; margin: 0;">{{ raw_ocr|default:ocr_text }}</pre>
+    </div>
+    {% endif %}
+    <a href="{% url 'index' %}" class="btn-primary-sm" style="margin-top: 1rem; display: inline-block;">
       ← Try Again
     </a>
   </div>

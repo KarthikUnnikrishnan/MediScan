@@ -78,45 +78,56 @@ class HandwrittenRecogniser:
         self._init_lock = threading.Lock()
 
     def is_model_installed(self) -> bool:
-        """Check if Model B directory exists and contains model weights."""
-        if not self.model_dir.exists() or not self.model_dir.is_dir():
-            return False
-        # Check for typical weight files
-        safetensors = list(self.model_dir.glob("*.safetensors"))
-        bin_files = list(self.model_dir.glob("*.bin"))
-        pt_files = list(self.model_dir.glob("*.pt"))
-        return bool(safetensors or bin_files or pt_files)
+        """Check if Model B directory exists."""
+        return self.model_dir.exists() and self.model_dir.is_dir()
 
-    def read_prescription(self, photo: Union[str, Path, Image.Image]) -> Dict[str, Any]:
+    def _ensure_loaded(self):
+        if self._inner is None:
+            with self._init_lock:
+                if self._inner is None:
+                    from .handwritten_trocr import HandwrittenTrOCR
+                    logger.info("Initializing HandwrittenRecogniser (Model B) from %s on %s...", self.model_dir, self.device)
+                    self._inner = HandwrittenTrOCR(model_dir=self.model_dir, device=self.device)
+                    logger.info("HandwrittenRecogniser (Model B) ready.")
+
+    def read_prescription(
+        self,
+        photo: Union[str, Path, Image.Image],
+        matcher: Optional[Any] = None,
+        beams: int = 4,
+        min_score: float = 80.0
+    ) -> Dict[str, Any]:
         """
         Read handwritten prescription lines.
-        Returns {"ok": True, "lines": [...]} or {"ok": False, "message": "..."}.
+        Returns dict with keys ok, lines, medicines, message.
         """
         if not self.is_model_installed():
             return {
                 "ok": False,
                 "message": "Handwritten model is not installed yet",
-                "lines": []
+                "lines": [],
+                "medicines": []
             }
 
-        with self._init_lock:
-            # Future: load model weights here if present
-            return {
-                "ok": False,
-                "message": "Handwritten model weights found but runner is not configured yet",
-                "lines": []
-            }
+        self._ensure_loaded()
+        return self._inner.read_prescription(photo, matcher=matcher, beams=beams, min_score=min_score)
 
     def unload(self):
         """Unload Model B from GPU memory."""
         with self._init_lock:
             if self._inner is not None:
+                if hasattr(self._inner, "_det") and self._inner._det is not None:
+                    del self._inner._det
+                    self._inner._det = None
                 del self._inner
                 self._inner = None
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
                 gc.collect()
                 logger.info("HandwrittenRecogniser (Model B) unloaded from GPU memory.")
+
+    def is_loaded(self) -> bool:
+        return self._inner is not None
 
 
 def get_printed_recogniser() -> PrintedRecogniser:
