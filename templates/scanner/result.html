@@ -352,6 +352,26 @@
             {% endfor %}
           {% endif %}
         </div>
+
+        {% if mode == 'prescription' and other_text_read %}
+        <div class="card-glass" style="margin-top: 1.25rem; padding: 1.15rem; border-radius: 10px; border: 1px solid #e2e8f0; background: #ffffff;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.65rem;">
+            <span style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+              Other Text Read (Non-Medicines)
+            </span>
+            <span style="font-size: 0.72rem; color: #94a3b8; font-weight: 500;">
+              Filtered by Precision Gate
+            </span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 0.35rem; max-height: 200px; overflow-y: auto;">
+            {% for line in other_text_read %}
+            <div style="font-family: monospace; font-size: 0.8rem; color: #475569; background: #f8fafc; border: 1px solid #f1f5f9; padding: 0.35rem 0.65rem; border-radius: 5px;">
+              {{ line }}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
       {% endif %}
 
     </div><!-- end result-left -->
@@ -423,10 +443,18 @@
       {% endfor %}
     </div>
     {% endif %}
-    {% if raw_ocr or ocr_text %}
+    {% if raw_ocr or ocr_text or other_text_read %}
     <div class="raw-ocr-box" style="margin-top: 1.25rem; text-align: left; background: #f8fafc; border: 1px solid #e2e8f0; padding: 1rem 1.25rem; border-radius: 8px; max-width: 600px; margin-left: auto; margin-right: auto;">
-      <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">Raw Text Read</div>
-      <pre style="white-space: pre-wrap; font-family: monospace; font-size: 0.85rem; color: #334155; line-height: 1.5; margin: 0;">{{ raw_ocr|default:ocr_text }}</pre>
+      <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">Text Read from Prescription</div>
+      {% if other_text_read %}
+        <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+          {% for line in other_text_read %}
+          <div style="font-family: monospace; font-size: 0.85rem; color: #334155; background: #ffffff; border: 1px solid #e2e8f0; padding: 0.3rem 0.6rem; border-radius: 4px;">{{ line }}</div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <pre style="white-space: pre-wrap; font-family: monospace; font-size: 0.85rem; color: #334155; line-height: 1.5; margin: 0;">{{ raw_ocr|default:ocr_text }}</pre>
+      {% endif %}
     </div>
     {% endif %}
     <a href="{% url 'index' %}" class="btn-primary-sm" style="margin-top: 1rem; display: inline-block;">

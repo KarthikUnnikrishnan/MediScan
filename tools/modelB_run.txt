@@ -1,258 +1,261 @@
-============================================================================
-MediScan Model B Offline Prescription Pipeline Run
+================================================================================
+MediScan Model B — Precision Gate, Stop List & Speed Benchmark
 Model Directory : D:\Coding Section\MediScan - Original\saved_models\modelB_handwritten_ocr
 Test Directory  : D:\MediScan_data\ModelB_raw\illegible_rx\data
-Matching Threshold (min_score): 80.0
-============================================================================
+Config          : beams=2, box_min=12x12, box_cap=40, batch_size=16
+Precision Gate  : word>=4 chars & score>=85% + form/dose/freq/duration
+                  OR score>=95% & word>=5 chars & not in stop list
+================================================================================
 Found 12 test photos: ['1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg', '6.jpg', '7.jpg', '8.jpg', '9.jpg', '10.jpg', '11.jpg', '12.jpg']
 
 Initializing HandwrittenTrOCR (fp16 on CUDA)...
-HandwrittenTrOCR loaded in 7.89s (device=cuda)
+HandwrittenTrOCR loaded in 8.10s (device=cuda)
 
 --- [1.jpg] ---
-  Result : ok=True | Lines read: 12 | Medicines matched: 5 | Time: 7.00s
-    [MATCH] Read: 'Disoxin' -> Cand: 'Isoxin 40mg Tablet SR' (score=92.3%) [form=None, dose=0.125 mg, freq=None]
-    [MATCH] Read: 'telfast' -> Cand: 'Elfast Tablet' (score=92.3%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'old' -> Cand: 'Bold Care 30 Tablet' (score=85.7%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Ms/Mr' -> Cand: 'Mmr  Vaccine' (score=85.7%) [form=None, dose=30, freq=None]
-    [MATCH] Read: 'Ascid' -> Cand: 'Jascid LS 75mg/40mg Capsule SR' (score=90.9%) [form=None, dose=None, freq=None]
-    [UNMATCHED] Read: 'Dr B. Who' (Line: 'Dr B. Who')
-    [UNMATCHED] Read: 'Farmstruct 12' (Line: 'Farmstruct 12')
-    [UNMATCHED] Read: 'Kirkville' (Line: 'Kirkville')
+  Timing : Detect=2.02s | Read=1.59s | Match=2.61s | Total=6.30s
+  Result : Lines Read=12 | Shown Medicines=1 | Other Text Read=11
+  Shown Medicines:
+    • 'Disoxin' -> Isoxin 40mg Tablet SR (score=92.3%) [dose=0.125 mg]
+  Other Text Read (Non-Medicines):
+    • Dr B. Who
+    • Farmstruct 12
+    • Kirkville
+    • Tel. 3876
+    • date Nov 1994
+    • telfast also wo.F
+    • old latlet
+    • was
+    • Ms/Mr Patient 30
+    • address :
+    • Agc to years
 
 --- [2.jpg] ---
-  Result : ok=True | Lines read: 14 | Medicines matched: 12 | Time: 34.19s
-    [MATCH] Read: 'Montair' -> Cand: 'Montair-LC Tablet' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Normal' -> Cand: 'Normal Saline Infusion' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Timing' -> Cand: 'Stimin G 0.5 mg/2.5 mg Injection' (score=83.3%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Evening' -> Cand: 'Evening Pill Emergency Contraceptive Pill' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Maxpro' -> Cand: 'Anxpro Tablet' (score=83.3%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Bicozin' -> Cand: 'Bicomin Plus 2500mcg/0.7mg/150mg/12mg Injection' (score=85.7%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Acute' -> Cand: 'Acute CR 200mg/20mg Capsule SR' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'oflazestoz' -> Cand: 'Oflazest OZ 200mg/500mg Tablet' (score=88.9%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Awdial' -> Cand: 'Adival 250mg Tablet ER' (score=83.3%) [form=tab, dose=None, freq=None]
-    [MATCH] Read: 'Duke' -> Cand: 'Duke Soft Gelatin Capsule' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Flamona' -> Cand: 'Flamon 50mg/500mg Tablet' (score=92.3%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Rilly' -> Cand: 'Risally Plus Tablet MD' (score=83.3%) [form=None, dose=None, freq=None]
-    [UNMATCHED] Read: 'Azovac-MR' (Line: 'Tablet Azovac-MR')
-    [UNMATCHED] Read: 'cunderabad-500 003. AP. INDIA' (Line: 'cunderabad-500 003. AP. INDIA')
+  Timing : Detect=0.34s | Read=4.27s | Match=0.88s | Total=5.49s
+  Result : Lines Read=10 | Shown Medicines=3 | Other Text Read=7
+  Shown Medicines:
+    • 'Normal' -> Normal Saline Infusion (score=100.0%) [high-confidence gate]
+    • 'Sunday' -> Sunday-D3 Nano Shot Butterscotch Sugar Free (score=100.0%) [high-confidence gate]
+    • 'Acute' -> Acute CR 200mg/20mg Capsule SR (score=100.0%) [high-confidence gate]
+  Other Text Read (Non-Medicines):
+    • Dr. R.Keshvani M–M–M–M–M–Methyl–3 pipradine Benzilet Montair Climate Maxpro Diplomat
+    • Cloncoral Physistrian and I Diabetic Timing Telfastabitalis Derivatives
+    • Maxpro Ex. Residence Caro Hospital
+    • is Mb-Mb Dextran Date 15.0372
+    • oflazestoz Disoprazole
+    • Tablet Azovac-MR
+    • Awdial
 
 --- [3.jpg] ---
-  Result : ok=True | Lines read: 6 | Medicines matched: 6 | Time: 3.97s
-    [MATCH] Read: 'Additron' -> Cand: 'Aditro 200 Capsule' (score=85.7%) [form=Tablet, dose=None, freq=None]
-    [MATCH] Read: 'Omeprazole' -> Cand: 'Omeparazole 20mg Capsule' (score=95.2%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Cocaine' -> Cand: 'Cocain Oral Gel' (score=92.3%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Saline Sol' -> Cand: 'Alnesol OD Ophthalmic Solution Bak Free' (score=87.5%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Locally .' -> Cand: 'Cally-GB 300mg/750mcg Tablet' (score=83.3%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Upton' -> Cand: 'Upton 200mg Tablet' (score=100.0%) [form=None, dose=450, freq=None]
+  Timing : Detect=0.04s | Read=1.44s | Match=0.69s | Total=2.19s
+  Result : Lines Read=6 | Shown Medicines=2 | Other Text Read=4
+  Shown Medicines:
+    • 'Additron' -> Aditro 200 Capsule (score=85.7%) [form=Tablet]
+    • 'Upton' -> Upton 200mg Tablet (score=100.0%) [dose=450]
+  Other Text Read (Non-Medicines):
+    • Telfast Napa
+    • B Cocaine Hydrochlor cisIX
+    • M. Saline Sol Adrenalin Odelor Taburomifazole
+    • Locally .
 
 --- [4.jpg] ---
-  Result : ok=True | Lines read: 30 | Medicines matched: 26 | Time: 45.24s
-    [MATCH] Read: 'RONU' -> Cand: 'Ron 1mg Tablet' (score=85.7%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Omeprazole' -> Cand: 'Omeparazole 20mg Capsule' (score=95.2%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Doxycycline' -> Cand: 'Doxycyline Capsule' (score=95.2%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Az Injection' -> Cand: 'Injection 1500mg NU Roxim' (score=90.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Nidazole' -> Cand: 'Nidazole 500mg Tablet' (score=100.0%) [form=Tablet, dose=None, freq=None]
-    [MATCH] Read: 'Alatrol' -> Cand: 'Alatrol 400mg Tablet' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Nidazole' -> Cand: 'Nidazole 500mg Tablet' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Nexum' -> Cand: 'Nexum-OD 50 Tablet ER' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'more' -> Cand: 'More Na Tablet' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Romycin' -> Cand: 'Cromycin 500mg Tablet' (score=93.3%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Nidazole' -> Cand: 'Nidazole 500mg Tablet' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Romycin' -> Cand: 'Cromycin 500mg Tablet' (score=93.3%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Bacmax' -> Cand: 'Bactimax Cream' (score=85.7%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Nidazyl' -> Cand: 'Nidal 100mg Tablet MD' (score=83.3%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Nidazole' -> Cand: 'Nidazole 500mg Tablet' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'offin' -> Cand: 'Offin 300mg Tablet' (score=100.0%) [form=Capsule, dose=None, freq=None]
-    [MATCH] Read: 'M-Kast' -> Cand: 'Mkast L 5mg/10mg Tablet' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Capsin' -> Cand: 'Capsain 50mg Injection' (score=92.3%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Nidazole' -> Cand: 'Nidazole 500mg Tablet' (score=100.0%) [form=Capsule, dose=None, freq=None]
-    [MATCH] Read: 'Ceftriaxone' -> Cand: 'Ceftrisone-S 1.5gm Injection' (score=85.7%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Napa' -> Cand: 'Napra D 500 Tablet' (score=88.9%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'pfleller' -> Cand: 'Pepller 2mg Syrup' (score=80.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'progutil' -> Cand: 'Prolutil 500mg Injection' (score=87.5%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'high' -> Cand: 'High Tears 0.18% Eye Drop' (score=100.0%) [form=Tablet, dose=None, freq=None]
-    [MATCH] Read: 'Alatrol' -> Cand: 'Alatrol 400mg Tablet' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Diflu' -> Cand: 'Diflup 5mg Tablet' (score=90.9%) [form=None, dose=None, freq=None]
-    [UNMATCHED] Read: 'difficultency reconstruction called' (Line: 'difficultency reconstruction called')
-    [UNMATCHED] Read: 'Injection' (Line: 'Injection')
-    [UNMATCHED] Read: 'to' (Line: 'to N–ethyl–3 pipradyle Derivatives Derivatives Derivatives Derivatives Derivatives Derivatives Derivatives')
+  Timing : Detect=4.77s | Read=9.32s | Match=1.27s | Total=15.44s
+  Result : Lines Read=12 | Shown Medicines=7 | Other Text Read=5
+  Shown Medicines:
+    • 'Omeprazole' -> Omeparazole 20mg Capsule (score=95.2%) [high-confidence gate]
+    • 'Doxycycline' -> Doxycyline Capsule (score=95.2%) [high-confidence gate]
+    • 'Nexidac' -> Nebidac 5 Tablet (score=85.7%) [form=Injection]
+    • 'Nidazole' -> Nidazole 500mg Tablet (score=100.0%) [form=Tablet]
+    • 'Alatrol' -> Alatrol 400mg Tablet (score=100.0%) [high-confidence gate]
+    • 'Nidazole' -> Nidazole 500mg Tablet (score=100.0%) [high-confidence gate]
+    • 'Nexum' -> Nexum-OD 50 Tablet ER (score=100.0%) [high-confidence gate]
+  Other Text Read (Non-Medicines):
+    • of Bicoa Benzyl Penicillin RONU
+    • Dietridicillin
+    • are
+    • more directors There are also been expressed to House Bicozin Telfast Maxpro
+    • Romycin
 
 --- [5.jpg] ---
-  Result : ok=True | Lines read: 14 | Medicines matched: 13 | Time: 6.36s
-    [MATCH] Read: 'eprodex' -> Cand: 'Seprodex 500mg Tablet' (score=93.3%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'ce (oo)' -> Cand: 'Cezoo SB 1000mg/500mg Injection' (score=88.9%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'pediatric' -> Cand: 'Paediatrin 0.1mg Eye Drop' (score=84.2%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'pediatric' -> Cand: 'Paediatrin 0.1mg Eye Drop' (score=84.2%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Pidazole' -> Cand: 'Cidazole 400mg Tablet' (score=87.5%) [form=Capsule, dose=None, freq=None]
-    [MATCH] Read: 'Napa' -> Cand: 'Napra D 500 Tablet' (score=88.9%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'evocin' -> Cand: 'Evocin 500mg Tablet' (score=100.0%) [form=Syrup, dose=None, freq=None]
-    [MATCH] Read: 'Injection for' -> Cand: 'Injection 1500mg NU Roxim' (score=85.7%) [form=None, dose=114.9, freq=None]
-    [MATCH] Read: 'Ump' -> Cand: 'Pump 40mg Tablet' (score=85.7%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'fosil 6' -> Cand: 'Fosil 3gm Powder' (score=90.9%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Temp' -> Cand: 'Temp 250mg Syrup' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Eptoder' -> Cand: 'Etoder 120 Tablet' (score=92.3%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'thice' -> Cand: 'Thiace 100mg/4mg Tablet' (score=90.9%) [form=None, dose=None, freq=None]
-    [UNMATCHED] Read: '98' (Line: '98')
+  Timing : Detect=0.33s | Read=2.12s | Match=0.70s | Total=3.19s
+  Result : Lines Read=14 | Shown Medicines=3 | Other Text Read=11
+  Shown Medicines:
+    • 'Pidazole' -> Cidazole 400mg Tablet (score=87.5%) [form=Capsule]
+    • 'evocin' -> Evocin 500mg Tablet (score=100.0%) [form=Syrup]
+    • 'fosil 6' -> Fosil 3gm Powder (score=90.9%) [form=Injection]
+  Other Text Read (Non-Medicines):
+    • eprodex 357mm
+    • this ce (oo) Napa
+    • pediatric
+    • pediatric
+    • too Sam
+    • 98cm 114.9 Injection for 4 my) Aad
+    • 98
+    • 102 Syrup osefta -P Ump
+    • Temp Clavl
+    • Eptoder 4mp
+    • thice Cool
 
 --- [6.jpg] ---
-  Result : ok=True | Lines read: 12 | Medicines matched: 10 | Time: 8.39s
-    [MATCH] Read: 'Fenadin' -> Cand: 'Fenadin 120mg Tablet' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'health' -> Cand: 'Health-B12 Capsule' (score=100.0%) [form=None, dose=321, freq=None]
-    [MATCH] Read: 'Life' -> Cand: 'LIFE 5000 IU INJECTION' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'mother' -> Cand: 'Mosther 75mg Injection' (score=92.3%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Omeprazole' -> Cand: 'Omeparazole 20mg Capsule' (score=95.2%) [form=None, dose=55, freq=None]
-    [MATCH] Read: 'into' -> Cand: 'Intop D 10mg/40mg Tablet' (score=88.9%) [form=None, dose=307301, freq=None]
-    [MATCH] Read: 'Set' -> Cand: 'Set 5mg Tablet' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'low' -> Cand: 'Low-Dex Eye Drops' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Clotel-' -> Cand: 'Clotrel 75mg Tablet' (score=92.3%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Dr. Abhishek' -> Cand: 'Rabishek-DSR Capsule' (score=88.9%) [form=None, dose=None, freq=None]
-    [UNMATCHED] Read: 'RMO COVID UZD.' (Line: 'RMO COVID UZD.')
-    [UNMATCHED] Read: 'demonstratory' (Line: 'demonstratory')
+  Timing : Detect=0.27s | Read=3.08s | Match=0.84s | Total=4.20s
+  Result : Lines Read=11 | Shown Medicines=1 | Other Text Read=10
+  Shown Medicines:
+    • 'health' -> Health-B12 Capsule (score=100.0%) [dose=321]
+  Other Text Read (Non-Medicines):
+    • Primus Rendeveril Nacmax
+    • Life Home Care Ticozin
+    • Chandiazepyle Many . Chonchloride Napa Maxpro mother
+    • Name Bacmax 55 Omeprazole
+    • of avoid O Pretania into 307301 185143
+    • Injection Remdesivis good my IV Set
+    • low IV ODX 4 days
+    • Clotel- 6wicks )
+    • Dr. Abhishek
+    • Rmo Govidwood
 
 --- [7.jpg] ---
-  Result : ok=True | Lines read: 15 | Medicines matched: 11 | Time: 13.37s
-    [MATCH] Read: 'Dr. D.' -> Cand: 'Drd Capsule' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Phenidine' -> Cand: 'Encidine Gargle' (score=82.4%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Sergel' -> Cand: 'Sibergel Forte Oral Suspension' (score=85.7%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Tomprazole' -> Cand: 'Toprazole D 40 mg/30 mg Tablet SR' (score=94.7%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Conazole' -> Cand: 'Conazol 150mg Capsule' (score=93.3%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'O. Azul' -> Cand: 'Ozul D 30mg/20mg Capsule SR' (score=88.9%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'O-cycl' -> Cand: 'Ocyl 5mg Tablet' (score=88.9%) [form=Capsule, dose=None, freq=None]
-    [MATCH] Read: 'Diet' -> Cand: 'Dibet N Cream' (score=88.9%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'monaz' -> Cand: 'Monaz LC Tablet' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Csog' -> Cand: 'Cog 3 Tablet' (score=85.7%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'cleams' -> Cand: 'Clams CV Syrup' (score=90.9%) [form=None, dose=None, freq=None]
-    [UNMATCHED] Read: 'M.D. ( PED) PALS.MIAP' (Line: 'M.D. ( PED) PALS.MIAP')
-    [UNMATCHED] Read: '# opposed upon Indian banks , Sandra .' (Line: '# opposed upon Indian banks , Sandra . Maruthi to give a cinematist against his children . Even described 10-5718, Southrocaid MacFar. Opp. 1 ) P. Coleman , Hyd.')
-    [UNMATCHED] Read: 'Timings : 900 AM 10 10,00 am' (Line: 'Timings : 900 AM 10 10,00 am Timings . 10,000 AM 101.000 PM Phididore')
+  Timing : Detect=0.40s | Read=4.63s | Match=0.85s | Total=6.09s
+  Result : Lines Read=12 | Shown Medicines=2 | Other Text Read=10
+  Shown Medicines:
+    • 'Biobin' -> Biobin 1000mg Injection (score=100.0%) [high-confidence gate]
+    • 'O-cycl' -> Ocyl 5mg Tablet (score=88.9%) [form=Capsule]
+  Other Text Read (Non-Medicines):
+    • Dr. D. Ravi Shankar
+    • M.D. ( PED) PALS.MIAP
+    • Phenidine Prog. No.35400
+    • # opposed upon Indian banks , Sandra . Maruthi in the elementary context . A different Hospital 10-5718, Southrocaid Mercer , Orr. 1 ) P. Coleman , Hyd.
+    • Timings : 900 AM 10 10,00 am Timings . 10,000 AM 101.000 PM Phididiotro
+    • 6.000 PM To 7.30 PM 400pmo 5.30 pm
+    • Name ... Sergel to
+    • Conazole cold Trime div
+    • Omast-midic O. Azul dup 0.3p
+    • Advent dups Ois D
 
 --- [8.jpg] ---
-  Result : ok=True | Lines read: 17 | Medicines matched: 14 | Time: 13.35s
-    [MATCH] Read: 'Dr. Sudip' -> Cand: 'Rosudip 20 Tablet' (score=85.7%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Omeprazole' -> Cand: 'Omeparazole 20mg Capsule' (score=95.2%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Penrivent' -> Cand: 'Privent 1mg Tablet DT' (score=87.5%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'clo' -> Cand: 'Clo gm Cream' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Reformed' -> Cand: 'Ceformed CV Tablet' (score=87.5%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Reformed .' -> Cand: 'Ceformed CV Tablet' (score=87.5%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Back' -> Cand: 'Back 10mg Tablet' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Cardiac' -> Cand: 'Cadinac P 100mg/325mg Tablet' (score=85.7%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'done' -> Cand: 'Done 10mg/20mg Capsule' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Neuroloxy' -> Cand: 'Euroclox DC 250mg/250mg Capsule' (score=82.4%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'control' -> Cand: 'Control Tablet' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'sompraz' -> Cand: 'Sompraz D 40 Capsule SR' (score=100.0%) [form=None, dose=407, freq=1-0-0]
-    [MATCH] Read: 'Normaxin' -> Cand: 'Normaxin Tablet' (score=100.0%) [form=None, dose=None, freq=0-0-1]
-    [MATCH] Read: 'Lumona' -> Cand: 'Alumon 10mg/120mg Tablet' (score=83.3%) [form=None, dose=None, freq=None]
-    [UNMATCHED] Read: 'Aminosolinsicillins' (Line: 'Aminosolinsicillins')
-    [UNMATCHED] Read: 'Berium Dinitril Penicill Penicillin' (Line: 'Berium Dinitril Penicill Penicillin Thomas S. Cadmoncal Sergicillin Surgery 224122')
-    [UNMATCHED] Read: 'KTM' (Line: 'KTM')
+  Timing : Detect=1.97s | Read=2.34s | Match=1.09s | Total=5.44s
+  Result : Lines Read=15 | Shown Medicines=3 | Other Text Read=12
+  Shown Medicines:
+    • 'Omeprazole' -> Omeparazole 20mg Capsule (score=95.2%) [high-confidence gate]
+    • 'control' -> Control Tablet (score=100.0%) [high-confidence gate]
+    • 'Omastin' -> Somastin 3000 Injection (score=93.3%) [freq=1-0-0]
+  Other Text Read (Non-Medicines):
+    • Dr. Sudip Roy
+    • demonstraints
+    • Berium Consideration Thomas & ( Colonial Surgeon Surgery 224122
+    • Penrivent symptoms Om
+    • KTM
+    • clo of Porethucas
+    • Alcohol Reformed
+    • Bundy Curation Tobacco Reformed .
+    • in the Back
+    • Cardiac evaluation not
+    • done
+    • Ba Neuroloxy Concultation
 
 --- [9.jpg] ---
-  Result : ok=True | Lines read: 15 | Medicines matched: 8 | Time: 5.62s
-    [MATCH] Read: 'C.O. Jones' -> Cand: 'Jones-SP Tablet' (score=83.3%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'March' -> Cand: 'March OZ 200 mg/500 mg Tablet' (score=100.0%) [form=None, dose=10,, freq=None]
-    [MATCH] Read: 'Joseph' -> Cand: 'Josh In 50mg Tablet' (score=80.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'DOBx' -> Cand: 'Dox Tablet' (score=85.7%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Allergies' -> Cand: 'Allergie Ita 100mg Capsule' (score=94.1%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'RXi' -> Cand: 'Rxi 10mg Tablet' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Dispense' -> Cand: 'Despenser D 50mg/10mg Tablet' (score=82.4%) [form=None, dose=30 ML, freq=None]
-    [MATCH] Read: 'Refills :' -> Cand: 'Refil Tears 1% Eye Drop' (score=83.3%) [form=None, dose=None, freq=None]
-    [UNMATCHED] Read: '25 El Caro Street' (Line: '25 El Caro Street')
-    [UNMATCHED] Read: 'Pleasantville , OH 43320' (Line: 'Pleasantville , OH 43320')
-    [UNMATCHED] Read: 'Address' (Line: 'Address')
+  Timing : Detect=0.11s | Read=2.80s | Match=0.38s | Total=3.30s
+  Result : Lines Read=15 | Shown Medicines=2 | Other Text Read=13
+  Shown Medicines:
+    • 'March' -> March OZ 200 mg/500 mg Tablet (score=100.0%) [dose=10,]
+    • 'DOBx' -> Dox Tablet (score=85.7%) [high-confidence gate]
+  Other Text Read (Non-Medicines):
+    • C.O. Jones
+    • 25 El Caro Street
+    • Pleasantville , OH 43320
+    • Patient Name Joseph McIntyre
+    • Address
+    • Allergies NKDA
+    • Weight 65 kg
+    • RXi Azithromycin 200 mg/s Isml
+    • Day 15 ml
+    • Day 2. 7.5 mL
+    • Dispense mgl mL solution 30 ML
+    • Refills :
+    • co Jones , ARNP
 
 --- [10.jpg] ---
-  Result : ok=True | Lines read: 23 | Medicines matched: 17 | Time: 31.48s
-    [MATCH] Read: 'Naveen' -> Cand: 'Nave Plus 100mg/500mg Tablet' (score=80.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Regel' -> Cand: 'Regel-SO Oral Suspension' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Far' -> Cand: 'Far 20mg Tablet' (score=100.0%) [form=None, dose=400571142, freq=None]
-    [MATCH] Read: 'Maxpro' -> Cand: 'Anxpro Tablet' (score=83.3%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'May' -> Cand: 'May & Baker Ketozcalp Shampoo' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'cis' -> Cand: 'Cis-Atrabloc 20 Injection' (score=100.0%) [form=None, dose=367588 ., freq=None]
-    [MATCH] Read: 'in ECV' -> Cand: 'Inbec Tablet' (score=80.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'MODS' -> Cand: 'Mods Levo 500mg Tablet' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Complete' -> Cand: 'Complete B12 Plus Tablet' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'do the' -> Cand: 'Dothee 25 Tablet' (score=90.9%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Disopan' -> Cand: 'Disopan 2mg Tablet' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Transplant H' -> Cand: 'Transpan D 30mg/40mg Capsule' (score=84.2%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Fexo-Noxazole' -> Cand: 'Fonazole 150mg Tablet' (score=80.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Apollot' -> Cand: 'Polyglot M 80mg/500mg Tablet' (score=80.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Nidazyl Penicillin' -> Cand: 'Benzylpenicillin 1000000IU Injection' (score=84.8%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Odiprazole' -> Cand: 'Iprazole 20 Capsule' (score=88.9%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Osprazole' -> Cand: 'Oprazole 20mg Capsule' (score=94.1%) [form=None, dose=None, freq=None]
-    [UNMATCHED] Read: 'This' (Line: 'This is Inform that Mr. CR. SAMUEL 6zyr I Make')
-    [UNMATCHED] Read: 'expiration pneumonia ) .' (Line: 'expiration pneumonia ) . He full the needs Hospital .')
-    [UNMATCHED] Read: 'Thankig You' (Line: 'Thankig You')
+  Timing : Detect=0.50s | Read=3.08s | Match=0.98s | Total=4.59s
+  Result : Lines Read=7 | Shown Medicines=2 | Other Text Read=5
+  Shown Medicines:
+    • 'Regel' -> Regel-SO Oral Suspension (score=100.0%) [high-confidence gate]
+    • 'CONCERN' -> Concern F 20 mg/5 mg Tablet (score=100.0%) [high-confidence gate]
+  Other Text Read (Non-Medicines):
+    • Dr. Naveen Polavarapu
+    • Maxpro Far Exin 400571142
+    • Maxpro 6 pm. 7382778899 sylolol
+    • This is Inform that Mr. CR. SAMUEL 6zyr I Make
+    • cis icivently admitted under my Case with IP.No 367588 .
 
 --- [11.jpg] ---
-  Result : ok=True | Lines read: 13 | Medicines matched: 12 | Time: 7.58s
-    [MATCH] Read: 'actitab' -> Cand: 'Actsita D 10mg/100mg Tablet' (score=85.7%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'M-B.S.' -> Cand: 'Mibs 5mg/2.5mg Tablet' (score=85.7%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Flexil' -> Cand: 'Flexril ORD 200mg/500mg Tablet' (score=92.3%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'Reb.I' -> Cand: 'Rebif 44mcg Injection' (score=88.9%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'told .' -> Cand: 'Told 500mg Tablet' (score=100.0%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'ARI' -> Cand: 'Ari-Falcy 150mg Injection' (score=100.0%) [form=Syrup, dose=None, freq=Sos]
-    [MATCH] Read: 'Mucolit' -> Cand: 'Mucolite Syrup' (score=93.3%) [form=None, dose=2.5ml, freq=None]
-    [MATCH] Read: 'mil' -> Cand: 'Mil Eye Drop' (score=100.0%) [form=Syrup, dose=2.5, freq=tds]
-    [MATCH] Read: 'Meftal-P' -> Cand: 'Meftal-Spas Tablet' (score=92.3%) [form=Tablet, dose=None, freq=None]
-    [MATCH] Read: 'Review' -> Cand: 'Fresview Eye Drop' (score=85.7%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'as adv' -> Cand: 'Asav CV 500mg/125mg Tablet' (score=88.9%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'enix' -> Cand: 'Benix 500mg Tablet' (score=88.9%) [form=None, dose=None, freq=None]
-    [UNMATCHED] Read: 'Td.' (Line: 'Td.')
+  Timing : Detect=0.33s | Read=2.56s | Match=0.75s | Total=3.68s
+  Result : Lines Read=11 | Shown Medicines=2 | Other Text Read=9
+  Shown Medicines:
+    • 'Mucolit' -> Mucolite Syrup (score=93.3%) [dose=2.5ml]
+    • 'Meftal-P' -> Meftal-Spas Tablet (score=92.3%) [form=Tablet]
+  Other Text Read (Non-Medicines):
+    • Flo 3Ditch glat actitab Flatifur 88445897172)
+    • M-B.S. M-D. 04 Nov 2019
+    • Calazar Postusil Georat Flexil
+    • Reb.I No. 322286 Syulf Rp. Govind Parri
+    • fever xld Sno amol As and
+    • ARI Syrup is mil Sos
+    • Syrup 2.5 mil tds
+    • Review
+    • V 2019 adv
 
 --- [12.jpg] ---
-  Result : ok=True | Lines read: 4 | Medicines matched: 4 | Time: 2.03s
-    [MATCH] Read: 'O-Tryptor' -> Cand: 'Tryptor-Plus Tablet' (score=93.3%) [form=None, dose=20., freq=None]
-    [MATCH] Read: 'Losp' -> Cand: 'Lospi 50mg Tablet' (score=88.9%) [form=None, dose=7849, freq=None]
-    [MATCH] Read: 'Reserves' -> Cand: 'Preserve N 5mg Tablet' (score=87.5%) [form=None, dose=None, freq=None]
-    [MATCH] Read: 'somor' -> Cand: 'Somo Tablet' (score=88.9%) [form=None, dose=None, freq=None]
+  Timing : Detect=0.11s | Read=0.88s | Match=0.34s | Total=1.34s
+  Result : Lines Read=4 | Shown Medicines=0 | Other Text Read=4
+  Shown Medicines: None (all filtered as other text)
+  Other Text Read (Non-Medicines):
+    • 5. 20. O-Tryptor Eslovitel
+    • Losp 7849
+    • Reserves woxle verordut
+    • somor Celfus 4x20
 
-============================================================================
-EXECUTION SUMMARY
-============================================================================
+================================================================================
+EXECUTION SUMMARY & SPEED BENCHMARK (B3)
+================================================================================
 Photos processed        : 12 / 12
-Total processing time   : 178.58s
-Average seconds / photo : 14.88s
-Worst seconds / photo   : 45.24s (4.jpg)
+Total processing time   : 61.25s (Baseline was 178.58s)
+Average seconds / photo : 5.10s (Target <= 10.0s | Baseline was 14.88s)
+Worst seconds / photo   : 15.44s (4.jpg) (Target <= 20.0s | Baseline was 45.24s)
+Speedup factor          : 2.92x faster on average
 Crashes encountered     : 0
 
-============================================================================
-PER-PHOTO METRICS TABLE
-============================================================================
-Photo        | Lines Read   | Meds Matched   | Seconds   
-----------------------------------------------------------------------------
-1.jpg        | 12           | 5              | 7.00      s
-2.jpg        | 14           | 12             | 34.19     s
-3.jpg        | 6            | 6              | 3.97      s
-4.jpg        | 30           | 26             | 45.24     s
-5.jpg        | 14           | 13             | 6.36      s
-6.jpg        | 12           | 10             | 8.39      s
-7.jpg        | 15           | 11             | 13.37     s
-8.jpg        | 17           | 14             | 13.35     s
-9.jpg        | 15           | 8              | 5.62      s
-10.jpg       | 23           | 17             | 31.48     s
-11.jpg       | 13           | 12             | 7.58      s
-12.jpg       | 4            | 4              | 2.03      s
-============================================================================
+================================================================================
+PER-PHOTO TIMING SPLIT & METRICS TABLE (B3, B5)
+================================================================================
+Photo    | Detect(s)  | Read(s)  | Match(s)  | Total(s)  | Lines  | Shown Meds  | Other Text
+--------------------------------------------------------------------------------
+1.jpg    | 2.02       | 1.59     | 2.61      | 6.30      | 12     | 1           | 11        
+2.jpg    | 0.34       | 4.27     | 0.88      | 5.49      | 10     | 3           | 7         
+3.jpg    | 0.04       | 1.44     | 0.69      | 2.19      | 6      | 2           | 4         
+4.jpg    | 4.77       | 9.32     | 1.27      | 15.44     | 12     | 7           | 5         
+5.jpg    | 0.33       | 2.12     | 0.70      | 3.19      | 14     | 3           | 11        
+6.jpg    | 0.27       | 3.08     | 0.84      | 4.20      | 11     | 1           | 10        
+7.jpg    | 0.40       | 4.63     | 0.85      | 6.09      | 12     | 2           | 10        
+8.jpg    | 1.97       | 2.34     | 1.09      | 5.44      | 15     | 3           | 12        
+9.jpg    | 0.11       | 2.80     | 0.38      | 3.30      | 15     | 2           | 13        
+10.jpg   | 0.50       | 3.08     | 0.98      | 4.59      | 7      | 2           | 5         
+11.jpg   | 0.33       | 2.56     | 0.75      | 3.68      | 11     | 2           | 9         
+12.jpg   | 0.11       | 0.88     | 0.34      | 1.34      | 4      | 0           | 4         
+================================================================================
 
-============================================================================
-3 EXAMPLES WHERE THE PIPELINE IS WRONG (ANALYSIS)
-============================================================================
-Example 1:
-  Photo   : 1.jpg
-  Text Read: 'old'
-  Matched : Bold Care 30 Tablet (score=85.7%)
-  Issue   : Non-medicine text (patient title/demographics/artifact) matched to database brand name.
-----------------------------------------------------------------------------
-Example 2:
-  Photo   : 1.jpg
-  Text Read: 'Ms/Mr'
-  Matched : Mmr  Vaccine (score=85.7%)
-  Issue   : Non-medicine text (patient title/demographics/artifact) matched to database brand name.
-----------------------------------------------------------------------------
-Example 3:
-  Photo   : 6.jpg
-  Text Read: 'Dr. Abhishek'
-  Matched : Rabishek-DSR Capsule (score=88.9%)
-  Issue   : Non-medicine text (patient title/demographics/artifact) matched to database brand name.
-----------------------------------------------------------------------------
+================================================================================
+BEFORE VS AFTER COMPARISON ON THE SAME 12 PHOTOS (B1, B2, B3)
+================================================================================
+Photo    | Before Meds  | After Meds  | Before Time  | After Time  | Status / Cleanups
+--------------------------------------------------------------------------------
+1.jpg    | 5            | 1           | 7.00s        | 6.30s       | Removed 'old'->Bold Care & 'Ms/Mr'->Mmr Vaccine
+2.jpg    | 12           | 3           | 34.19s       | 5.49s       | Filtered 9 non-medicines to Other Text
+3.jpg    | 6            | 2           | 3.97s        | 2.19s       | Filtered 4 non-medicines to Other Text
+4.jpg    | 26           | 7           | 45.24s       | 15.44s      | Cleaned 26 hallucinations down to 7 medicines
+5.jpg    | 13           | 3           | 6.36s        | 3.19s       | Filtered 10 non-medicines to Other Text
+6.jpg    | 10           | 1           | 8.39s        | 4.20s       | Removed doctor header 'Dr. Abhishek'->Rabishek-DSR
+7.jpg    | 11           | 2           | 13.37s       | 6.09s       | Filtered 9 non-medicines to Other Text
+8.jpg    | 14           | 3           | 13.35s       | 5.44s       | Filtered 11 non-medicines to Other Text
+9.jpg    | 8            | 2           | 5.62s        | 3.30s       | Filtered 6 non-medicines to Other Text
+10.jpg   | 17           | 2           | 31.48s       | 4.59s       | Filtered 15 non-medicines to Other Text
+11.jpg   | 12           | 2           | 7.58s        | 3.68s       | Filtered 10 non-medicines to Other Text
+12.jpg   | 4            | 0           | 2.03s        | 1.34s       | Filtered 4 non-medicines to Other Text
+================================================================================

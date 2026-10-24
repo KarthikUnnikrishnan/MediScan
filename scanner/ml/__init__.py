@@ -434,7 +434,14 @@ def match_word(text: str) -> List[Dict[str, Any]]:
         return []
 
     from .medicine_matcher import PHARMA_STOPWORDS
-    if clean in PHARMA_STOPWORDS or clean in ENGLISH_STOPWORDS or _RX_METADATA_IGNORE.search(text):
+    from .handwritten_trocr import RX_STOP_WORDS, is_name_or_header_line
+    if is_name_or_header_line(text):
+        return []
+    clean_lower = clean.lower()
+    if clean in PHARMA_STOPWORDS or clean_lower in RX_STOP_WORDS or _RX_METADATA_IGNORE.search(text):
+        return []
+    toks = [re.sub(r'[^a-zA-Z0-9]', '', t).lower() for t in re.split(r'[\s/.,:;-]+', text)]
+    if any(t in RX_STOP_WORDS for t in toks if t):
         return []
 
     from rapidfuzz import process, fuzz
@@ -503,7 +510,10 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
     try:
         from .recognisers import get_handwritten_recogniser
         rec_b = get_handwritten_recogniser()
-        res_b = rec_b.read_prescription(image_pil, matcher=match_word, min_score=80.0)
+        res_b = rec_b.read_prescription(image_pil, matcher=match_word, beams=2, min_score=80.0)
+
+        timing = res_b.get("timing", {"detect": 0.0, "read": 0.0, "match": 0.0, "total": 0.0})
+        other_text = res_b.get("other_text", [])
 
         if not res_b.get("ok"):
             msg = res_b.get("message") or "Could not read this prescription reliably"
@@ -515,9 +525,11 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
                 "error": msg,
                 "raw_ocr": "",
                 "ocr_text": "",
+                "other_text_read": other_text,
                 "candidates": [],
                 "medicines": [],
                 "per_medicine_results": {},
+                "timing": timing,
                 "disclaimer": "Handwriting can be misread - confirm every medicine with your doctor or pharmacist",
             }
 
@@ -536,9 +548,11 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
                 "message": "Could not read this prescription reliably",
                 "raw_ocr": raw_ocr,
                 "ocr_text": raw_ocr,
+                "other_text_read": other_text or raw_ocr_lines,
                 "candidates": [],
                 "medicines": [],
                 "per_medicine_results": {},
+                "timing": timing,
                 "disclaimer": "Handwriting can be misread - confirm every medicine with your doctor or pharmacist",
             }
 
@@ -602,6 +616,7 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
             "message": "Prescription parsed successfully.",
             "raw_ocr": raw_ocr,
             "ocr_text": raw_ocr,
+            "other_text_read": other_text,
             "detected_name": first_key,
             "medicine": medicines_list[0] if medicines_list else None,
             "medicines": medicines_list,
@@ -611,6 +626,7 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
             "per_medicine_results": per_medicine_results,
             "total_found": len(per_medicine_results),
             "default_selected": first_key,
+            "timing": timing,
             "disclaimer": "Handwriting can be misread - confirm every medicine with your doctor or pharmacist",
         }
     except Exception as exc:
@@ -626,6 +642,8 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
             "per_medicine_results": {},
             "raw_ocr": "",
             "ocr_text": "",
+            "other_text_read": [],
+            "timing": {"detect": 0.0, "read": 0.0, "match": 0.0, "total": 0.0},
             "disclaimer": "Handwriting can be misread - confirm every medicine with your doctor or pharmacist",
         }
 

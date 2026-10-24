@@ -94,19 +94,21 @@ class HandwrittenRecogniser:
         self,
         photo: Union[str, Path, Image.Image],
         matcher: Optional[Any] = None,
-        beams: int = 4,
+        beams: int = 2,
         min_score: float = 80.0
     ) -> Dict[str, Any]:
         """
         Read handwritten prescription lines.
-        Returns dict with keys ok, lines, medicines, message.
+        Returns dict with keys ok, lines, medicines, other_text, timing, message.
         """
         if not self.is_model_installed():
             return {
                 "ok": False,
                 "message": "Handwritten model is not installed yet",
                 "lines": [],
-                "medicines": []
+                "medicines": [],
+                "other_text": [],
+                "timing": {"detect": 0.0, "read": 0.0, "match": 0.0, "total": 0.0}
             }
 
         self._ensure_loaded()

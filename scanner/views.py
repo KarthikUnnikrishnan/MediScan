@@ -168,6 +168,7 @@ def result(request):
         'ai_validation':         scan_result.get('ai_validation', {}),
         'ai_suggested_correction': scan_result.get(
                                      'ai_suggested_correction', ''),
+        'other_text_read':       scan_result.get('other_text_read', []),
         'disclaimer':            scan_result.get('disclaimer', "Handwriting can be misread - confirm every medicine with your doctor or pharmacist"),
     }
 
