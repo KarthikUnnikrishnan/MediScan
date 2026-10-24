@@ -680,10 +680,30 @@ def match_printed_lines(
                 cur_sc, cur_prom, cur_cnt = candidate_tokens.get(two_j, (0.0, 0.0, 0))
                 candidate_tokens[two_j] = (cur_sc, max(cur_prom, prominence), cur_cnt + 1)
 
+    # FIX 3.1: Exact-brand rule
+    # If a read word (or hyphen-joined / glued-split form) equals a brand word in the index
+    # (similarity >= 95) and the word is not in the stop-list and not a generic salt, that brand
+    # MUST be in the top-3 candidates and must not be removed by popularity weighting,
+    # salt-first retrieval or compound guard.
+    exact_brand_words = set()
+    for tok, (_, prom, count) in candidate_tokens.items():
+        if tok in PHARMA_STOPWORDS or tok.isdigit() or len(tok) < 3 or tok in COMMON_SALTS:
+            continue
+        if tok in brand_index.brand_to_ids:
+            exact_brand_words.add(tok)
+        elif len(tok) >= 4:
+            hit = process.extractOne(tok, brand_index.unique_brand_words, scorer=fuzz.ratio, score_cutoff=95.0)
+            if hit and hit[0] not in PHARMA_STOPWORDS and hit[0] not in COMMON_SALTS:
+                exact_brand_words.add(hit[0])
+
     brand_scores: Dict[str, Tuple[float, int]] = {}
     for tok, (_, prom, count) in candidate_tokens.items():
         pop_bonus = min(10.0, math.log2(brand_index.brand_counts.get(tok, 1) + 1) * 2.0) if hasattr(brand_index, 'brand_counts') else 0.0
-        if tok in brand_index.brand_to_ids:
+        if tok in exact_brand_words:
+            # Substantial base score for exact brands to prevent displacement by salt-first or popularity
+            score = 150.0 + prom + pop_bonus
+            brand_scores[tok] = (score, count)
+        elif tok in brand_index.brand_to_ids:
             score = 100.0 + prom + pop_bonus
             if tok in COMMON_SALTS:
                 score -= 15.0  # slight penalty if token is a generic chemical salt
@@ -692,19 +712,26 @@ def match_printed_lines(
         elif len(tok) >= 4:
             f_matches = process.extract(tok, brand_index.unique_brand_words, scorer=fuzz.ratio, limit=3, score_cutoff=search_cutoff)
             for m_b, score, _ in f_matches:
-                let_bonus = 0.0
-                if len(m_b) >= 3 and len(tok) >= 3 and m_b[:3] == tok[:3]:
-                    let_bonus = 15.0
-                elif len(m_b) >= 2 and len(tok) >= 2 and m_b[:2] == tok[:2]:
-                    let_bonus = 10.0
-                elif len(m_b) >= 1 and len(tok) >= 1 and m_b[0] == tok[0]:
-                    let_bonus = 5.0
-                m_pop = min(10.0, math.log2(brand_index.brand_counts.get(m_b, 1) + 1) * 2.0) if hasattr(brand_index, 'brand_counts') else 0.0
-                adj_score = score + prom + let_bonus + m_pop
-                if m_b in COMMON_SALTS:
-                    adj_score -= 15.0
+                if m_b in exact_brand_words:
+                    adj_score = 150.0 + prom
+                else:
+                    let_bonus = 0.0
+                    if len(m_b) >= 3 and len(tok) >= 3 and m_b[:3] == tok[:3]:
+                        let_bonus = 15.0
+                    elif len(m_b) >= 2 and len(tok) >= 2 and m_b[:2] == tok[:2]:
+                        let_bonus = 10.0
+                    elif len(m_b) >= 1 and len(tok) >= 1 and m_b[0] == tok[0]:
+                        let_bonus = 5.0
+                    m_pop = min(10.0, math.log2(brand_index.brand_counts.get(m_b, 1) + 1) * 2.0) if hasattr(brand_index, 'brand_counts') else 0.0
+                    adj_score = score + prom + let_bonus + m_pop
+                    if m_b in COMMON_SALTS:
+                        adj_score -= 15.0
                 if m_b not in brand_scores or adj_score > brand_scores[m_b][0]:
                     brand_scores[m_b] = (adj_score, count)
+
+    for eb in exact_brand_words:
+        if eb not in brand_scores:
+            brand_scores[eb] = (150.0 + 12.0, 1)
 
     # FIX 2a: Salt-first retrieval
     # When read lines contain words that match the salt column of medicines.sqlite (fuzzy >= 85),
@@ -782,10 +809,20 @@ def match_printed_lines(
     # Gather candidate medicine rows from SQLite
     cand_ids = []
     brand_by_id = {}
-    for b_word, (b_score, b_count) in sorted(brand_scores.items(), key=lambda x: x[1][0], reverse=True)[:20]:
-        for mid in brand_index.brand_to_ids.get(b_word, [])[:15]:
+
+    # 1. ALWAYS retrieve exact brands first
+    for eb in sorted(exact_brand_words):
+        b_score, b_count = brand_scores.get(eb, (160.0, 1))
+        for mid in brand_index.brand_to_ids.get(eb, [])[:15]:
             cand_ids.append(mid)
-            brand_by_id[mid] = (b_word, b_score, b_count)
+            brand_by_id[mid] = (eb, b_score, b_count, True)
+
+    # 2. Retrieve remaining top brand words
+    for b_word, (b_score, b_count) in sorted(brand_scores.items(), key=lambda x: x[1][0], reverse=True)[:20]:
+        if b_word not in exact_brand_words:
+            for mid in brand_index.brand_to_ids.get(b_word, [])[:15]:
+                cand_ids.append(mid)
+                brand_by_id[mid] = (b_word, b_score, b_count, False)
 
     rows_db = brand_index.get_medicines_by_ids(cand_ids)
 
@@ -797,7 +834,7 @@ def match_printed_lines(
         mfr = row.get("manufacturer") or ""
         price = row.get("price")
 
-        b_word, b_score, b_count = brand_by_id.get(mid, ("", 0.0, 1))
+        b_word, b_score, b_count, is_exact = brand_by_id.get(mid, ("", 0.0, 1, False))
         cand_name = (name or "").upper()
         cand_salt = salt.upper()
         cand_mfr = mfr.upper()
@@ -830,9 +867,12 @@ def match_printed_lines(
         if b_count > 1:
             score += min(9.0, (b_count - 1) * 3.0)
 
-        # 5. Compound-count guard (-20)
-        if '+' in cand_salt:
-            score -= 20.0
+        # FIX 3.2: Scoped intra-brand compound guard
+        # DO NOT penalise across brands just because every DB row for that brand has '+'.
+        # Use penalty only to choose between rows of the SAME brand (intra-brand preference).
+        intra_pref = 0.0
+        if '+' in cand_salt and '+' not in full_text and len(salt_matched_words) <= 1:
+            intra_pref = -15.0
 
         corroborated = bool(salt_matched or strength_matched)
         confident = bool(score >= cutoff)
@@ -849,6 +889,8 @@ def match_printed_lines(
             "manufacturer": mfr or "Registered Manufacturer",
             "price": price,
             "score": round(score, 1),
+            "intra_score": round(score + intra_pref, 1),
+            "is_exact_brand": is_exact,
             "match_type": cand_match_type,
             "confident": confident,
             "corroborated": corroborated,
@@ -857,19 +899,25 @@ def match_printed_lines(
             "dosage_form": "Tablet"
         })
 
-    # Deduplicate candidates by brand name, keeping highest scoring row
-    scored_candidates.sort(key=lambda x: x["score"], reverse=True)
-    dedup_candidates = []
-    seen_brands = set()
+    # Deduplicate candidates by brand name, using intra_score to select the best row for each brand
+    by_brand = {}
     for cand in scored_candidates:
         b_norm = re.sub(r'[^A-Z0-9]', '', cand["brand"].upper())
-        if b_norm not in seen_brands:
-            seen_brands.add(b_norm)
-            dedup_candidates.append(cand)
-            if len(dedup_candidates) >= 5:
-                break
+        if b_norm not in by_brand or cand["intra_score"] > by_brand[b_norm]["intra_score"]:
+            by_brand[b_norm] = cand
 
-    if not dedup_candidates:
+    dedup_candidates = list(by_brand.values())
+
+    # FIX 3.1: Sort candidates ensuring all exact brand matches are in the top candidates
+    exact_cands = [c for c in dedup_candidates if c.get("is_exact_brand")]
+    non_exact_cands = [c for c in dedup_candidates if not c.get("is_exact_brand")]
+
+    exact_cands.sort(key=lambda x: x["score"], reverse=True)
+    non_exact_cands.sort(key=lambda x: x["score"], reverse=True)
+
+    sorted_candidates = (exact_cands + non_exact_cands)[:5]
+
+    if not sorted_candidates:
         return {
             "success": False,
             "status": "unverified",
@@ -883,15 +931,24 @@ def match_printed_lines(
             "message": "Unable to find candidate medicines in local database."
         }
 
-    # Requirement 4: When the best candidate comes from active ingredient (salt),
-    # set match_type: "ingredient" and keep status "unverified" unless strength matches.
-    top_cand = dedup_candidates[0]
+    top_cand = sorted_candidates[0]
+    sec_cand = sorted_candidates[1] if len(sorted_candidates) > 1 else None
+    score_margin = round(top_cand["score"] - sec_cand["score"], 1) if sec_cand else top_cand["score"]
+    top_cand["score_margin"] = score_margin
+
     match_type = top_cand.get("match_type", "brand")
 
+    # FIX 3.3: Verification Calibration Rule (Rule 12: Exact brand with corroborated OR margin >= 20)
+    # Replaces single rigid rule with calibrated verification:
+    # High precision (>= 85%) achieved when exact brand is corroborated (salt/strength) or has decisive margin >= 20.
     if match_type == "ingredient":
         is_verified = bool(top_cand.get("confident") and top_cand.get("strength_matched"))
     else:
-        is_verified = bool(top_cand.get("confident") and top_cand.get("corroborated"))
+        is_verified = bool(
+            top_cand.get("is_exact_brand") and (
+                top_cand.get("corroborated") or score_margin >= 20.0
+            )
+        )
 
     status = "verified" if is_verified else "unverified"
 
@@ -909,16 +966,17 @@ def match_printed_lines(
         "status": status,
         "match_type": match_type,
         "medicine": top_cand if is_verified else None,
-        "candidates": dedup_candidates[:3],
-        "medicines": dedup_candidates[:3],
-        "top_candidates": dedup_candidates[:5],
+        "candidates": sorted_candidates[:3],
+        "medicines": sorted_candidates[:3],
+        "top_candidates": sorted_candidates[:5],
+        "score_margin": score_margin,
         "confidence_breakdown": breakdown,
         "raw_ocr": full_text,
         "n_matching_tokens": n_matching_tokens,
         "message": None if is_verified else (
             "Ingredient-only match requires verified dosage strength to confirm identity."
             if match_type == "ingredient"
-            else "Top candidate was not confident and corroborated. Top candidate suggestions provided."
+            else "Medicine packaging could not be verified with high confidence. Top candidate suggestions provided."
         )
     }
 
