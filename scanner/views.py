@@ -109,11 +109,18 @@ def index(request):
 
         except Exception as exc:
             logger.error("index POST failed: %s", exc, exc_info=True)
-            return render(
-                request,
-                'scanner/index.html',
-                {'form': form, 'error': "The scanner is not ready. Please contact the administrator."},
-            )
+            result_data = {
+                'success': False,
+                'status': 'error',
+                'result_level': 'error',
+                'error_type': 'setup_error',
+                'error_reason': str(exc),
+                'message': f"Scanner is not ready: {exc}",
+                'error': f"Scanner is not ready: {exc}",
+                'timestamp': timezone.now().isoformat(),
+            }
+            request.session['scan_result'] = result_data
+            return redirect('result')
 
     # GET
     form = ScanForm()
@@ -122,7 +129,8 @@ def index(request):
 
 def result(request):
     """
-    GET — Render the comprehensive clinical analysis report.
+    GET — Render the clinical analysis report.
+    Supports two result levels ("verified" and "likely"), plus "not_found" and "error".
     Pulls structured verification data directly from session.
     """
     scan_result = request.session.get('scan_result')
@@ -130,6 +138,44 @@ def result(request):
         return redirect('index')
 
     medicines = scan_result.get('medicines', [])
+    candidates = scan_result.get('candidates', [])
+    per_meds = scan_result.get('per_medicine_results', {})
+
+    # 1. Determine result_level: 'verified', 'likely', 'not_found', 'error'
+    status = scan_result.get('status', '')
+    error_reason = scan_result.get('error_reason') or (scan_result.get('error') if status == 'error' else '')
+
+    result_level = scan_result.get('result_level')
+    if not result_level:
+        if status == 'error' or error_reason or scan_result.get('error_type') == 'setup_error':
+            result_level = 'error'
+        elif not medicines and not candidates and not per_meds and not scan_result.get('medicine'):
+            result_level = 'not_found'
+        else:
+            top_cand = scan_result.get('medicine') or (candidates[0] if candidates else (medicines[0] if medicines else None))
+            if top_cand and isinstance(top_cand, dict):
+                is_rule4 = bool(top_cand.get('is_exact_brand') and top_cand.get('salt_matched'))
+                result_level = 'verified' if is_rule4 else 'likely'
+            else:
+                result_level = 'not_found'
+
+    if result_level == 'error' and not error_reason:
+        error_reason = scan_result.get('message') or scan_result.get('error') or "Scanner is not ready"
+
+    # Candidates list (top 3)
+    top_candidates = []
+    if candidates:
+        top_candidates = [c for c in candidates if isinstance(c, dict)][:3]
+    elif medicines:
+        top_candidates = [m for m in medicines if isinstance(m, dict)][:3]
+
+    top_cand = scan_result.get('medicine') or (candidates[0] if candidates else (medicines[0] if medicines else None))
+    match_type = scan_result.get('match_type') or (top_cand.get('match_type') if isinstance(top_cand, dict) else 'brand')
+    is_ingredient_match = (match_type == 'ingredient')
+
+    if (not medicines or not medicines[0]) and top_cand:
+        medicines = [top_cand]
+
     default_conf = scan_result.get('confidence_breakdown', {}).get('overall', 0.0)
     if 'confidence_breakdown' not in scan_result or not scan_result['confidence_breakdown']:
         scan_result['confidence_breakdown'] = {'overall': 0.0}
@@ -137,7 +183,6 @@ def result(request):
         if isinstance(m, dict) and 'confidence' not in m:
             m['confidence'] = default_conf
 
-    per_meds = scan_result.get('per_medicine_results', {})
     for k, v in per_meds.items():
         if isinstance(v, dict):
             if 'confidence' not in v or not v['confidence']:
@@ -149,8 +194,12 @@ def result(request):
 
     context = {
         'result':                scan_result,
+        'result_level':          result_level,
+        'error_reason':          error_reason,
+        'is_ingredient_match':   is_ingredient_match,
+        'top_candidates':        top_candidates,
         'mode':                  scan_result.get('mode', 'auto'),
-        'success':               scan_result.get('success', False),
+        'success':               result_level in ('verified', 'likely'),
         'medicines':             medicines,
         'alternatives':          scan_result.get('alternatives', []),
         'cross_interactions':    scan_result.get('cross_interactions', []),
@@ -166,8 +215,7 @@ def result(request):
         'default_selected':      scan_result.get('default_selected', ''),
         'total_found':           scan_result.get('total_found', 0),
         'ai_validation':         scan_result.get('ai_validation', {}),
-        'ai_suggested_correction': scan_result.get(
-                                     'ai_suggested_correction', ''),
+        'ai_suggested_correction': scan_result.get('ai_suggested_correction', ''),
         'other_text_read':       scan_result.get('other_text_read', []),
         'disclaimer':            scan_result.get('disclaimer', "Handwriting can be misread - confirm every medicine with your doctor or pharmacist"),
     }
@@ -217,6 +265,8 @@ def scan(request):
         return JsonResponse({
             'success': False,
             'status': 'error',
-            'message': "The scanner is not ready. Please contact the administrator.",
-            'error': "The scanner is not ready. Please contact the administrator.",
+            'result_level': 'error',
+            'error_reason': str(exc),
+            'message': f"Scanner is not ready: {exc}",
+            'error': f"Scanner is not ready: {exc}",
         }, status=500)

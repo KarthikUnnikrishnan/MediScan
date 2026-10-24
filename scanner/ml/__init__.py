@@ -216,32 +216,35 @@ def scan_medicine_package(
             "manufacturer": 0.0, "dosage_form": 0.0, "overall": 0.0
         })
 
-        if status != "verified" or not match_res.get("medicine"):
+        if not candidates:
             return {
                 "success": False,
-                "status": "unverified",
+                "status": "not_found",
+                "result_level": "not_found",
                 "match_type": match_type,
                 "mode": "medicine_package",
                 "rotation": chosen_angle,
-                "message": (
-                    "Unable to confidently verify this medicine. "
-                    "Returning unverified is safer than returning a wrong result."
-                ),
-                "rejection_reasons": (
-                    [match_res.get("message")] if match_res.get("message")
-                    else (["Top candidate was not confident and corroborated."] if candidates else ["No readable brand text recognized."])
-                ),
+                "message": "Could not identify this medicine. Try a clearer photo of the brand name.",
                 "raw_ocr": raw_ocr,
                 "medicine": None,
-                "candidates": candidates,
-                "medicines": candidates,
+                "candidates": [],
+                "medicines": [],
                 "alternatives": [],
                 "side_effects": [],
                 "interactions": [],
                 "confidence_breakdown": confidence_breakdown,
             }
 
-        verified_med = match_res["medicine"]
+        top_cand = candidates[0]
+        # Step 7 Rule 4 check: exact brand AND salt matched
+        is_exact_brand = bool(top_cand.get("is_exact_brand"))
+        salt_matched = bool(top_cand.get("salt_matched"))
+        is_rule4 = is_exact_brand and salt_matched
+
+        result_level = "verified" if is_rule4 else "likely"
+        status = "verified" if is_rule4 else "likely"
+
+        verified_med = top_cand
         mfr = (verified_med.get("manufacturer") or "").strip() or "Registered Manufacturer"
         verified_med["manufacturer"] = mfr
 
@@ -284,10 +287,25 @@ def scan_medicine_package(
         verified_med["detected_name"] = descriptive_name
         verified_med["brand"] = brand_display
 
+        # Step 7 Result Wording
+        if result_level == "verified":
+            level_badge = "Verified match"
+            level_text = "Matches the brand and the ingredient printed on the pack."
+        else:
+            level_badge = "Likely match - please confirm"
+            if top_cand.get("match_type") == "ingredient":
+                level_text = "Closest match by ingredient"
+            else:
+                level_text = "Top candidate based on packaging text — please confirm brand and strength."
+
         return {
             "success": True,
-            "status": "verified",
-            "match_type": match_type,
+            "status": status,
+            "result_level": result_level,
+            "level_badge": level_badge,
+            "level_text": level_text,
+            "pack_warning": "Check this result against your pack before use.",
+            "match_type": top_cand.get("match_type", match_type),
             "mode": "medicine_package",
             "rotation": chosen_angle,
             "detected_name": descriptive_name,
@@ -304,8 +322,12 @@ def scan_medicine_package(
                 "confidence": confidence_breakdown.get("overall", 0.0),
                 "confident": verified_med.get("confident", True),
                 "corroborated": verified_med.get("corroborated", True),
+                "is_exact_brand": is_exact_brand,
+                "salt_matched": salt_matched,
+                "match_type": top_cand.get("match_type", match_type),
             },
-            "candidates": candidates,
+            "candidates": candidates[:3],
+            "top_candidates": candidates[:3],
             "medicines": [verified_med] + [c for c in candidates if c.get("id") != verified_med.get("id")][:2],
             "ingredients": display_ingredients,
             "alternatives": alternatives,
@@ -327,8 +349,11 @@ def scan_medicine_package(
         return {
             "success": False,
             "status": "error",
-            "message": "The scanner is not ready. Please contact the administrator.",
-            "error": "The scanner is not ready. Please contact the administrator.",
+            "result_level": "error",
+            "error_type": "setup_error",
+            "error_reason": str(exc),
+            "message": f"Scanner is not ready: {exc}",
+            "error": f"Scanner is not ready: {exc}",
             "raw_ocr": "",
             "rotation": 0,
             "candidates": [],
@@ -516,13 +541,16 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
         other_text = res_b.get("other_text", [])
 
         if not res_b.get("ok"):
-            msg = res_b.get("message") or "Could not read this prescription reliably"
+            msg = res_b.get("message") or "Handwritten model is not installed yet"
             return {
                 "success": False,
-                "status": "unverified",
+                "status": "error",
+                "result_level": "error",
+                "error_type": "setup_error",
+                "error_reason": msg,
                 "mode": "prescription",
-                "message": msg,
-                "error": msg,
+                "message": f"Scanner is not ready: {msg}",
+                "error": f"Scanner is not ready: {msg}",
                 "raw_ocr": "",
                 "ocr_text": "",
                 "other_text_read": other_text,
@@ -543,9 +571,10 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
         if not matched_meds:
             return {
                 "success": False,
-                "status": "unverified",
+                "status": "not_found",
+                "result_level": "not_found",
                 "mode": "prescription",
-                "message": "Could not read this prescription reliably",
+                "message": "Could not identify this medicine. Try a clearer photo of the brand name.",
                 "raw_ocr": raw_ocr,
                 "ocr_text": raw_ocr,
                 "other_text_read": other_text or raw_ocr_lines,
@@ -609,9 +638,19 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
         first_key = next(iter(per_medicine_results.keys())) if per_medicine_results else ""
         first_alts = per_medicine_results[first_key]["alternatives"] if first_key else []
 
+        top_med = medicines_list[0] if medicines_list else {}
+        is_exact_brand = bool(top_med.get("is_exact_brand"))
+        salt_matched = bool(top_med.get("salt_matched"))
+        is_rule4 = is_exact_brand and salt_matched
+        result_level = "verified" if is_rule4 else "likely"
+
         return {
             "success": True,
-            "status": "verified",
+            "status": "verified" if is_rule4 else "likely",
+            "result_level": result_level,
+            "level_badge": "Verified match" if is_rule4 else "Likely match - please confirm",
+            "level_text": "Matches the brand and the ingredient printed on the pack." if is_rule4 else ("Closest match by ingredient" if top_med.get("match_type") == "ingredient" else "Likely match — please confirm"),
+            "pack_warning": "Check this result against your pack before use.",
             "mode": "prescription",
             "message": "Prescription parsed successfully.",
             "raw_ocr": raw_ocr,
@@ -634,9 +673,12 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
         return {
             "success": False,
             "status": "error",
+            "result_level": "error",
+            "error_type": "setup_error",
+            "error_reason": str(exc),
             "mode": "prescription",
-            "message": "The scanner is not ready. Please contact the administrator.",
-            "error": "The scanner is not ready. Please contact the administrator.",
+            "message": f"Scanner is not ready: {exc}",
+            "error": f"Scanner is not ready: {exc}",
             "candidates": [],
             "medicines": [],
             "per_medicine_results": {},
@@ -667,8 +709,11 @@ def scan_image(image_path: str, mode: str = "medicine_package") -> Dict[str, Any
         return {
             "success": False,
             "status": "error",
-            "message": "The scanner is not ready. Please contact the administrator.",
-            "error": "The scanner is not ready. Please contact the administrator.",
+            "result_level": "error",
+            "error_type": "setup_error",
+            "error_reason": str(exc),
+            "message": f"Scanner is not ready: {exc}",
+            "error": f"Scanner is not ready: {exc}",
             "candidates": [],
             "medicines": []
         }

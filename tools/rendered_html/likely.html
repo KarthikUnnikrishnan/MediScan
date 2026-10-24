@@ -1,0 +1,423 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description"
+    content="MediScan — Scan medicines, save money, and stay safe. Instant AI medicine strip and prescription scanner with active salt extraction, generic price comparison, and cross-interaction warnings." />
+  <title>
+  
+    Likely Match — MediScan
+  
+
+  </title>
+
+  <!-- Modern & Minimal Aesthetic Typography: Outfit & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600;1,700&display=swap"
+    rel="stylesheet" />
+
+  <!-- High-Resolution Favicon -->
+  <link rel="icon" type="image/png" href="/static/images/favicon.png" />
+
+  <link rel="stylesheet" href="/static/css/main.css?v=20261013_v1" />
+
+</head>
+
+<body class="site-body">
+
+  <!-- Ambient Dynamic Atmosphere & Medical Grid Pattern Layer -->
+  <div class="bg-atmosphere-grid" aria-hidden="true"></div>
+
+  <!-- ── 1. GLOBAL NAVBAR ─────────────────────────────────────────── -->
+  <header class="navbar-header" id="navbarHeader">
+    <div class="container navbar-inner">
+
+      <!-- Brand Logo -->
+      <a href="/" class="brand-link" aria-label="MediScan Home">
+        <div class="brand-logo-mark" aria-hidden="true">
+          <img src="/static/images/mediscan_logo.png" alt="MediScan Logo" class="brand-logo-img" width="44"
+            height="44" />
+        </div>
+        <div class="brand-info">
+          <span class="brand-name">MediScan</span>
+          <span class="brand-tagline">AI Medicine Scanner</span>
+        </div>
+      </a>
+
+      <!-- Center Navigation Links -->
+      <nav class="nav-menu" aria-label="Main Navigation">
+        <a href="/#hero" class="nav-item active">Home</a>
+        <a href="/#how-it-works" class="nav-item">How It Works</a>
+        <a href="/#features" class="nav-item">Features</a>
+        <a href="/#about" class="nav-item">About</a>
+      </nav>
+
+      <!-- Right Nav Actions -->
+      <div class="nav-actions">
+        <a href="/#scanner-terminal" class="btn-nav-scan">
+          Scan Now &rarr;
+        </a>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ── 4. REAL-TIME SCANNING OVERLAY ───────────────────────────── -->
+  <div class="loading-overlay" id="loadingOverlay" aria-hidden="true">
+    <div class="loading-box">
+      <div class="pulse-radar-ring">
+        <div class="radar-dot"></div>
+      </div>
+      <h3 class="loading-step-title" id="loadingStepTitle">Analyzing scan media…</h3>
+      <p class="loading-step-desc" id="loadingStepDesc">Locating medicine packaging contours and text zones</p>
+      <div class="loading-progress-bar">
+        <div class="loading-progress-fill" id="loadingProgressFill"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 5. MAIN CONTENT ─────────────────────────────────────────── -->
+  <main id="mainContent">
+    
+<div class="result-page">
+
+  <!-- ── STATUS BAR ───────────────────────────────────── -->
+  <div class="result-status-bar result-status-bar--likely">
+    <div class="status-left">
+      <div class="status-icon status-icon--likely">
+        
+          ⚠
+        
+      </div>
+      <div>
+        <div class="status-header-row">
+          
+            <span class="badge-likely">Likely match - please confirm</span>
+          
+        </div>
+        <div class="status-desc-text">
+          
+            
+              Top candidate match — please verify details against your packaging.
+            
+          
+        </div>
+        
+      </div>
+    </div>
+    <div class="status-right">
+      <a href="/" class="btn-ghost-sm">
+        ← Scan Another
+      </a>
+      
+      <button onclick="window.print()" class="btn-primary-sm">
+        🖨 Print Report
+      </button>
+      
+    </div>
+  </div>
+
+  <!-- ── PACK CONFIRMATION BANNER (Both verified and likely) ── -->
+  
+  <div class="pack-confirm-banner">
+    <span class="pack-confirm-icon">⚠️</span>
+    <span class="pack-confirm-text"><strong>Check this result against your pack before use.</strong></span>
+  </div>
+  
+
+  <!-- ── HANDWRITING WARNING BANNER (prescription only) ── -->
+  
+  <!-- ── DIAGNOSIS BANNER (prescription only) ─────────── -->
+  
+
+  <!-- ── MEDICINE SELECTOR (prescription with 2+ meds) ── -->
+  
+
+  <!-- ── MAIN DASHBOARD ───────────────────────────────── -->
+  
+  <div class="result-dashboard">
+
+    <!-- LEFT: Detected Medicine -->
+    <div class="result-left" id="detectedPanel">
+
+      <!-- Uploaded image -->
+      
+
+      <!-- For MEDICINE BOX mode -->
+      
+        
+          
+
+          <!-- TOP 3 CANDIDATES SECTION (Shown prominently for Likely match) -->
+          
+          <div class="candidates-comparison-panel candidates-comparison-panel--likely">
+            <div class="cand-panel-header">
+              <span class="cand-panel-title">TOP CANDIDATES CONSIDERED (TOP 3)</span>
+              
+                <span class="cand-panel-hint">Please confirm against your pack</span>
+              
+            </div>
+            <div class="cand-grid">
+              
+              <div class="cand-card cand-card--top">
+                <div class="cand-card-top-row">
+                  <span class="cand-rank-badge">#1</span>
+                  <span class="cand-score-badge">161% score</span>
+                </div>
+                <div class="cand-brand-title">And</div>
+                <div class="cand-full-name">And 25mg Injection</div>
+                <div class="cand-salt-row">
+                  <span class="cand-salt-lbl">Salt:</span>
+                  <span class="cand-salt-txt">nandrolone decanoate (25mg)</span>
+                </div>
+                <div class="cand-badge-row">
+                  
+                    <span class="cand-tag cand-tag--brand">Exact Brand</span>
+                  
+                  
+                    <span class="cand-price-val">₹ 70.0</span>
+                  
+                </div>
+              </div>
+              
+              <div class="cand-card ">
+                <div class="cand-card-top-row">
+                  <span class="cand-rank-badge">#2</span>
+                  <span class="cand-score-badge">166% score</span>
+                </div>
+                <div class="cand-brand-title">Doxymine</div>
+                <div class="cand-full-name">Doxymine Tablet</div>
+                <div class="cand-salt-row">
+                  <span class="cand-salt-lbl">Salt:</span>
+                  <span class="cand-salt-txt">doxylamine (10mg) + vitamin b6 (pyridoxine) (10mg)</span>
+                </div>
+                <div class="cand-badge-row">
+                  
+                    <span class="cand-tag cand-tag--likely">Likely Candidate</span>
+                  
+                  
+                    <span class="cand-price-val">₹ 35.0</span>
+                  
+                </div>
+              </div>
+              
+              <div class="cand-card ">
+                <div class="cand-card-top-row">
+                  <span class="cand-rank-badge">#3</span>
+                  <span class="cand-score-badge">162% score</span>
+                </div>
+                <div class="cand-brand-title">Pyridon</div>
+                <div class="cand-full-name">Pyridon Tablet</div>
+                <div class="cand-salt-row">
+                  <span class="cand-salt-lbl">Salt:</span>
+                  <span class="cand-salt-txt">doxylamine (10mg) + vitamin b6 (pyridoxine) (10mg)</span>
+                </div>
+                <div class="cand-badge-row">
+                  
+                    <span class="cand-tag cand-tag--likely">Likely Candidate</span>
+                  
+                  
+                    <span class="cand-price-val">₹ 56.0</span>
+                  
+                </div>
+              </div>
+              
+            </div>
+          </div>
+          
+
+          <div class="detected-label">DETECTED MEDICINE</div>
+          <div class="detected-name">And 25mg Injection</div>
+          <div class="detected-match-sub" style="margin-top: -0.4rem; margin-bottom: 0.85rem; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+            
+            
+          </div>
+          <div class="detected-salt-label">ACTIVE SALT</div>
+          <div class="detected-salt-value">nandrolone decanoate (25mg)</div>
+          <div class="detected-props">
+            <div class="prop-block">
+              <div class="prop-block-label">MANUFACTURER</div>
+              <div class="prop-block-value">Abron Healthcare</div>
+            </div>
+            <div class="prop-block mrp-block">
+              <div class="prop-block-label">
+                
+                  MRP (VERIFIED)
+                
+              </div>
+              
+                <div class="mrp-value" style="display: flex; flex-direction: column; gap: 2px;">
+                  <div style="font-size: 1.35rem; font-weight: 700; color: #0284c7; display: flex; align-items: baseline; gap: 4px;">
+                    ₹ 7.00
+                    <span style="font-size: 0.85rem; font-weight: 600; color: #475569;">/ tablet</span>
+                  </div>
+                  <div style="font-size: 0.78rem; color: #64748b; font-weight: 500; margin-top: 2px;">
+                    ₹ 70.00 for strip of 10 tablets
+                    
+                    &bull; <span style="color: #64748b;">National Medicine Price Index</span>
+                    
+                  </div>
+                </div>
+              
+            </div>
+          </div>
+          <div class="match-meta-bar">
+            <span class="best-match-badge">✓ Best Database Match</span>
+            <span class="confidence-indicator conf-high">
+              <span class="confidence-dot"></span>
+              <span>100% Match Confidence</span>
+            </span>
+          </div>
+          
+        
+
+      <!-- For PRESCRIPTION mode -->
+      
+
+    </div><!-- end result-left -->
+
+    <!-- RIGHT: Alternatives -->
+    <div class="result-right" id="alternativesPanel">
+
+      <!-- MEDICINE BOX alternatives -->
+      
+        
+
+<div class="alt-section-title">💊 Top 5 Verified Cheaper Alternatives</div>
+<div class="alt-section-sub">
+  Same active molecule &bull; same strength &bull; unit-price verified comparison
+</div>
+
+
+  <div class="no-alt-msg">
+    No composition-verified cheaper alternatives found in database.
+  </div>
+
+
+
+      <!-- PRESCRIPTION alternatives (per medicine) -->
+      
+
+      <!-- Cross interactions (prescription only) -->
+      
+
+    </div><!-- end result-right -->
+
+  </div><!-- end result-dashboard -->
+
+  
+
+  <!-- ── ACTION BAR ────────────────────────────────────── -->
+  <div class="result-action-bar">
+    <a href="/" class="btn-ghost-sm">
+      ← Scan Another
+    </a>
+    
+    <button onclick="window.print()" class="btn-primary-sm">
+      🖨 Print Report
+    </button>
+    
+  </div>
+
+  <!-- ── BOTTOM DEVICE DISCLAIMER (On Every Result) ────── -->
+  <div class="bottom-device-note">
+    <span class="bottom-device-icon">ℹ️</span>
+    <span class="bottom-device-text">Results are read by an on-device model and can be wrong.</span>
+  </div>
+
+</div><!-- end result-page -->
+
+<!-- Pass per-medicine data to JavaScript -->
+<script>
+  const PER_MEDICINE_DATA = {};
+  const SCAN_MODE = "medicine_package";
+</script>
+
+  </main>
+
+  <!-- ── 6. EDITORIAL FOOTER ──────────────────────────────────────── -->
+  <footer class="site-footer">
+    <div class="container">
+
+      <div class="footer-top-row">
+        <!-- Brand Bio -->
+        <div class="footer-brand-bio">
+          <div class="brand-link footer-brand">
+            <div class="brand-logo-mark" aria-hidden="true">
+              <img src="/static/images/mediscan_logo.png" alt="MediScan Logo" class="brand-logo-img" width="40"
+                height="40" />
+            </div>
+            <div class="brand-info">
+              <span class="brand-name">MediScan</span>
+              <span class="brand-tagline">AI Medicine Scanner</span>
+            </div>
+          </div>
+          <p class="footer-bio-text">
+            Smart on-device medicine intelligence. Identify active pharmaceutical salts, uncover affordable generic
+            alternatives, avoid harmful drug interactions, and master your medication schedule.
+          </p>
+        </div>
+
+        <!-- Links Col 1 -->
+        <div class="footer-links-col">
+          <h4>Capabilities</h4>
+          <div class="footer-nav">
+            <a href="/#scanner-terminal">Medicine Strip Scanner</a>
+            <a href="/#scanner-terminal">Prescription OCR</a>
+            <a href="/#features">Affordable Alternatives</a>
+            <a href="/#features">Cross-Interaction Checker</a>
+            <a href="/#features">Dosage Safety Guide</a>
+          </div>
+        </div>
+
+        <!-- Links Col 2 -->
+        <div class="footer-links-col">
+          <h4>Architecture &amp; Safety</h4>
+          <div class="footer-nav">
+            <a href="/#about">YOLOv8 Object Detection</a>
+            <a href="/#about">TrOCR Vision Transformer</a>
+            <a href="/#about">Offline SQLite Pharmacology</a>
+            <a href="/#faq">Data Privacy Standard</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Legal Medical Disclaimer -->
+      <div class="footer-disclaimer-card">
+        <div class="disclaimer-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+        <div class="disclaimer-text">
+          <strong>Important Clinical Notice:</strong> MediScan is an assistive artificial intelligence tool built for
+          informational and educational verification. It does not replace professional medical judgment, diagnosis, or
+          clinical consultation. Always verify medication changes and contraindications with a qualified doctor or
+          licensed pharmacist.
+        </div>
+      </div>
+
+      <div class="footer-bottom-bar">
+        <span>&copy; 2026 MediScan</span>
+        <div class="footer-bottom-links">
+          <a href="/#hero">Back to Top &uarr;</a>
+          <a href="/#faq">Privacy Policy</a>
+          <a href="/#about">Technology</a>
+        </div>
+      </div>
+
+    </div>
+  </footer>
+
+  <script src="/static/js/main.js?v=20261006_v3"></script>
+</body>
+
+</html>

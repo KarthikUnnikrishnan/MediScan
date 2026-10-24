@@ -63,8 +63,12 @@ class PrintedTrOCR:
         img = img.convert("RGB"); W, H = img.size
 
         t0 = time.time()
-        raw_boxes = self.find_boxes(img) or [(0, 0, W, H)]
+        raw_boxes = self.find_boxes(img)
         t_boxes = time.time() - t0
+        if not raw_boxes:
+            if return_details:
+                return [], {"box_find_sec": t_boxes, "reading_sec": 0.0, "box_count": 0}
+            return []
 
         # Filter: drop boxes with height < 12 px or width < 20 px
         valid_boxes = [

@@ -3,25 +3,59 @@
 {% load mediscan_tags %}
 
 {% block title %}
-  {% if success %}Scan Report{% else %}Scan Failed{% endif %}
-  — MediScan
+  {% if result_level == 'verified' %}
+    Verified Match — MediScan
+  {% elif result_level == 'likely' %}
+    Likely Match — MediScan
+  {% elif result_level == 'error' %}
+    Scanner Not Ready — MediScan
+  {% else %}
+    Scan Report — MediScan
+  {% endif %}
 {% endblock %}
 
 {% block content %}
 <div class="result-page">
 
   <!-- ── STATUS BAR ───────────────────────────────────── -->
-  <div class="result-status-bar">
+  <div class="result-status-bar result-status-bar--{{ result_level }}">
     <div class="status-left">
-      <div class="status-icon{% if result.status == 'unverified' %} status-icon--unverified{% elif result.status == 'ocr_service_error' %} status-icon--service-error{% endif %}">{% if success %}✓{% elif result.status == 'ocr_service_error' %}✕{% else %}⚠{% endif %}</div>
+      <div class="status-icon status-icon--{{ result_level }}">
+        {% if result_level == 'verified' %}
+          ✓
+        {% elif result_level == 'likely' %}
+          ⚠
+        {% elif result_level == 'error' %}
+          ✕
+        {% else %}
+          🔍
+        {% endif %}
+      </div>
       <div>
-        <div class="status-title">
-          {% if success %}
-            Medication Verified & Matched
-          {% elif result.status == 'ocr_service_error' %}
-            Scan Service Unavailable
+        <div class="status-header-row">
+          {% if result_level == 'verified' %}
+            <span class="badge-verified">Verified match</span>
+          {% elif result_level == 'likely' %}
+            <span class="badge-likely">Likely match - please confirm</span>
+          {% elif result_level == 'error' %}
+            <span class="badge-error">Scanner is not ready</span>
           {% else %}
-            Could Not Confidently Verify
+            <span class="badge-notfound">Could not identify this medicine</span>
+          {% endif %}
+        </div>
+        <div class="status-desc-text">
+          {% if result_level == 'verified' %}
+            Matches the brand and the ingredient printed on the pack.
+          {% elif result_level == 'likely' %}
+            {% if is_ingredient_match %}
+              Closest match by ingredient
+            {% else %}
+              Top candidate match — please verify details against your packaging.
+            {% endif %}
+          {% elif result_level == 'error' %}
+            {{ error_reason }}
+          {% else %}
+            Could not identify this medicine. Try a clearer photo of the brand name.
           {% endif %}
         </div>
         {% if total_found and total_found > 1 %}
@@ -37,11 +71,21 @@
       <a href="{% url 'index' %}" class="btn-ghost-sm">
         ← Scan Another
       </a>
+      {% if success %}
       <button onclick="window.print()" class="btn-primary-sm">
         🖨 Print Report
       </button>
+      {% endif %}
     </div>
   </div>
+
+  <!-- ── PACK CONFIRMATION BANNER (Both verified and likely) ── -->
+  {% if result_level == 'verified' or result_level == 'likely' %}
+  <div class="pack-confirm-banner">
+    <span class="pack-confirm-icon">⚠️</span>
+    <span class="pack-confirm-text"><strong>Check this result against your pack before use.</strong></span>
+  </div>
+  {% endif %}
 
   <!-- ── HANDWRITING WARNING BANNER (prescription only) ── -->
   {% if mode == 'prescription' %}
@@ -119,6 +163,49 @@
       {% if mode == 'medicine_package' %}
         {% if medicines %}
           {% with med=medicines.0 %}
+
+          <!-- TOP 3 CANDIDATES SECTION (Shown prominently for Likely match) -->
+          {% if top_candidates and top_candidates|length > 0 %}
+          <div class="candidates-comparison-panel {% if result_level == 'likely' %}candidates-comparison-panel--likely{% endif %}">
+            <div class="cand-panel-header">
+              <span class="cand-panel-title">TOP CANDIDATES CONSIDERED (TOP {{ top_candidates|length }})</span>
+              {% if result_level == 'likely' %}
+                <span class="cand-panel-hint">Please confirm against your pack</span>
+              {% endif %}
+            </div>
+            <div class="cand-grid">
+              {% for cand in top_candidates|slice:":3" %}
+              <div class="cand-card {% if forloop.first %}cand-card--top{% endif %}">
+                <div class="cand-card-top-row">
+                  <span class="cand-rank-badge">#{{ forloop.counter }}</span>
+                  <span class="cand-score-badge">{{ cand.score|floatformat:0 }}% score</span>
+                </div>
+                <div class="cand-brand-title">{{ cand.brand|default:cand.name }}</div>
+                <div class="cand-full-name">{{ cand.name }}</div>
+                <div class="cand-salt-row">
+                  <span class="cand-salt-lbl">Salt:</span>
+                  <span class="cand-salt-txt">{{ cand.salt|default:"Not listed" }}</span>
+                </div>
+                <div class="cand-badge-row">
+                  {% if cand.match_type == 'ingredient' %}
+                    <span class="cand-tag cand-tag--ingredient">Closest match by ingredient</span>
+                  {% elif cand.is_exact_brand and cand.salt_matched %}
+                    <span class="cand-tag cand-tag--verified">Exact Brand &amp; Salt</span>
+                  {% elif cand.is_exact_brand %}
+                    <span class="cand-tag cand-tag--brand">Exact Brand</span>
+                  {% else %}
+                    <span class="cand-tag cand-tag--likely">Likely Candidate</span>
+                  {% endif %}
+                  {% if cand.price %}
+                    <span class="cand-price-val">₹ {{ cand.price }}</span>
+                  {% endif %}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+
           <div class="detected-label">DETECTED MEDICINE</div>
           <div class="detected-name">{{ med.detected_name|default:detected_name|default:med.name }}</div>
           <div class="detected-match-sub" style="margin-top: -0.4rem; margin-bottom: 0.85rem; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
@@ -417,50 +504,50 @@
   </div><!-- end result-dashboard -->
 
   {% else %}
-  <!-- SCAN FAILED STATE -->
-  <div class="fail-state">
-    <div class="fail-icon">✗</div>
-    <div class="fail-title">
-      {% if mode == 'prescription' %}
-        Could not read this prescription reliably
-      {% else %}
-        Could Not Confidently Verify
-      {% endif %}
+  {% if result_level == 'error' %}
+  <!-- SETUP ERROR STATE -->
+  <div class="setup-error-state">
+    <div class="setup-error-icon">⚙️</div>
+    <div class="setup-error-title">Scanner is not ready</div>
+    <div class="setup-error-reason-box">
+      <div class="setup-error-reason-label">REASON</div>
+      <div class="setup-error-reason-text">{{ error_reason }}</div>
     </div>
-    <div class="fail-msg">
-      {% if result.message %}
-        {{ result.message }}
-      {% elif result.error %}
-        {{ result.error }}
-      {% else %}
-        The scan did not provide enough reliable evidence to identify a medicine.
-      {% endif %}
+    <div class="setup-error-sub">
+      Please check that required model files exist in <code>saved_models/</code> and all offline dependencies are installed.
     </div>
-    {% if result.rejection_reasons %}
-    <div class="fail-msg">
-      {% for reason in result.rejection_reasons %}
-        <div>{{ reason }}</div>
-      {% endfor %}
-    </div>
-    {% endif %}
-    {% if raw_ocr or ocr_text or other_text_read %}
-    <div class="raw-ocr-box" style="margin-top: 1.25rem; text-align: left; background: #f8fafc; border: 1px solid #e2e8f0; padding: 1rem 1.25rem; border-radius: 8px; max-width: 600px; margin-left: auto; margin-right: auto;">
-      <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">Text Read from Prescription</div>
-      {% if other_text_read %}
-        <div style="display: flex; flex-direction: column; gap: 0.35rem;">
-          {% for line in other_text_read %}
-          <div style="font-family: monospace; font-size: 0.85rem; color: #334155; background: #ffffff; border: 1px solid #e2e8f0; padding: 0.3rem 0.6rem; border-radius: 4px;">{{ line }}</div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <pre style="white-space: pre-wrap; font-family: monospace; font-size: 0.85rem; color: #334155; line-height: 1.5; margin: 0;">{{ raw_ocr|default:ocr_text }}</pre>
-      {% endif %}
-    </div>
-    {% endif %}
-    <a href="{% url 'index' %}" class="btn-primary-sm" style="margin-top: 1rem; display: inline-block;">
-      ← Try Again
+    <a href="{% url 'index' %}" class="btn-primary-sm" style="margin-top: 1.25rem; display: inline-block;">
+      ← Return to Scanner
     </a>
   </div>
+
+  {% else %}
+  <!-- NOT FOUND STATE (no suggestions) -->
+  <div class="not-found-state">
+    <div class="not-found-icon">🔍</div>
+    <div class="not-found-title">Could not identify this medicine. Try a clearer photo of the brand name.</div>
+    <div class="not-found-sub">
+      The scanned image did not contain legible brand or ingredient text that matches our offline database.
+    </div>
+    <div class="not-found-tips-card">
+      <div class="not-found-tips-title">Tips for an optimal scan:</div>
+      <ul class="not-found-tips-list">
+        <li>Ensure good lighting without glare or reflections on foil blister packs.</li>
+        <li>Position the camera directly over the printed brand name and dosage.</li>
+        <li>Hold the device steady so printed letters and salt names are sharp.</li>
+      </ul>
+    </div>
+    {% if raw_ocr or ocr_text %}
+    <div class="raw-ocr-box" style="margin-top: 1.25rem; text-align: left; background: #f8fafc; border: 1px solid #e2e8f0; padding: 1rem 1.25rem; border-radius: 8px; max-width: 600px; margin-left: auto; margin-right: auto;">
+      <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">Text Read from Packaging</div>
+      <pre style="white-space: pre-wrap; font-family: monospace; font-size: 0.85rem; color: #334155; line-height: 1.5; margin: 0;">{{ raw_ocr|default:ocr_text }}</pre>
+    </div>
+    {% endif %}
+    <a href="{% url 'index' %}" class="btn-primary-sm" style="margin-top: 1.25rem; display: inline-block;">
+      ← Try Another Photo
+    </a>
+  </div>
+  {% endif %}
   {% endif %}
 
   <!-- ── ACTION BAR ────────────────────────────────────── -->
@@ -468,9 +555,17 @@
     <a href="{% url 'index' %}" class="btn-ghost-sm">
       ← Scan Another
     </a>
+    {% if success %}
     <button onclick="window.print()" class="btn-primary-sm">
       🖨 Print Report
     </button>
+    {% endif %}
+  </div>
+
+  <!-- ── BOTTOM DEVICE DISCLAIMER (On Every Result) ────── -->
+  <div class="bottom-device-note">
+    <span class="bottom-device-icon">ℹ️</span>
+    <span class="bottom-device-text">Results are read by an on-device model and can be wrong.</span>
   </div>
 
 </div><!-- end result-page -->

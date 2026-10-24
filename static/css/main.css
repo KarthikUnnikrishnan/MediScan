@@ -4426,3 +4426,438 @@ input[type=radio]:checked+.mode-tile .mode-tile-icon-svg {
   margin-top: 0.35rem;
   line-height: 1.35;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Step 7: Two-Level Result Badges, Setup Errors & Disclaimers
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.badge-verified {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1.5px solid #10b981;
+  font-size: 1.15rem;
+  font-weight: 800;
+  padding: 4px 14px;
+  border-radius: 9999px;
+  letter-spacing: -0.01em;
+}
+
+.badge-likely {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fffbeb;
+  color: #92400e;
+  border: 1.5px solid #f59e0b;
+  font-size: 1.15rem;
+  font-weight: 800;
+  padding: 4px 14px;
+  border-radius: 9999px;
+  letter-spacing: -0.01em;
+}
+
+.badge-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1.5px solid #ef4444;
+  font-size: 1.15rem;
+  font-weight: 800;
+  padding: 4px 14px;
+  border-radius: 9999px;
+  letter-spacing: -0.01em;
+}
+
+.badge-notfound {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f8fafc;
+  color: #334155;
+  border: 1.5px solid #94a3b8;
+  font-size: 1.15rem;
+  font-weight: 800;
+  padding: 4px 14px;
+  border-radius: 9999px;
+  letter-spacing: -0.01em;
+}
+
+.status-header-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.status-desc-text {
+  font-size: 0.88rem;
+  color: #475569;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.status-icon--verified {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #86efac;
+}
+
+.status-icon--likely {
+  background: #fef3c7;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
+.status-icon--error {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+.status-icon--not_found {
+  background: #f1f5f9;
+  color: #64748b;
+  border-color: #cbd5e1;
+}
+
+/* ── Pack Confirmation Banner ── */
+.pack-confirm-banner {
+  background: #fffbeb;
+  border: 1.5px solid #fde68a;
+  color: #92400e;
+  padding: 0.95rem 1.4rem;
+  border-radius: 14px;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  box-shadow: 0 2px 8px -2px rgba(245, 158, 11, 0.12);
+}
+
+.pack-confirm-icon {
+  font-size: 1.35rem;
+  flex-shrink: 0;
+}
+
+.pack-confirm-text {
+  color: #78350f;
+  letter-spacing: -0.01em;
+}
+
+/* ── Candidates Comparison Panel (Likely Match) ── */
+.candidates-comparison-panel {
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1.15rem;
+  margin-bottom: 1.25rem;
+}
+
+.candidates-comparison-panel--likely {
+  background: #fffdf5;
+  border-color: #fde68a;
+}
+
+.cand-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.cand-panel-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+}
+
+.cand-panel-hint {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #b45309;
+  background: #fef3c7;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid #fde68a;
+}
+
+.cand-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.cand-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  transition: all 0.15s ease;
+}
+
+.cand-card--top {
+  border-color: #f59e0b;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.1);
+}
+
+.cand-card-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
+.cand-rank-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.cand-score-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #0284c7;
+  background: #e0f2fe;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.cand-brand-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.cand-full-name {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-bottom: 0.35rem;
+}
+
+.cand-salt-row {
+  font-size: 0.78rem;
+  color: #334155;
+  margin-bottom: 0.45rem;
+}
+
+.cand-salt-lbl {
+  font-weight: 700;
+  color: #475569;
+}
+
+.cand-salt-txt {
+  font-weight: 500;
+}
+
+.cand-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.cand-tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.cand-tag--ingredient {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.cand-tag--verified {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.cand-tag--brand {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.cand-tag--likely {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.cand-price-val {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #143d2b;
+  margin-left: auto;
+}
+
+/* ── Setup Error State ── */
+.setup-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 3.5rem 2rem;
+  background: #ffffff;
+  border: 1.5px solid #fca5a5;
+  border-radius: 16px;
+  margin-top: 1.5rem;
+  box-shadow: 0 4px 20px -2px rgba(239, 68, 68, 0.08);
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.setup-error-icon {
+  font-size: 3rem;
+  margin-bottom: 0.75rem;
+}
+
+.setup-error-title {
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: #991b1b;
+  letter-spacing: -0.02em;
+  margin-bottom: 1rem;
+}
+
+.setup-error-reason-box {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 0.85rem 1.25rem;
+  width: 100%;
+  margin-bottom: 1rem;
+  text-align: left;
+}
+
+.setup-error-reason-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #b91c1c;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.25rem;
+}
+
+.setup-error-reason-text {
+  font-family: monospace;
+  font-size: 0.88rem;
+  color: #7f1d1d;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.setup-error-sub {
+  font-size: 0.85rem;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+/* ── Not Found State ── */
+.not-found-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 3.5rem 2rem;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  margin-top: 1.5rem;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04);
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.not-found-icon {
+  font-size: 3rem;
+  margin-bottom: 0.75rem;
+}
+
+.not-found-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.65rem;
+  max-width: 520px;
+}
+
+.not-found-sub {
+  font-size: 0.9rem;
+  color: #64748b;
+  margin-bottom: 1.25rem;
+  max-width: 480px;
+  line-height: 1.45;
+}
+
+.not-found-tips-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  text-align: left;
+  width: 100%;
+  margin-bottom: 1.25rem;
+}
+
+.not-found-tips-title {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.not-found-tips-list {
+  font-size: 0.82rem;
+  color: #475569;
+  padding-left: 1.25rem;
+  line-height: 1.5;
+}
+
+/* ── Bottom Device Disclaimer (Mandatory on Every Result) ── */
+.bottom-device-note {
+  margin-top: 2rem;
+  padding: 0.9rem 1.4rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.bottom-device-icon {
+  font-size: 1.1rem;
+}
+
+.bottom-device-text {
+  color: #475569;
+}
