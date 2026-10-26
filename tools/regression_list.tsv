@@ -1,0 +1,3 @@
+photo	target_brand	regression_type	reason_code	before_top1	now_top1	before_top3	now_top3	text_boxes
+raw/mobile_pharma_packages/bjy2svvmn8-1/Flagyl 20 tablets/huawei p30 (56).jpg	FLAGYL	both	brand guard	FLAGYL	FLYLOR	FLAGYL,FLOXAGYL,FLYFLOX	FLYLOR,SONO,STABLETOSE	FLAYLOR // METRONIDAZOLE // 500 // ANTIPROTOZOLE // SM // ANTISEPTIC // OVENTIS // SONOF // INTESTINAL // STABLETS // COATED // FILM // 20 // /8
+raw/mobile_pharma_packages/bjy2svvmn8-1/Motilium 40 tablets/huawei p30 (839).jpg	MOTILIUM	top3	brand guard	MALEATE		MALEATE,MOTILIUM,DOMPERON		MOTILUSET // Y // MINAPHARMEGYPT // DOMPERIDONE // EQUIVALENT // TABLETS // PHARMACEUTICA // MALEATE // MG PER // MANUFACTURED BY: // ORAL // BELGIUM // TABIET // UNDER LICENCE

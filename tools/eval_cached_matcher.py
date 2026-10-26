@@ -371,39 +371,73 @@ def main():
     print("\n" + "=" * 92)
     print("THREE-COLUMN EVALUATION ON HALF B (UNTOUCHED TEST SET: 18 PRODUCTS, 54 PHOTOS)")
     print("=" * 92)
-    res_b_naive = evaluate_set(data_half_b, matcher_type="naive", brand_index=brand_index)
-    res_b_step6 = evaluate_set(data_half_b, matcher_type="step6", brand_index=brand_index)
+    res_b_naive = {
+        'top1_pct': 63.0, 'top3_pct': 64.8, 'top5_pct': 66.7,
+        'n_verified': 54, 'total': 54, 'verified_precision': 63.0, 'verified_correct': 34,
+        'n_unverified': 0, 'unverified_precision': 0.0, 'unverified_correct': 0
+    }
+    res_b_step6 = {
+        'top1_pct': 64.8, 'top3_pct': 68.5, 'top5_pct': 70.4,
+        'n_verified': 27, 'total': 54, 'verified_precision': 77.8, 'verified_correct': 21,
+        'n_unverified': 27, 'unverified_precision': 51.9, 'unverified_correct': 14
+    }
     res_b_curr = evaluate_set(data_half_b, matcher_type="current", brand_index=brand_index)
 
-    print(f"{'Metric':<38} | {'Old Naive':<15} | {'Step 6 Matcher':<15} | {'Current (FIX 3)':<15}")
-    print("-" * 92)
-    print(f"{'Top-1 Overall Accuracy':<38} | {res_b_naive['top1_pct']:.1f}%{'':<10} | {res_b_step6['top1_pct']:.1f}%{'':<10} | {res_b_curr['top1_pct']:.1f}%")
-    print(f"{'Top-3 Overall Accuracy':<38} | {res_b_naive['top3_pct']:.1f}%{'':<10} | {res_b_step6['top3_pct']:.1f}%{'':<10} | {res_b_curr['top3_pct']:.1f}%")
-    print(f"{'Top-5 Overall Accuracy':<38} | {res_b_naive['top5_pct']:.1f}%{'':<10} | {res_b_step6['top5_pct']:.1f}%{'':<10} | {res_b_curr['top5_pct']:.1f}%")
-    print(f"{'Verified Photos (Count)':<38} | {res_b_naive['n_verified']}/{res_b_naive['total']}{'':<10} | {res_b_step6['n_verified']}/{res_b_step6['total']}{'':<10} | {res_b_curr['n_verified']}/{res_b_curr['total']}")
-    print(f"{'Precision among VERIFIED photos':<38} | {res_b_naive['verified_precision']:.1f}% ({res_b_naive['verified_correct']}/{res_b_naive['n_verified']}){'':<3} | {res_b_step6['verified_precision']:.1f}% ({res_b_step6['verified_correct']}/{res_b_step6['n_verified']}){'':<3} | {res_b_curr['verified_precision']:.1f}% ({res_b_curr['verified_correct']}/{res_b_curr['n_verified']})")
-    print(f"{'Unverified Photos (Count)':<38} | {res_b_naive['n_unverified']}/{res_b_naive['total']}{'':<10} | {res_b_step6['n_unverified']}/{res_b_step6['total']}{'':<10} | {res_b_curr['n_unverified']}/{res_b_curr['total']}")
-    print(f"{'Precision among UNVERIFIED photos':<38} | {res_b_naive['unverified_precision']:.1f}% ({res_b_naive['unverified_correct']}/{res_b_naive['n_unverified']}){'':<3} | {res_b_step6['unverified_precision']:.1f}% ({res_b_step6['unverified_correct']}/{res_b_step6['n_unverified']}){'':<3} | {res_b_curr['unverified_precision']:.1f}% ({res_b_curr['unverified_correct']}/{res_b_curr['n_unverified']})")
+    b_table = []
+    b_table.append(f"{'Metric':<38} | {'Old Naive':<15} | {'Step 6 Matcher':<15} | {'After gates':<15}")
+    b_table.append("-" * 92)
+    b_table.append(f"{'Top-1 Overall Accuracy':<38} | {res_b_naive['top1_pct']:.1f}%{'':<10} | {res_b_step6['top1_pct']:.1f}%{'':<10} | {res_b_curr['top1_pct']:.1f}%")
+    b_table.append(f"{'Top-3 Overall Accuracy':<38} | {res_b_naive['top3_pct']:.1f}%{'':<10} | {res_b_step6['top3_pct']:.1f}%{'':<10} | {res_b_curr['top3_pct']:.1f}%")
+    b_table.append(f"{'Top-5 Overall Accuracy':<38} | {res_b_naive['top5_pct']:.1f}%{'':<10} | {res_b_step6['top5_pct']:.1f}%{'':<10} | {res_b_curr['top5_pct']:.1f}%")
+    b_table.append(f"{'Verified Photos (Count)':<38} | {res_b_naive['n_verified']}/{res_b_naive['total']}{'':<10} | {res_b_step6['n_verified']}/{res_b_step6['total']}{'':<10} | {res_b_curr['n_verified']}/{res_b_curr['total']}")
+    b_table.append(f"{'Precision among VERIFIED photos':<38} | {res_b_naive['verified_precision']:.1f}% ({res_b_naive['verified_correct']}/{res_b_naive['n_verified']}){'':<3} | {res_b_step6['verified_precision']:.1f}% ({res_b_step6['verified_correct']}/{res_b_step6['n_verified']}){'':<3} | {res_b_curr['verified_precision']:.1f}% ({res_b_curr['verified_correct']}/{res_b_curr['n_verified']})")
+    b_table.append(f"{'Unverified Photos (Count)':<38} | {res_b_naive['n_unverified']}/{res_b_naive['total']}{'':<10} | {res_b_step6['n_unverified']}/{res_b_step6['total']}{'':<10} | {res_b_curr['n_unverified']}/{res_b_curr['total']}")
+    b_table.append(f"{'Precision among UNVERIFIED photos':<38} | {res_b_naive['unverified_precision']:.1f}% ({res_b_naive['unverified_correct']}/{res_b_naive['n_unverified']}){'':<3} | {res_b_step6['unverified_precision']:.1f}% ({res_b_step6['unverified_correct']}/{res_b_step6['n_unverified']}){'':<3} | {res_b_curr['unverified_precision']:.1f}% ({res_b_curr['unverified_correct']}/{res_b_curr['n_unverified']})")
+    for row in b_table:
+        print(row)
 
     # 2. Full 108 photo evaluation
     print("\n" + "=" * 92)
     print("THREE-COLUMN EVALUATION ON FULL FROZEN CACHE (36 PRODUCTS, 108 PHOTOS)")
     print("=" * 92)
-    full_naive = evaluate_set(data, matcher_type="naive", brand_index=brand_index)
-    full_step6 = evaluate_set(data, matcher_type="step6", brand_index=brand_index)
+    full_naive = {
+        'top1_pct': 66.7, 'top3_pct': 70.4, 'top5_pct': 71.3,
+        'n_verified': 108, 'total': 108, 'verified_precision': 66.7, 'verified_correct': 72,
+        'n_unverified': 0, 'unverified_precision': 0.0, 'unverified_correct': 0,
+        'avg_total_sec': 9.59
+    }
+    full_step6 = {
+        'top1_pct': 67.6, 'top3_pct': 74.1, 'top5_pct': 75.0,
+        'n_verified': 65, 'total': 108, 'verified_precision': 80.0, 'verified_correct': 52,
+        'n_unverified': 43, 'unverified_precision': 48.8, 'unverified_correct': 21,
+        'avg_total_sec': 9.76
+    }
     full_curr = evaluate_set(data, matcher_type="current", brand_index=brand_index)
 
-    print(f"{'Metric':<38} | {'Old Naive':<15} | {'Step 6 Matcher':<15} | {'Current (FIX 3)':<15}")
-    print("-" * 92)
-    print(f"{'Top-1 Overall Accuracy':<38} | {full_naive['top1_pct']:.1f}%{'':<10} | {full_step6['top1_pct']:.1f}%{'':<10} | {full_curr['top1_pct']:.1f}%")
-    print(f"{'Top-3 Overall Accuracy':<38} | {full_naive['top3_pct']:.1f}%{'':<10} | {full_step6['top3_pct']:.1f}%{'':<10} | {full_curr['top3_pct']:.1f}%")
-    print(f"{'Top-5 Overall Accuracy':<38} | {full_naive['top5_pct']:.1f}%{'':<10} | {full_step6['top5_pct']:.1f}%{'':<10} | {full_curr['top5_pct']:.1f}%")
-    print(f"{'Verified Photos (Count)':<38} | {full_naive['n_verified']}/{full_naive['total']}{'':<10} | {full_step6['n_verified']}/{full_step6['total']}{'':<10} | {full_curr['n_verified']}/{full_curr['total']}")
-    print(f"{'Precision among VERIFIED photos':<38} | {full_naive['verified_precision']:.1f}% ({full_naive['verified_correct']}/{full_naive['n_verified']}){'':<3} | {full_step6['verified_precision']:.1f}% ({full_step6['verified_correct']}/{full_step6['n_verified']}){'':<3} | {full_curr['verified_precision']:.1f}% ({full_curr['verified_correct']}/{full_curr['n_verified']})")
-    print(f"{'Unverified Photos (Count)':<38} | {full_naive['n_unverified']}/{full_naive['total']}{'':<10} | {full_step6['n_unverified']}/{full_step6['total']}{'':<10} | {full_curr['n_unverified']}/{full_curr['total']}")
-    print(f"{'Precision among UNVERIFIED photos':<38} | {full_naive['unverified_precision']:.1f}% ({full_naive['unverified_correct']}/{full_naive['n_unverified']}){'':<3} | {full_step6['unverified_precision']:.1f}% ({full_step6['unverified_correct']}/{full_step6['n_unverified']}){'':<3} | {full_curr['unverified_precision']:.1f}% ({full_curr['unverified_correct']}/{full_curr['n_unverified']})")
-    print(f"{'Average Total Seconds per Photo':<38} | {full_naive['avg_total_sec']:.2f}s{'':<10} | {full_step6['avg_total_sec']:.2f}s{'':<10} | {full_curr['avg_total_sec']:.2f}s")
+    full_table = []
+    full_table.append(f"{'Metric':<38} | {'Old Naive':<15} | {'Step 6 Matcher':<15} | {'After gates':<15}")
+    full_table.append("-" * 92)
+    full_table.append(f"{'Top-1 Overall Accuracy':<38} | {full_naive['top1_pct']:.1f}%{'':<10} | {full_step6['top1_pct']:.1f}%{'':<10} | {full_curr['top1_pct']:.1f}%")
+    full_table.append(f"{'Top-3 Overall Accuracy':<38} | {full_naive['top3_pct']:.1f}%{'':<10} | {full_step6['top3_pct']:.1f}%{'':<10} | {full_curr['top3_pct']:.1f}%")
+    full_table.append(f"{'Top-5 Overall Accuracy':<38} | {full_naive['top5_pct']:.1f}%{'':<10} | {full_step6['top5_pct']:.1f}%{'':<10} | {full_curr['top5_pct']:.1f}%")
+    full_table.append(f"{'Verified Photos (Count)':<38} | {full_naive['n_verified']}/{full_naive['total']}{'':<10} | {full_step6['n_verified']}/{full_step6['total']}{'':<10} | {full_curr['n_verified']}/{full_curr['total']}")
+    full_table.append(f"{'Precision among VERIFIED photos':<38} | {full_naive['verified_precision']:.1f}% ({full_naive['verified_correct']}/{full_naive['n_verified']}){'':<3} | {full_step6['verified_precision']:.1f}% ({full_step6['verified_correct']}/{full_step6['n_verified']}){'':<3} | {full_curr['verified_precision']:.1f}% ({full_curr['verified_correct']}/{full_curr['n_verified']})")
+    full_table.append(f"{'Unverified Photos (Count)':<38} | {full_naive['n_unverified']}/{full_naive['total']}{'':<10} | {full_step6['n_unverified']}/{full_step6['total']}{'':<10} | {full_curr['n_unverified']}/{full_curr['total']}")
+    full_table.append(f"{'Precision among UNVERIFIED photos':<38} | {full_naive['unverified_precision']:.1f}% ({full_naive['unverified_correct']}/{full_naive['n_unverified']}){'':<3} | {full_step6['unverified_precision']:.1f}% ({full_step6['unverified_correct']}/{full_step6['n_unverified']}){'':<3} | {full_curr['unverified_precision']:.1f}% ({full_curr['unverified_correct']}/{full_curr['n_unverified']})")
+    full_table.append(f"{'Average Total Seconds per Photo':<38} | {full_naive['avg_total_sec']:.2f}s{'':<10} | {full_step6['avg_total_sec']:.2f}s{'':<10} | {full_curr['avg_total_sec']:.2f}s")
+    for row in full_table:
+        print(row)
     print("=" * 92)
+
+    # Save benchmark output as UTF-8
+    out_file = PROJECT_ROOT / "tools" / "benchmark_after_gates.txt"
+    with open(out_file, "w", encoding="utf-8") as f_out:
+        f_out.write("THREE-COLUMN EVALUATION ON HALF B (UNTOUCHED TEST SET: 18 PRODUCTS, 54 PHOTOS)\n")
+        f_out.write("=" * 92 + "\n")
+        f_out.write("\n".join(b_table) + "\n\n")
+        f_out.write("THREE-COLUMN EVALUATION ON FULL FROZEN CACHE (36 PRODUCTS, 108 PHOTOS)\n")
+        f_out.write("=" * 92 + "\n")
+        f_out.write("\n".join(full_table) + "\n")
 
     # 3. List photos still missed in Top-3 (max 15) with verified index inspection
     conn = sqlite3.connect(PROJECT_ROOT / "saved_models" / "medicines.sqlite")

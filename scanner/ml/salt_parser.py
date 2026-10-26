@@ -39,6 +39,12 @@ _SYNONYM_MAP = {
     'potassium clavulanate': 'clavulanic acid',
     'betamethasone dipropionate': 'betamethasone',
     'betamethasone valerate': 'betamethasone',
+    'povidone': 'povidone iodine',
+    'povidone lodine': 'povidone iodine',
+    'povidone-lodine': 'povidone iodine',
+    'flavonoid': 'diosmin',
+    'flavonoids': 'diosmin',
+    'flavonoid fraction': 'diosmin',
 }
 
 _KNOWN_ACTIVE_NAMES = [
@@ -198,7 +204,7 @@ _DOSAGE_LINE_RE = re.compile(
 )
 
 _DIRECT_STRENGTH_PATTERN = re.compile(
-    r'\b(?:IP|BP|USP)?\s*(\d+(?:\.\d+)?)\s*(MG|MCG|UG|µG|G|GM|ML|%|IU|UNITS?)\b',
+    r'\b(?:IP|BP|USP)?\s*(\d+(?:\.\d+)?)\s*(MG|MCG|UG|µG|G|GM|ML|IU|UNITS?|%)(?!\w)',
     re.IGNORECASE
 )
 
@@ -305,15 +311,19 @@ def extract_active_salt_set(salt_str: Optional[str]) -> set:
     salt_text = "\n".join(clean_lines) if clean_lines else salt_str
     parsed = parse_salt(salt_text)
     salts = set()
+    known_actives_set = set(_KNOWN_ACTIVE_NAMES)
     for item in parsed:
         cname = item.get("canonical_name")
         if cname and not _DOSAGE_LINE_RE.search(cname):
-            salts.add(cname)
-    if not salts:
-        clean = salt_text.lower()
-        for act in _KNOWN_ACTIVE_NAMES:
-            if re.search(r'\b' + re.escape(act) + r'\b', clean):
-                salts.add(act)
+            norm_cname = _SYNONYM_MAP.get(cname, cname)
+            if norm_cname in known_actives_set or any(act in norm_cname for act in _KNOWN_ACTIVE_NAMES):
+                salts.add(norm_cname)
+
+    # Always scan text for known active chemical names
+    clean = salt_text.lower()
+    for act in _KNOWN_ACTIVE_NAMES:
+        if re.search(r'\b' + re.escape(act) + r'\b', clean):
+            salts.add(_SYNONYM_MAP.get(act, act))
     return salts
 
 

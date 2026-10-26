@@ -1,0 +1,24 @@
+THREE-COLUMN EVALUATION ON HALF B (UNTOUCHED TEST SET: 18 PRODUCTS, 54 PHOTOS)
+============================================================================================
+Metric                                 | Old Naive       | Step 6 Matcher  | After gates    
+--------------------------------------------------------------------------------------------
+Top-1 Overall Accuracy                 | 63.0%           | 64.8%           | 70.4%
+Top-3 Overall Accuracy                 | 64.8%           | 68.5%           | 70.4%
+Top-5 Overall Accuracy                 | 66.7%           | 70.4%           | 72.2%
+Verified Photos (Count)                | 54/54           | 27/54           | 6/54
+Precision among VERIFIED photos        | 63.0% (34/54)    | 77.8% (21/27)    | 100.0% (6/6)
+Unverified Photos (Count)              | 0/54           | 27/54           | 48/54
+Precision among UNVERIFIED photos      | 0.0% (0/0)    | 51.9% (14/27)    | 66.7% (32/48)
+
+THREE-COLUMN EVALUATION ON FULL FROZEN CACHE (36 PRODUCTS, 108 PHOTOS)
+============================================================================================
+Metric                                 | Old Naive       | Step 6 Matcher  | After gates    
+--------------------------------------------------------------------------------------------
+Top-1 Overall Accuracy                 | 66.7%           | 67.6%           | 74.1%
+Top-3 Overall Accuracy                 | 70.4%           | 74.1%           | 74.1%
+Top-5 Overall Accuracy                 | 71.3%           | 75.0%           | 75.9%
+Verified Photos (Count)                | 108/108           | 65/108           | 10/108
+Precision among VERIFIED photos        | 66.7% (72/108)    | 80.0% (52/65)    | 90.0% (9/10)
+Unverified Photos (Count)              | 0/108           | 43/108           | 98/108
+Precision among UNVERIFIED photos      | 0.0% (0/0)    | 48.8% (21/43)    | 72.4% (71/98)
+Average Total Seconds per Photo        | 9.59s           | 9.76s           | 9.81s

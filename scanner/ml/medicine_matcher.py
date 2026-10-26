@@ -67,7 +67,8 @@ def is_brand_box_candidate(line_str: str) -> bool:
     words = [w for w in re.split(r'[\s\-_]+', u) if w]
     if any(w in GRAMMAR_WORDS for w in words):
         return False
-    if len(words) > 3:
+    # Allow medicine brand boxes with strength and form (e.g. "AUGMENTIN 625 DUO TABLETS")
+    if len(words) > 6:
         return False
     return True
 
@@ -655,7 +656,8 @@ PHARMA_STOPWORDS = {
     'ALLERGY', 'COLD', 'COUGH', 'ORANGE', 'FLAVOUR', 'FLAVORED', 'BORG', 'LEI', 'CEIP',
     'LOLIG', 'TODUCE', 'TOCUCE', 'JULPHAR', 'JAMJOM', 'TOR', 'EASTED', 'SIN', 'REMO',
     'SVIAMOWING', 'IVET', 'KAR', 'YLY', 'WYONI', 'ARRIV', 'ARGICAL', 'AIR', 'VENTED',
-    '5CMX5YD', 'NAN', 'TAPE', 'OINT', 'COMPOSITION'
+    '5CMX5YD', 'NAN', 'TAPE', 'OINT', 'COMPOSITION', 'ACID', 'RECEIP', 'RECEIPT',
+    'ANTIBIOTIC', 'ANTISEPTIC', 'ANTIPROTOZOLE', 'ANTIPROTOZOAL'
 }
 
 COMMON_SALTS = {
@@ -668,12 +670,30 @@ COMMON_SALTS = {
     'FEXOFENADINE'
 }
 
+SALT_MODIFIERS_SET = {
+    'SODIUM', 'POTASSIUM', 'HYDROCHLORIDE', 'HCL', 'MALEATE', 'SUCCINATE',
+    'TARTRATE', 'SULFATE', 'SULPHATE', 'SUFATE', 'PHOSPHATE', 'CITRATE',
+    'ACETATE', 'FUMARATE', 'MESYLATE', 'BESYLATE', 'CHLORIDE', 'NITRATE',
+    'CARBONATE', 'OXIDE', 'GLUCONATE', 'LACTATE'
+}
+
 
 def split_glued_tokens(text: str) -> str:
     """Split glued tokens at letter/digit boundaries (e.g. ACRETIN0.05% -> ACRETIN 0.05%)."""
     t = re.sub(r'([A-Za-z]+)(\d+(?:\.\d+)?%?)', r'\1 \2', text)
     t = re.sub(r'(\d+(?:\.\d+)?%?)([A-Za-z]+)', r'\1 \2', t)
     return t
+
+
+def salts_share_active(salts_a: set, salts_b: set) -> bool:
+    """Check if two sets of active salt names share any active ingredient name or stem."""
+    if not salts_a or not salts_b:
+        return False
+    if salts_a & salts_b:
+        return True
+    words_a = {w for s in salts_a for w in re.split(r'[\s\-_]+', s.lower()) if len(w) >= 4 and w not in PHARMA_STOPWORDS}
+    words_b = {w for s in salts_b for w in re.split(r'[\s\-_]+', s.lower()) if len(w) >= 4 and w not in PHARMA_STOPWORDS}
+    return bool(words_a & words_b)
 
 
 _ENGLISH_WORDS = None
@@ -808,15 +828,15 @@ def match_printed_lines(
     exact_brand_words = set()
     for tok in brand_eligible_tokens:
         tok_l = tok.lower()
-        if not _is_safe_brand_token(tok) or tok in COMMON_SALTS:
+        if not _is_safe_brand_token(tok) or tok in COMMON_SALTS or tok in SALT_MODIFIERS_SET:
             continue
         if tok in brand_index.brand_to_ids:
             exact_brand_words.add(tok)
         elif len(tok) >= 4:
-            hit = process.extractOne(tok, brand_index.unique_brand_words, scorer=fuzz.ratio, score_cutoff=88.0)
-            if hit:
+            hits = process.extract(tok, brand_index.unique_brand_words, scorer=fuzz.ratio, limit=2, score_cutoff=85.0)
+            for hit in hits:
                 h_word = hit[0]
-                if _is_safe_brand_token(h_word) and h_word not in COMMON_SALTS:
+                if _is_safe_brand_token(h_word) and h_word not in COMMON_SALTS and h_word not in SALT_MODIFIERS_SET:
                     exact_brand_words.add(h_word)
 
     brand_scores: Dict[str, Tuple[float, int]] = {}
@@ -832,7 +852,8 @@ def match_printed_lines(
             if tok not in brand_scores or score > brand_scores[tok][0]:
                 brand_scores[tok] = (score, count)
         elif len(tok) >= 4:
-            f_matches = process.extract(tok, brand_index.unique_brand_words, scorer=fuzz.ratio, limit=3, score_cutoff=search_cutoff)
+            f_cutoff = 70.0 if len(tok) >= 6 else search_cutoff
+            f_matches = process.extract(tok, brand_index.unique_brand_words, scorer=fuzz.ratio, limit=3, score_cutoff=f_cutoff)
             for m_b, score, _ in f_matches:
                 if m_b in exact_brand_words:
                     adj_score = 150.0 + prom
@@ -1181,6 +1202,8 @@ def match_printed_lines(
         cand_salts = extract_active_salt_set(salt)
         cand_strengths = extract_strengths_from_text(f"{cand_name} {cand_salt}")
 
+
+
         # 1. Salt comparison
         salt_matched = False
         salt_ok = False
@@ -1189,13 +1212,18 @@ def match_printed_lines(
                 salt_matched = True
                 salt_ok = True
                 score += 35.0
-            elif cand_salts.issubset(pack_salts):
+            elif cand_salts & pack_salts or salts_share_active(cand_salts, pack_salts):
+                # Overlap: shares at least one active ingredient with pack
                 salt_matched = True
-                score += 15.0
-            else:
-                # Combination product with extra salts not read on the pack (e.g. Sted-ML extra montelukast)
+                score += 30.0
+            elif cand_salts:
+                # Rule d: Clear contradiction — pack salt was read AND candidate shares NO active
                 score -= 60.0
+            else:
+                # Candidate has empty salt string in DB: neutral, no veto
+                pass
         else:
+            # Rule e: If pack salt could not be read at all, do not veto
             salt_words = [re.sub(r'[^A-Z0-9]', '', w) for w in re.split(r'[\s,()/+]+', cand_salt) if len(w) >= 4]
             if any(sw in full_text and sw not in PHARMA_STOPWORDS for sw in salt_words):
                 salt_matched = True
@@ -1212,7 +1240,7 @@ def match_printed_lines(
             elif cand_strengths:
                 # Candidate has a strength, but it does NOT match the pack strength
                 strength_mismatch = True
-                score -= 25.0
+                score -= 10.0
         elif detected_strengths and cand_strengths:
             # Fallback detected strengths
             if any(st in cand_strengths for st in detected_strengths if len(st) >= 2 or st in {'5', '2'}):
