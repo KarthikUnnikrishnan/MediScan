@@ -283,7 +283,11 @@ def scan_medicine_package(
             for ing in ingredients_list
         ]
 
-        brand_display = verified_med.get("brand") or (verified_med.get("name", "").split()[0] if verified_med.get("name") else "Generic")
+        if match_res.get("is_generic_salt") or verified_med.get("is_generic_salt"):
+            brand_display = ""
+            verified_med["price"] = None
+        else:
+            brand_display = verified_med.get("brand") or (verified_med.get("name", "").split()[0] if verified_med.get("name") else "Generic")
         descriptive_name = verified_med.get("detected_name") or verified_med.get("name", "Medicine")
         verified_med["detected_name"] = descriptive_name
         verified_med["brand"] = brand_display

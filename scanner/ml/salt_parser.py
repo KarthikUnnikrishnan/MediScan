@@ -34,6 +34,11 @@ _SYNONYM_MAP = {
     'methylcobalamin': 'vitamin b12',
     'folic acid': 'folic acid',
     'pantoprazole sodium': 'pantoprazole',
+    'clavulanic': 'clavulanic acid',
+    'clavulanate': 'clavulanic acid',
+    'potassium clavulanate': 'clavulanic acid',
+    'betamethasone dipropionate': 'betamethasone',
+    'betamethasone valerate': 'betamethasone',
 }
 
 _KNOWN_ACTIVE_NAMES = [
@@ -42,7 +47,7 @@ _KNOWN_ACTIVE_NAMES = [
     'ascorbic acid', 'vitamin b12', 'methylcobalamin', 'cyanocobalamin',
     'folic acid', 'pantoprazole', 'rabeprazole', 'omeprazole', 'esomeprazole',
     'levocetirizine', 'cetirizine', 'fexofenadine', 'loratadine', 'desloratadine',
-    'amoxicillin', 'amoxycillin', 'clavulanic acid', 'clavulanate', 'azithromycin',
+    'amoxicillin', 'amoxycillin', 'clavulanic acid', 'clavulanic', 'clavulanate', 'azithromycin',
     'ciprofloxacin', 'ofloxacin', 'metronidazole', 'tinidazole',
     'metformin', 'glimepiride', 'gliclazide', 'vildagliptin', 'sitagliptin',
     'atorvastatin', 'rosuvastatin', 'simvastatin', 'aspirin', 'clopidogrel',
@@ -50,7 +55,11 @@ _KNOWN_ACTIVE_NAMES = [
     'salbutamol', 'budesonide', 'formoterol', 'montelukast', 'theophylline',
     'dextromethorphan', 'chlorpheniramine', 'phenylephrine', 'ambroxol',
     'domperidone', 'ondansetron', 'ranitidine', 'famotidine', 'dicyclomine',
-    'mefenamic acid',
+    'mefenamic acid', 'betamethasone', 'povidone iodine', 'povidone', 'iodine',
+    'celecoxib', 'miconazole', 'fusidic acid', 'fusidic', 'gentamicin',
+    'lactulose', 'terbinafine', 'acyclovir', 'mupirocin', 'prednisolone',
+    'chlorhexidine', 'picosulfate', 'flavonoid', 'hesperidin', 'diosmin',
+    'nitroglycerin', 'glyceryl trinitrate',
 ]
 
 # Regex to capture: [Ingredient Name] ( [Strength] [Unit] )
