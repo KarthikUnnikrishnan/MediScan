@@ -248,23 +248,20 @@ def scan_medicine_package(
 
         # Bioequivalent Alternatives Search (Local SQLite)
         # Show cheaper alternatives only for level Verified, and only for the SAME salt set, SAME strength and SAME form as the pack.
-        # For Likely, show no savings banner; show "Same-salt options" without claims.
-        if not verified_med.get("parsed_salt") and verified_med.get("salt"):
-            verified_med["parsed_salt"] = parse_salt(verified_med["salt"])
-        alternatives = find_top_cheaper_alternatives(verified_med, limit=5)
-
+        # For Likely, show nothing about savings or alternatives.
+        alternatives = []
         max_savings = None
         max_savings_percent = None
         if is_verified:
+            if not verified_med.get("parsed_salt") and verified_med.get("salt"):
+                verified_med["parsed_salt"] = parse_salt(verified_med["salt"])
+            alternatives = find_top_cheaper_alternatives(verified_med, limit=5)
             for alt in alternatives:
                 s_amt = alt.get("saving_amount")
                 if s_amt is not None:
                     if max_savings is None or s_amt > max_savings:
                         max_savings = s_amt
                         max_savings_percent = alt.get("saving_percent")
-        else:
-            max_savings = None
-            max_savings_percent = None
 
         # Clinical Safety Lookup (Local SQLite)
         ingredients_list = verified_med.get("parsed_salt") or parse_salt(verified_med.get("salt", ""))
@@ -286,8 +283,8 @@ def scan_medicine_package(
             for ing in ingredients_list
         ]
 
-        brand_display = verified_med.get("brand") or verified_med.get("name", "").split()[0]
-        descriptive_name = verified_med.get("name", "Medicine")
+        brand_display = verified_med.get("brand") or (verified_med.get("name", "").split()[0] if verified_med.get("name") else "Generic")
+        descriptive_name = verified_med.get("detected_name") or verified_med.get("name", "Medicine")
         verified_med["detected_name"] = descriptive_name
         verified_med["brand"] = brand_display
 
@@ -304,6 +301,8 @@ def scan_medicine_package(
                 level_text = "Closest match by ingredient"
             else:
                 level_text = "Top candidate based on packaging text — please confirm brand and strength."
+
+        logger.info("Candidates considered (debug log): %s", [c.get("name") for c in candidates[:3]])
 
         return {
             "success": True,
@@ -335,9 +334,9 @@ def scan_medicine_package(
                 "salt_matched": salt_matched,
                 "match_type": top_cand.get("match_type", match_type),
             },
-            "candidates": candidates[:3],
-            "top_candidates": candidates[:3],
-            "medicines": [verified_med] + [c for c in candidates if c.get("id") != verified_med.get("id")][:2],
+            "candidates": [verified_med],
+            "top_candidates": [verified_med],
+            "medicines": [verified_med],
             "ingredients": display_ingredients,
             "alternatives": alternatives,
             "max_savings": max_savings,
