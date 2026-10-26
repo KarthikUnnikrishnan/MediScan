@@ -8,6 +8,7 @@ Alternatives are compared only when both products have:
 """
 
 import os
+import re
 import json
 import logging
 import sqlite3
@@ -145,6 +146,9 @@ def find_top_cheaper_alternatives(
             cid = row["id"]
             cname = (row["name"] or "").strip()
             csalt = row["salt"] or ""
+            # Clean junk prefixes e.g. '. ltd.fexofenadine'
+            csalt = re.sub(r"^[\s\.\,\'\-\&]+(?:ltd|limited|pvt|laboratories|biotech|lifescience|antibiotics|ayurveda)?[\s\.\,]*", "", csalt, flags=re.IGNORECASE).strip()
+            csalt = re.sub(r"^[\s\.\,\'\-\&]+", "", csalt)
             cmfr = (row["manufacturer"] or "").strip()
             cprice = row["price"]
 
@@ -364,7 +368,7 @@ def enrich_alternatives_with_ai(
         conf, tier, badge, reason, market_range = _calculate_individual_trust(
             verified_medicine, alt, rank=i
         )
-        alt["confidence"] = conf
+        alt["confidence"] = None
         alt["trust_tier"] = tier
         alt["trust_label"] = badge
         alt["trust_reason"] = reason

@@ -1155,6 +1155,28 @@ def compare_medicine_prices(
     elif p_type == "selling_price" and c_type == "mrp":
         res["price_type_warning"] = "Notice: Comparing primary selling price with alternative Maximum Retail Price (MRP)."
 
+    # 6. Sanity check on extreme savings and suspicious pack sizes
+    # If saving is above 90%, or the pack size looks wrong (e.g. 120 tablets priced at 22),
+    # do not show "Verified Best Saving". Show the price with "price data not verified".
+    suspicious_price = False
+    if saving_pct is not None and saving_pct > 90.0:
+        suspicious_price = True
+    if c_qty and c_qty >= 50 and c_unit is not None and c_unit < 0.5:
+        suspicious_price = True
+    p_pkg = primary_verif.get("package_price_inr") or 0.0
+    c_pkg = candidate_verif.get("package_price_inr") or 0.0
+    if p_pkg > 0 and c_pkg > 0 and (c_pkg / p_pkg) < 0.10:
+        suspicious_price = True
+
+    if suspicious_price:
+        res["comparison_eligible"] = False
+        res["price_unverified"] = True
+        res["saving_amount"] = None
+        res["saving_percent"] = None
+        res["saving_label"] = None
+        res["reason"] = "Price data not verified — excluded from savings comparisons to prevent misleading claims."
+        return res
+
     res["comparison_eligible"] = True
     return res
 

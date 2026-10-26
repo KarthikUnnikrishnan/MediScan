@@ -96,14 +96,15 @@ def normalize_ingredient_name(name: str) -> str:
     
     clean = name.lower().strip()
     
-    # Remove scraped junk prefixes
-    clean = re.sub(r"^['&][^a-zA-Z0-9]*", "", clean)
+    # Remove scraped junk prefixes (including leading dots, commas, ltd., etc.)
+    clean = re.sub(r"^[\s\.\,\'\-\&]+", "", clean)
     clean = re.sub(
-        r"^.*?\b(?:ltd|limited|pvt|laboratories|biotech|lifescience|antibiotics|ayurveda)\s*",
+        r"^.*?\b(?:ltd|limited|pvt|laboratories|biotech|lifescience|antibiotics|ayurveda)[\s\.\,]*",
         "",
         clean,
         flags=re.IGNORECASE
     )
+    clean = re.sub(r"^[\s\.\,\'\-\&]+", "", clean)
 
     # Strip sub-brand marketing modifiers like "advance", "plus", "forte", etc. when prefixed to ingredient
     clean = re.sub(
@@ -150,13 +151,14 @@ def clean_display_ingredient(name: str) -> str:
     if not name:
         return ""
     clean = name.strip()
-    clean = re.sub(r"^['&][^a-zA-Z0-9]*", "", clean)
+    clean = re.sub(r"^[\s\.\,\'\-\&]+", "", clean)
     clean = re.sub(
-        r"^.*?\b(?:ltd|limited|pvt|laboratories|biotech|lifescience|antibiotics|ayurveda)\s*",
+        r"^.*?\b(?:ltd|limited|pvt|laboratories|biotech|lifescience|antibiotics|ayurveda)[\s\.\,]*",
         "",
         clean,
         flags=re.IGNORECASE
     )
+    clean = re.sub(r"^[\s\.\,\'\-\&]+", "", clean)
 
     # Strip sub-brand marketing modifiers like "advance", "plus", "forte", etc. when prefixed to ingredient
     clean = re.sub(
@@ -179,6 +181,71 @@ def clean_display_ingredient(name: str) -> str:
     clean = re.sub(r"\badd$", "", clean, flags=re.IGNORECASE)
     clean = re.sub(r"\s+", " ", clean).strip()
     return clean
+
+
+def extract_strengths_from_text(text: str) -> set:
+    """
+    Extract canonical strength tokens e.g. {'180mg'}, {'5mg'}, {'0.5%'} from text.
+    Handles '180 mg', '5mg', 'IP 180 mg', '0.5% w/v', '10 mcg', '500 iu', etc.
+    Also handles hyphenated numbers when units are present on the packaging.
+    """
+    if not text:
+        return set()
+    full_text = text.upper()
+    strengths = set()
+
+    # 1. Direct number + unit
+    direct_pattern = re.compile(
+        r'\b(?:IP|BP|USP)?\s*(\d+(?:\.\d+)?)\s*(MG|MCG|UG|µG|G|GM|ML|%|IU|UNITS?)\b',
+        re.IGNORECASE
+    )
+    for match in direct_pattern.finditer(full_text):
+        val = match.group(1)
+        unit = match.group(2).lower()
+        if unit in ('ug', 'µg'):
+            unit = 'mcg'
+        elif unit == 'gm':
+            unit = 'g'
+        elif unit == 'units':
+            unit = 'unit'
+        try:
+            val_f = float(val)
+            val_str = str(int(val_f)) if val_f.is_integer() else str(val_f)
+        except ValueError:
+            val_str = val
+        strengths.add(f"{val_str}{unit}")
+
+    # 2. Hyphenated numbers e.g. "FEXOMINE-180", "DOLO-650"
+    hyphen_pattern = re.compile(r'\b[A-Za-z]+-(\d{1,4})\b')
+    hyphen_nums = hyphen_pattern.findall(full_text)
+    if hyphen_nums:
+        dominant_unit = 'mg' if ('MG' in full_text or 'TABLET' in full_text or 'CAPSULE' in full_text) else None
+        if dominant_unit:
+            for num in hyphen_nums:
+                strengths.add(f"{num}{dominant_unit}")
+
+    return strengths
+
+
+def extract_active_salt_set(salt_str: Optional[str]) -> set:
+    """
+    Extract set of normalized canonical active ingredient names from a salt string.
+    e.g. 'levocetirizine (5mg) + montelukast (10mg)' -> {'levocetirizine', 'montelukast'}
+    """
+    if not salt_str:
+        return set()
+    parsed = parse_salt(salt_str)
+    salts = set()
+    for item in parsed:
+        cname = item.get("canonical_name")
+        if cname:
+            salts.add(cname)
+    if not salts:
+        clean = salt_str.lower()
+        for act in _KNOWN_ACTIVE_NAMES:
+            if re.search(r'\b' + re.escape(act) + r'\b', clean):
+                salts.add(act)
+    return salts
 
 
 def parse_salt(salt_str: Optional[str]) -> List[Dict[str, Any]]:

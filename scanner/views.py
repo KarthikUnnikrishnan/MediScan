@@ -154,8 +154,7 @@ def result(request):
         else:
             top_cand = scan_result.get('medicine') or (candidates[0] if candidates else (medicines[0] if medicines else None))
             if top_cand and isinstance(top_cand, dict):
-                is_rule4 = bool(top_cand.get('is_exact_brand') and top_cand.get('salt_matched'))
-                result_level = 'verified' if is_rule4 else 'likely'
+                result_level = scan_result.get('status') or 'likely'
             else:
                 result_level = 'not_found'
 

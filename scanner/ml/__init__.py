@@ -236,31 +236,35 @@ def scan_medicine_package(
             }
 
         top_cand = candidates[0]
-        # Step 7 Rule 4 check: exact brand AND salt matched
+        result_level = match_res.get("result_level", "likely")
+        status = match_res.get("status", "likely")
+        is_verified = (result_level == "verified")
         is_exact_brand = bool(top_cand.get("is_exact_brand"))
         salt_matched = bool(top_cand.get("salt_matched"))
-        is_rule4 = is_exact_brand and salt_matched
-
-        result_level = "verified" if is_rule4 else "likely"
-        status = "verified" if is_rule4 else "likely"
 
         verified_med = top_cand
         mfr = (verified_med.get("manufacturer") or "").strip() or "Registered Manufacturer"
         verified_med["manufacturer"] = mfr
 
         # Bioequivalent Alternatives Search (Local SQLite)
+        # Show cheaper alternatives only for level Verified, and only for the SAME salt set, SAME strength and SAME form as the pack.
+        # For Likely, show no savings banner; show "Same-salt options" without claims.
         if not verified_med.get("parsed_salt") and verified_med.get("salt"):
             verified_med["parsed_salt"] = parse_salt(verified_med["salt"])
         alternatives = find_top_cheaper_alternatives(verified_med, limit=5)
 
         max_savings = None
         max_savings_percent = None
-        for alt in alternatives:
-            s_amt = alt.get("saving_amount")
-            if s_amt is not None:
-                if max_savings is None or s_amt > max_savings:
-                    max_savings = s_amt
-                    max_savings_percent = alt.get("saving_percent")
+        if is_verified:
+            for alt in alternatives:
+                s_amt = alt.get("saving_amount")
+                if s_amt is not None:
+                    if max_savings is None or s_amt > max_savings:
+                        max_savings = s_amt
+                        max_savings_percent = alt.get("saving_percent")
+        else:
+            max_savings = None
+            max_savings_percent = None
 
         # Clinical Safety Lookup (Local SQLite)
         ingredients_list = verified_med.get("parsed_salt") or parse_salt(verified_med.get("salt", ""))
@@ -288,12 +292,15 @@ def scan_medicine_package(
         verified_med["brand"] = brand_display
 
         # Step 7 Result Wording
+        msg_from_matcher = match_res.get("message") or match_res.get("strength_mismatch_msg")
         if result_level == "verified":
             level_badge = "Verified match"
-            level_text = "Matches the brand and the ingredient printed on the pack."
+            level_text = msg_from_matcher or "Matches the brand and the ingredient printed on the pack."
         else:
             level_badge = "Likely match - please confirm"
-            if top_cand.get("match_type") == "ingredient":
+            if msg_from_matcher:
+                level_text = msg_from_matcher
+            elif top_cand.get("match_type") == "ingredient":
                 level_text = "Closest match by ingredient"
             else:
                 level_text = "Top candidate based on packaging text — please confirm brand and strength."
@@ -304,6 +311,8 @@ def scan_medicine_package(
             "result_level": result_level,
             "level_badge": level_badge,
             "level_text": level_text,
+            "message": level_text,
+            "strength_mismatch_msg": match_res.get("strength_mismatch_msg", ""),
             "pack_warning": "Check this result against your pack before use.",
             "match_type": top_cand.get("match_type", match_type),
             "mode": "medicine_package",

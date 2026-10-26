@@ -9,16 +9,66 @@ and real confidence scoring.
 import re
 import math
 import logging
+from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 from rapidfuzz import fuzz, process
 
-from .salt_parser import parse_salt, compare_compositions, normalize_ingredient_name
+from .salt_parser import (
+    parse_salt,
+    compare_compositions,
+    normalize_ingredient_name,
+    extract_strengths_from_text,
+    extract_active_salt_set,
+    _KNOWN_ACTIVE_NAMES,
+)
 from .medicine_index import get_medicine_index, MedicineIndex
 
 logger = logging.getLogger(__name__)
 
 # Minimum overall confidence required to consider a medicine verified
 CONFIDENCE_THRESHOLD = 70.0
+
+BOILERPLATE_BOX_PATTERNS = [
+    r'\b(?:DIRECTED|PHYSICIAN|DOSAGE|STORAGE|STORE|TEMPERATURE|PROTECT|MOISTURE|LIGHT)\b',
+    r'\b(?:KEEP\s+OUT|REACH\s+OF\s+CHILDREN|NOT\s+TO\s+BE)\b',
+    r'\b(?:SCHEDULE\s+[HGHX1]+|PRESCRIPTION\s+DRUG|WARNING|CAUTION|RETAIL)\b',
+    r'\b(?:REGISTERED\s+MEDICAL|PRACTITIONER)\b',
+    r'\b(?:MANUFACTURED|MFG|BATCH|EXP|DATE|MKT|MARKETED|PACKED|LIC\s*NO)\b',
+    r'\b(?:EACH\s+(?:FILM|UNCOATED|COATED)?\s*TABLET|CONTAINS)\b',
+    r'\b(?:COLOUR|EXCIPIENTS|APPROPRIATE\s+OVERAGES)\b',
+]
+
+GRAMMAR_WORDS = {
+    'BY', 'THE', 'OF', 'FOR', 'IN', 'TO', 'AS', 'AND', 'WITH', 'FROM',
+    'AT', 'ON', 'OUT', 'NOT', 'BE', 'AN', 'IS', 'OR'
+}
+
+COMMON_FRAGMENTS = {
+    'sted', 'cted', 'ated', 'nted', 'rted', 'lted', 'pted', 'fted', 'kted',
+    'tion', 'sion', 'ment', 'ance', 'ence', 'able', 'ible', 'less', 'ness',
+    'ship', 'ward', 'wise', 'like', 'some', 'full', 'most', 'ever',
+    'take', 'used', 'oral', 'keep', 'from', 'with', 'pack', 'dose', 'unit',
+    'phys', 'cian', 'cial', 'tial', 'rect', 'each', 'film', 'coat', 'tabs',
+}
+
+
+def is_brand_box_candidate(line_str: str) -> bool:
+    """
+    Check if a recognized OCR line looks like a prominent brand box rather
+    than a sentence, instructional text, or composition/dosage print.
+    """
+    if not line_str or not line_str.strip():
+        return False
+    u = line_str.upper()
+    for pat in BOILERPLATE_BOX_PATTERNS:
+        if re.search(pat, u):
+            return False
+    words = [w for w in re.split(r'[\s\-_]+', u) if w]
+    if any(w in GRAMMAR_WORDS for w in words):
+        return False
+    if len(words) > 3:
+        return False
+    return True
 
 
 def _zero_breakdown() -> Dict[str, float]:
@@ -613,7 +663,8 @@ COMMON_SALTS = {
     'AZITHROMYCIN', 'DICLOFENAC', 'ACECLOFENAC', 'PANTOPRAZOLE', 'OMEPRAZOLE', 'RABEPRAZOLE',
     'METFORMIN', 'GLIMEPIRIDE', 'ATORVASTATIN', 'ROSUVASTATIN', 'AMLODIPINE', 'TELMISARTAN',
     'SALBUTAMOL', 'ALBUTEROL', 'POVIDONE', 'IODINE', 'BETAMETHASONE', 'CELECOXIB', 'METRONIDAZOLE',
-    'LACTULOSE', 'TERBINAFINE', 'DOMPERIDONE', 'FUSIDIC', 'GENTAMICIN', 'SITAGLIPTIN', 'ACYCLOVIR'
+    'LACTULOSE', 'TERBINAFINE', 'DOMPERIDONE', 'FUSIDIC', 'GENTAMICIN', 'SITAGLIPTIN', 'ACYCLOVIR',
+    'FEXOFENADINE'
 }
 
 
@@ -622,6 +673,39 @@ def split_glued_tokens(text: str) -> str:
     t = re.sub(r'([A-Za-z]+)(\d+(?:\.\d+)?%?)', r'\1 \2', text)
     t = re.sub(r'(\d+(?:\.\d+)?%?)([A-Za-z]+)', r'\1 \2', t)
     return t
+
+
+_ENGLISH_WORDS = None
+
+def get_english_words() -> set:
+    """Load english_words.txt guard list."""
+    global _ENGLISH_WORDS
+    if _ENGLISH_WORDS is None:
+        p = Path(__file__).resolve().parent / "data" / "english_words.txt"
+        if p.exists():
+            with open(p, "r", encoding="utf-8") as f:
+                _ENGLISH_WORDS = {line.strip().lower() for line in f if line.strip()}
+        else:
+            _ENGLISH_WORDS = set()
+    return _ENGLISH_WORDS
+
+
+def assign_confidence_label(cand: Dict[str, Any]) -> str:
+    """
+    Derives display label ("Strong", "Fair", "Weak") from existing confidence flags,
+    NOT from the raw internal score number.
+    """
+    is_exact = bool(cand.get("is_exact_brand"))
+    corroborated = bool(cand.get("corroborated"))
+    salt_matched = bool(cand.get("salt_matched"))
+    strength_matched = bool(cand.get("strength_matched"))
+    confident = bool(cand.get("confident"))
+
+    if (is_exact and corroborated) or (salt_matched and strength_matched):
+        return "Strong"
+    if is_exact or corroborated or salt_matched or confident:
+        return "Fair"
+    return "Weak"
 
 
 def match_printed_lines(
@@ -652,12 +736,22 @@ def match_printed_lines(
         brand_index = get_brand_word_index()
 
     full_text = " ".join(lines).upper()
-    detected_strengths = re.findall(r'\b\d+(?:\.\d+)?%?\b', full_text)
+    pack_strengths = extract_strengths_from_text(full_text)
+    detected_strengths = pack_strengths or set(re.findall(r'\b\d+(?:\.\d+)?%?\b', full_text))
+
+    english_words = get_english_words()
 
     # Candidate tokens with box prominence weights (larger text preferred)
+    # Also collect tokens strictly from brand-box candidates for the exact-brand guard
     candidate_tokens: Dict[str, Tuple[float, float, int]] = {}
+    brand_eligible_tokens: Set[str] = set()
+
     for box_idx, line in enumerate(lines):
+        line_is_brand_box = is_brand_box_candidate(line)
         prominence = 20.0 if box_idx == 0 else (12.0 if box_idx == 1 else (6.0 if box_idx == 2 else 0.0))
+        if line_is_brand_box:
+            prominence += 10.0  # Prefer prominent brand-like boxes over small print
+
         cleaned = split_glued_tokens(line.upper())
         words = [re.sub(r'[^A-Z0-9]', '', w) for w in re.split(r'[\s\-_]+', cleaned) if w.strip()]
 
@@ -666,12 +760,16 @@ def match_printed_lines(
             if len(w) >= 3 and w not in PHARMA_STOPWORDS and not w.isdigit():
                 cur_sc, cur_prom, cur_cnt = candidate_tokens.get(w, (0.0, 0.0, 0))
                 candidate_tokens[w] = (cur_sc, max(cur_prom, prominence), cur_cnt + 1)
+                if line_is_brand_box:
+                    brand_eligible_tokens.add(w)
 
         # 2. Hyphen joined
         hyphen_j = re.sub(r'[^A-Z0-9]', '', line.upper())
         if len(hyphen_j) >= 3 and hyphen_j not in PHARMA_STOPWORDS and not hyphen_j.isdigit():
             cur_sc, cur_prom, cur_cnt = candidate_tokens.get(hyphen_j, (0.0, 0.0, 0))
             candidate_tokens[hyphen_j] = (cur_sc, max(cur_prom, prominence), cur_cnt + 1)
+            if line_is_brand_box:
+                brand_eligible_tokens.add(hyphen_j)
 
         # 3. Two-word joins
         for i in range(len(words) - 1):
@@ -679,22 +777,33 @@ def match_printed_lines(
             if len(two_j) >= 4 and two_j not in PHARMA_STOPWORDS and not two_j.isdigit():
                 cur_sc, cur_prom, cur_cnt = candidate_tokens.get(two_j, (0.0, 0.0, 0))
                 candidate_tokens[two_j] = (cur_sc, max(cur_prom, prominence), cur_cnt + 1)
+                if line_is_brand_box:
+                    brand_eligible_tokens.add(two_j)
 
-    # FIX 3.1: Exact-brand rule
-    # If a read word (or hyphen-joined / glued-split form) equals a brand word in the index
-    # (similarity >= 95) and the word is not in the stop-list and not a generic salt, that brand
-    # MUST be in the top-3 candidates and must not be removed by popularity weighting,
-    # salt-first retrieval or compound guard.
+    # A) BRAND-TOKEN GUARD:
+    # A brand word counts as an exact brand only if:
+    # 1. It came from a prominent brand box (not a piece of a sentence).
+    # 2. Tokens of 5 letters or fewer that are English words, stop-list words,
+    #    grammar words, or common fragments are rejected.
     exact_brand_words = set()
-    for tok, (_, prom, count) in candidate_tokens.items():
+    for tok in brand_eligible_tokens:
+        tok_l = tok.lower()
         if tok in PHARMA_STOPWORDS or tok.isdigit() or len(tok) < 3 or tok in COMMON_SALTS:
             continue
+        if len(tok) <= 5:
+            if tok_l in english_words or tok_l in COMMON_FRAGMENTS or tok in PHARMA_STOPWORDS or tok in GRAMMAR_WORDS:
+                continue
         if tok in brand_index.brand_to_ids:
             exact_brand_words.add(tok)
         elif len(tok) >= 4:
             hit = process.extractOne(tok, brand_index.unique_brand_words, scorer=fuzz.ratio, score_cutoff=95.0)
-            if hit and hit[0] not in PHARMA_STOPWORDS and hit[0] not in COMMON_SALTS:
-                exact_brand_words.add(hit[0])
+            if hit:
+                h_word = hit[0]
+                h_l = h_word.lower()
+                if h_word not in PHARMA_STOPWORDS and h_word not in COMMON_SALTS:
+                    if len(h_word) <= 5 and (h_l in english_words or h_l in COMMON_FRAGMENTS or h_word in PHARMA_STOPWORDS or h_word in GRAMMAR_WORDS):
+                        continue
+                    exact_brand_words.add(h_word)
 
     brand_scores: Dict[str, Tuple[float, int]] = {}
     for tok, (_, prom, count) in candidate_tokens.items():
@@ -733,16 +842,17 @@ def match_printed_lines(
         if eb not in brand_scores:
             brand_scores[eb] = (150.0 + 12.0, 1)
 
-    # FIX 2a: Salt-first retrieval
-    # When read lines contain words that match the salt column of medicines.sqlite (fuzzy >= 85),
-    # retrieve the rows with that salt, take their brand words as candidates, and score each
-    # by fuzzy similarity to the read garbage words (fuzz.ratio and partial_ratio, with a bonus for matching first letters).
+    # Salt extraction from packaging
+    pack_salts = extract_active_salt_set(full_text)
     salt_matched_words = set()
     if hasattr(brand_index, 'salt_to_brand_words') and hasattr(brand_index, 'unique_salt_words'):
         for tok in candidate_tokens:
             tok_lower = tok.lower()
             if tok_lower in brand_index.salt_to_brand_words:
                 salt_matched_words.add(tok_lower)
+                norm_s = normalize_ingredient_name(tok_lower)
+                if norm_s:
+                    pack_salts.add(norm_s)
             elif len(tok_lower) >= 4 and brand_index.unique_salt_words:
                 s_hits = process.extract(
                     tok_lower,
@@ -753,6 +863,9 @@ def match_printed_lines(
                 )
                 for sw, sc, _ in s_hits:
                     salt_matched_words.add(sw)
+                    norm_s = normalize_ingredient_name(sw)
+                    if norm_s:
+                        pack_salts.add(norm_s)
 
         for sw in salt_matched_words:
             salt_brands = brand_index.salt_to_brand_words.get(sw, set())
@@ -777,6 +890,23 @@ def match_printed_lines(
                             adj_score -= 15.0
                         if b_cand not in brand_scores or adj_score > brand_scores[b_cand][0]:
                             brand_scores[b_cand] = (adj_score, count)
+
+    # Generic salt packaging detection:
+    # When no exact brand word passed the guard, but active ingredients are present on the pack
+    is_generic_salt = False
+    generic_salt_display = ""
+    if not exact_brand_words and pack_salts:
+        is_generic_salt = True
+        salt_display_parts = [s.title() for s in sorted(pack_salts)]
+        salt_title = " + ".join(salt_display_parts)
+        p_disp = ", ".join(sorted(pack_strengths)) if pack_strengths else ""
+        generic_salt_display = f"Generic: {salt_title} {p_disp} (name read on the pack)".strip()
+
+        # Seed candidate retrieval with brands matching the active salt
+        for sw in pack_salts:
+            for b_cand in brand_index.salt_to_brand_words.get(sw, set()):
+                if b_cand not in brand_scores:
+                    brand_scores[b_cand] = (80.0, 1)
 
     # Count read tokens matching brand/salt index with similarity >= 90
     n_matching_tokens = 0
@@ -818,7 +948,7 @@ def match_printed_lines(
             brand_by_id[mid] = (eb, b_score, b_count, True)
 
     # 2. Retrieve remaining top brand words
-    for b_word, (b_score, b_count) in sorted(brand_scores.items(), key=lambda x: x[1][0], reverse=True)[:20]:
+    for b_word, (b_score, b_count) in sorted(brand_scores.items(), key=lambda x: x[1][0], reverse=True)[:25]:
         if b_word not in exact_brand_words:
             for mid in brand_index.brand_to_ids.get(b_word, [])[:15]:
                 cand_ids.append(mid)
@@ -841,21 +971,57 @@ def match_printed_lines(
 
         score = b_score
 
-        # 1. Salt boost (+35)
-        salt_matched = False
-        salt_words = [re.sub(r'[^A-Z0-9]', '', w) for w in re.split(r'[\s,()/+]+', cand_salt) if len(w) >= 4]
-        if any(sw in full_text and sw not in PHARMA_STOPWORDS for sw in salt_words) or any(sw.lower() in salt_matched_words for sw in salt_words):
-            salt_matched = True
-            score += 35.0
+        cand_salts = extract_active_salt_set(salt)
+        cand_strengths = extract_strengths_from_text(f"{cand_name} {cand_salt}")
 
-        # 2. Strength corroboration (+15 / -10)
-        cand_strengths = re.findall(r'\b\d+(?:\.\d+)?%?\b', cand_name + ' ' + cand_salt)
+        # 1. Salt comparison
+        salt_matched = False
+        salt_ok = False
+        if pack_salts:
+            if cand_salts == pack_salts:
+                salt_matched = True
+                salt_ok = True
+                score += 35.0
+            elif cand_salts.issubset(pack_salts):
+                salt_matched = True
+                score += 15.0
+            else:
+                # Combination product with extra salts not read on the pack (e.g. Sted-ML extra montelukast)
+                score -= 60.0
+        else:
+            salt_words = [re.sub(r'[^A-Z0-9]', '', w) for w in re.split(r'[\s,()/+]+', cand_salt) if len(w) >= 4]
+            if any(sw in full_text and sw not in PHARMA_STOPWORDS for sw in salt_words) or any(sw.lower() in salt_matched_words for sw in salt_words):
+                salt_matched = True
+                salt_ok = True
+                score += 35.0
+
+        # 2. Strength comparison
         strength_matched = False
-        if any(st in cand_strengths for st in detected_strengths if len(st) >= 2 or st in {'5', '2'}):
-            strength_matched = True
-            score += 15.0
+        strength_mismatch = False
+        if pack_strengths:
+            if cand_strengths & pack_strengths:
+                strength_matched = True
+                score += 25.0
+            elif cand_strengths:
+                # Candidate has a strength, but it does NOT match the pack strength
+                strength_mismatch = True
+                score -= 25.0
         elif detected_strengths and cand_strengths:
-            score -= 10.0
+            # Fallback detected strengths
+            if any(st in cand_strengths for st in detected_strengths if len(st) >= 2 or st in {'5', '2'}):
+                strength_matched = True
+                score += 15.0
+            else:
+                score -= 10.0
+
+        # Generic salt packaging adjustments:
+        if is_generic_salt:
+            if cand_salts == pack_salts:
+                score += 40.0
+            else:
+                score -= 100.0  # Disqualify combos with extra salts
+            if strength_matched:
+                score += 30.0
 
         # 3. Manufacturer boost (+10)
         if cand_mfr:
@@ -867,9 +1033,14 @@ def match_printed_lines(
         if b_count > 1:
             score += min(9.0, (b_count - 1) * 3.0)
 
-        # FIX 3.2: Scoped intra-brand compound guard
-        # DO NOT penalise across brands just because every DB row for that brand has '+'.
-        # Use penalty only to choose between rows of the SAME brand (intra-brand preference).
+        first_brand = re.split(r'[\s\-_]+', name.strip())[0]
+        is_in_english_words = (b_word.lower() in english_words) or (first_brand.lower() in english_words)
+        if is_exact and is_in_english_words:
+            if not (salt_matched or strength_matched):
+                is_exact = False
+                score -= 50.0  # Remove exact-brand priority boost
+
+        # Scoped intra-brand compound guard
         intra_pref = 0.0
         if '+' in cand_salt and '+' not in full_text and len(salt_matched_words) <= 1:
             intra_pref = -15.0
@@ -877,11 +1048,10 @@ def match_printed_lines(
         corroborated = bool(salt_matched or strength_matched)
         confident = bool(score >= cutoff)
 
-        first_brand = re.split(r'[\s\-_]+', name.strip())[0]
         b_norm_cand = re.sub(r'[^A-Z0-9]', '', first_brand.upper())
         cand_match_type = "ingredient" if (b_word in COMMON_SALTS or b_norm_cand in COMMON_SALTS) else "brand"
 
-        scored_candidates.append({
+        cand_dict = {
             "id": mid,
             "name": name,
             "brand": first_brand,
@@ -895,9 +1065,13 @@ def match_printed_lines(
             "confident": confident,
             "corroborated": corroborated,
             "salt_matched": salt_matched,
+            "salt_ok": salt_ok,
             "strength_matched": strength_matched,
+            "strength_mismatch": strength_mismatch,
             "dosage_form": "Tablet"
-        })
+        }
+        cand_dict["confidence_label"] = assign_confidence_label(cand_dict)
+        scored_candidates.append(cand_dict)
 
     # Deduplicate candidates by brand name, using intra_score to select the best row for each brand
     by_brand = {}
@@ -908,19 +1082,26 @@ def match_printed_lines(
 
     dedup_candidates = list(by_brand.values())
 
-    # FIX 3.1: Sort candidates ensuring all exact brand matches are in the top candidates
-    exact_cands = [c for c in dedup_candidates if c.get("is_exact_brand")]
-    non_exact_cands = [c for c in dedup_candidates if not c.get("is_exact_brand")]
+    # Sort candidates ensuring exact brand matches are at the top (unless generic salt packaging)
+    if is_generic_salt:
+        dedup_candidates.sort(key=lambda x: x["score"], reverse=True)
+        sorted_candidates = dedup_candidates[:5]
+    else:
+        exact_cands = [c for c in dedup_candidates if c.get("is_exact_brand")]
+        non_exact_cands = [c for c in dedup_candidates if not c.get("is_exact_brand")]
+        exact_cands.sort(key=lambda x: x["score"], reverse=True)
+        non_exact_cands.sort(key=lambda x: x["score"], reverse=True)
+        sorted_candidates = (exact_cands + non_exact_cands)[:5]
 
-    exact_cands.sort(key=lambda x: x["score"], reverse=True)
-    non_exact_cands.sort(key=lambda x: x["score"], reverse=True)
-
-    sorted_candidates = (exact_cands + non_exact_cands)[:5]
+    for i in range(1, len(sorted_candidates)):
+        if sorted_candidates[i]["score"] > sorted_candidates[i - 1]["score"]:
+            sorted_candidates[i]["score"] = sorted_candidates[i - 1]["score"]
 
     if not sorted_candidates:
         return {
             "success": False,
             "status": "unverified",
+            "result_level": "not_found",
             "match_type": "brand",
             "medicine": None,
             "candidates": [],
@@ -938,19 +1119,61 @@ def match_printed_lines(
 
     match_type = top_cand.get("match_type", "brand")
 
-    # FIX 3.3: Verification Calibration Rule (Rule 12: Exact brand with corroborated OR margin >= 20)
-    # Replaces single rigid rule with calibrated verification:
-    # High precision (>= 85%) achieved when exact brand is corroborated (salt/strength) or has decisive margin >= 20.
-    if match_type == "ingredient":
-        is_verified = bool(top_cand.get("confident") and top_cand.get("strength_matched"))
-    else:
-        is_verified = bool(
-            top_cand.get("is_exact_brand") and (
-                top_cand.get("corroborated") or score_margin >= 20.0
-            )
-        )
+    # B) NEW VERIFIED RULE (replace is_rule4). Verified requires ALL of:
+    # 1. exact brand passes the guard in A;
+    # 2. the candidate salt set EQUALS the salt set read on the pack. Use a set
+    #    comparison, not any(). A combination with extra salts fails;
+    # 3. the strength on the pack equals the candidate strength. If the pack has
+    #    no readable strength, strength is not required, but the result is then
+    #    capped at Likely when the brand has more than one strength in the DB.
+    # Otherwise the level is Likely, or Not found if nothing is safe.
 
-    status = "verified" if is_verified else "unverified"
+    top_cand_brand = top_cand.get("brand", "").upper()
+    top_cand_salts = extract_active_salt_set(top_cand.get("salt"))
+    top_cand_strengths = extract_strengths_from_text(f"{top_cand.get('name')} {top_cand.get('salt')}")
+
+    # Condition 1: Exact brand passes guard in A
+    cond1_brand = bool(
+        top_cand.get("is_exact_brand")
+        and not is_generic_salt
+        and top_cand.get("match_type") != "ingredient"
+    )
+
+    # Condition 2: Candidate salt set EQUALS salt set read on the pack
+    if pack_salts:
+        cond2_salt = bool(top_cand_salts == pack_salts)
+    else:
+        cond2_salt = bool(top_cand.get("salt_matched"))
+
+    # Condition 3: Strength on pack equals candidate strength
+    if pack_strengths:
+        cond3_strength = bool(top_cand_strengths & pack_strengths)
+    else:
+        # If the pack has no readable strength, strength is not required,
+        # but the result is then capped at Likely when the brand has more than one strength in the DB.
+        brand_ids = brand_index.brand_to_ids.get(top_cand_brand, [])
+        brand_meds = brand_index.get_medicines_by_ids(brand_ids[:10])
+        distinct_strengths = set()
+        for bm in brand_meds:
+            s_set = extract_strengths_from_text(f"{bm.get('name')} {bm.get('salt')}")
+            distinct_strengths.update(s_set)
+        if len(distinct_strengths) > 1:
+            cond3_strength = False  # Capped at Likely
+        else:
+            cond3_strength = True
+
+    is_verified = bool(cond1_brand and cond2_salt and cond3_strength)
+    status = "verified" if is_verified else "likely"
+    result_level = "verified" if is_verified else "likely"
+
+    strength_mismatch_msg = ""
+    if top_cand.get("strength_mismatch"):
+        p_disp = ", ".join(sorted(pack_strengths)) if pack_strengths else "unknown"
+        c_disp = ", ".join(sorted(top_cand_strengths)) if top_cand_strengths else "unknown"
+        strength_mismatch_msg = (
+            f"Brand matches, but the strength on the pack ({p_disp}) is not in the database. "
+            f"Closest listed: {c_disp}."
+        )
 
     breakdown = {
         "brand": min(100.0, max(0.0, top_cand["score"])),
@@ -964,8 +1187,9 @@ def match_printed_lines(
     return {
         "success": is_verified,
         "status": status,
+        "result_level": result_level,
         "match_type": match_type,
-        "medicine": top_cand if is_verified else None,
+        "medicine": top_cand,
         "candidates": sorted_candidates[:3],
         "medicines": sorted_candidates[:3],
         "top_candidates": sorted_candidates[:5],
@@ -973,10 +1197,21 @@ def match_printed_lines(
         "confidence_breakdown": breakdown,
         "raw_ocr": full_text,
         "n_matching_tokens": n_matching_tokens,
-        "message": None if is_verified else (
-            "Ingredient-only match requires verified dosage strength to confirm identity."
-            if match_type == "ingredient"
-            else "Medicine packaging could not be verified with high confidence. Top candidate suggestions provided."
+        "is_generic_salt": is_generic_salt,
+        "generic_salt_display": generic_salt_display,
+        "strength_mismatch_msg": strength_mismatch_msg,
+        "pack_strengths": list(pack_strengths),
+        "pack_salts": list(pack_salts),
+        "message": (
+            strength_mismatch_msg if strength_mismatch_msg else (
+                "Matches the brand and the ingredient printed on the pack."
+                if is_verified
+                else (
+                    "Closest match by ingredient"
+                    if match_type == "ingredient"
+                    else "Top candidate based on packaging text — please confirm brand and strength."
+                )
+            )
         )
     }
 
