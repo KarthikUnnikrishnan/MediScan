@@ -193,6 +193,7 @@
               <div class="prop-block-label">MANUFACTURER</div>
               <div class="prop-block-value">{{ med.manufacturer|default:"Registered Manufacturer" }}</div>
             </div>
+            {% if med.price is not None and not med.is_generic_salt and not result.is_generic_salt and match_type != 'generic_salt' %}
             <div class="prop-block mrp-block">
               <div class="prop-block-label">
                 {% if med.price_verification and med.price_verification.verification_status == 'verified' %}
@@ -230,6 +231,7 @@
                 </div>
               {% endif %}
             </div>
+            {% endif %}
           </div>
           <div class="match-meta-bar">
             {% if result_level == 'verified' %}
@@ -311,6 +313,7 @@
                       {{ med.manufacturer|default:"Registered Manufacturer" }}
                     </div>
                   </div>
+                  {% if med.price is not None and not med.is_generic_salt and not result.is_generic_salt and match_type != 'generic_salt' %}
                   <div class="prop-block mrp-block">
                     <div class="prop-block-label">
                       {% if med.price_verification and med.price_verification.verification_status == 'verified' %}
@@ -348,6 +351,7 @@
                       </div>
                     {% endif %}
                   </div>
+                  {% endif %}
                 </div>
                 <div class="match-meta-bar">
                   {% if result_level == 'verified' %}
