@@ -5,6 +5,8 @@
 {% block title %}
   {% if result_level == 'verified' %}
     Verified Match — MediScan
+  {% elif result_level == 'composition_match' %}
+    Composition Match — MediScan
   {% elif result_level == 'likely' %}
     Likely Match — MediScan
   {% elif result_level == 'error' %}
@@ -23,6 +25,8 @@
       <div class="status-icon status-icon--{{ result_level }}">
         {% if result_level == 'verified' %}
           ✓
+        {% elif result_level == 'composition_match' %}
+          ✓
         {% elif result_level == 'likely' %}
           ⚠
         {% elif result_level == 'error' %}
@@ -35,6 +39,8 @@
         <div class="status-header-row">
           {% if result_level == 'verified' %}
             <span class="badge-verified">Verified match</span>
+          {% elif result_level == 'composition_match' %}
+            <span class="badge-verified">Composition match · Read from the pack</span>
           {% elif result_level == 'likely' %}
             <span class="badge-likely">Likely match - please confirm</span>
           {% elif result_level == 'error' %}
@@ -44,7 +50,7 @@
           {% endif %}
         </div>
         <div class="status-desc-text">
-          {% if result_level == 'verified' %}
+          {% if result_level == 'verified' or result_level == 'composition_match' %}
             {{ result.message|default:"Matches the brand and the ingredient printed on the pack." }}
           {% elif result_level == 'likely' %}
             {% if result.message %}
@@ -82,7 +88,7 @@
   </div>
 
   <!-- ── PACK CONFIRMATION BANNER (Both verified and likely) ── -->
-  {% if result_level == 'verified' or result_level == 'likely' %}
+  {% if result_level == 'verified' or result_level == 'likely' or result_level == 'composition_match' %}
   <div class="pack-confirm-banner">
     <span class="pack-confirm-icon">⚠️</span>
     <span class="pack-confirm-text"><strong>Check this result against your pack before use.</strong></span>
@@ -130,17 +136,6 @@
           {% endif %}
         </div>
         {% endif %}
-        {% if med_data.top_medicine %}
-        <div class="confidence-indicator conf-{{ med_data.confidence|confidence_tier }} med-sel-indicator">
-          <span class="confidence-dot"></span>
-          <span>Matched</span>
-        </div>
-        {% else %}
-        <div class="confidence-indicator conf-low med-sel-indicator">
-          <span class="confidence-dot"></span>
-          <span>Unmatched</span>
-        </div>
-        {% endif %}
       </div>
       {% endfor %}
     </div>
@@ -173,6 +168,9 @@
             <span>{{ result.message }}</span>
           </div>
           {% endif %}
+          {% if result_level == 'composition_match' %}
+          <div class="likely-mismatch-banner">Read from the pack — identity is based on the printed composition.</div>
+          {% endif %}
           <div class="detected-name">{{ med.detected_name|default:detected_name|default:med.name }}</div>
           <div class="detected-match-sub" style="margin-top: -0.4rem; margin-bottom: 0.85rem; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
             {% if med.brand and med.brand != 'Generic' and med.brand|lower not in med.detected_name|lower %}
@@ -193,7 +191,6 @@
               <div class="prop-block-label">MANUFACTURER</div>
               <div class="prop-block-value">{{ med.manufacturer|default:"Registered Manufacturer" }}</div>
             </div>
-            {% if med.price is not None and not med.is_generic_salt and not result.is_generic_salt and match_type != 'generic_salt' %}
             <div class="prop-block mrp-block">
               <div class="prop-block-label">
                 {% if med.price_verification and med.price_verification.verification_status == 'verified' %}
@@ -231,7 +228,6 @@
                 </div>
               {% endif %}
             </div>
-            {% endif %}
           </div>
           <div class="match-meta-bar">
             {% if result_level == 'verified' %}
@@ -313,7 +309,6 @@
                       {{ med.manufacturer|default:"Registered Manufacturer" }}
                     </div>
                   </div>
-                  {% if med.price is not None and not med.is_generic_salt and not result.is_generic_salt and match_type != 'generic_salt' %}
                   <div class="prop-block mrp-block">
                     <div class="prop-block-label">
                       {% if med.price_verification and med.price_verification.verification_status == 'verified' %}
@@ -351,7 +346,6 @@
                       </div>
                     {% endif %}
                   </div>
-                  {% endif %}
                 </div>
                 <div class="match-meta-bar">
                   {% if result_level == 'verified' %}

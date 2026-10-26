@@ -24,6 +24,7 @@ from django.views.decorators.http import require_http_methods
 
 from .forms import ScanForm
 from .ml import scan_image
+from .ml.medicine_matcher import decide_result
 
 logger = logging.getLogger(__name__)
 
@@ -145,18 +146,23 @@ def result(request):
     status = scan_result.get('status', '')
     error_reason = scan_result.get('error_reason') or (scan_result.get('error') if status == 'error' else '')
 
+    decision_candidates = candidates or medicines or ([scan_result.get('medicine')] if scan_result.get('medicine') else [])
+    if decision_candidates:
+        view_decision = decide_result({"raw_ocr": scan_result.get('raw_ocr')}, decision_candidates)
+        scan_result['medicine'] = view_decision.get('medicine') or scan_result.get('medicine')
+        scan_result['result_level'] = view_decision['level']
+        scan_result['message'] = view_decision['message']
+        if view_decision['level'] != 'verified':
+            scan_result['alternatives'] = view_decision.get('options', [])
+        if scan_result.get('medicine'):
+            scan_result['medicines'] = [scan_result['medicine']]
+            medicines = scan_result['medicines']
     result_level = scan_result.get('result_level')
     if not result_level:
         if status == 'error' or error_reason or scan_result.get('error_type') == 'setup_error':
             result_level = 'error'
-        elif not medicines and not candidates and not per_meds and not scan_result.get('medicine'):
-            result_level = 'not_found'
         else:
-            top_cand = scan_result.get('medicine') or (candidates[0] if candidates else (medicines[0] if medicines else None))
-            if top_cand and isinstance(top_cand, dict):
-                result_level = scan_result.get('status') or 'likely'
-            else:
-                result_level = 'not_found'
+            result_level = 'not_found'
 
     if result_level == 'error' and not error_reason:
         error_reason = scan_result.get('message') or scan_result.get('error') or "Scanner is not ready"
@@ -198,7 +204,7 @@ def result(request):
         'is_ingredient_match':   is_ingredient_match,
         'top_candidates':        top_candidates,
         'mode':                  scan_result.get('mode', 'auto'),
-        'success':               result_level in ('verified', 'likely'),
+        'success':               result_level in ('verified', 'likely', 'composition_match'),
         'medicines':             medicines,
         'alternatives':          scan_result.get('alternatives', []),
         'cross_interactions':    scan_result.get('cross_interactions', []),

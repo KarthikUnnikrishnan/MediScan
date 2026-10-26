@@ -1,0 +1,153 @@
+Loaded 108 cached photo lines from single frozen cache across 36 products.
+
+============================================================================================
+THREE-COLUMN EVALUATION ON HALF B (UNTOUCHED TEST SET: 18 PRODUCTS, 54 PHOTOS)
+============================================================================================
+Metric                                 | Old Naive       | Step 6 Matcher  | Current (FIX 3)
+--------------------------------------------------------------------------------------------
+Top-1 Overall Accuracy                 | 63.0%           | 64.8%           | 59.3%
+Top-3 Overall Accuracy                 | 64.8%           | 68.5%           | 68.5%
+Top-5 Overall Accuracy                 | 66.7%           | 70.4%           | 70.4%
+Verified Photos (Count)                | 54/54           | 27/54           | 9/54
+Precision among VERIFIED photos        | 63.0% (34/54)    | 77.8% (21/27)    | 88.9% (8/9)
+Unverified Photos (Count)              | 0/54           | 27/54           | 45/54
+Precision among UNVERIFIED photos      | 0.0% (0/0)    | 51.9% (14/27)    | 53.3% (24/45)
+
+============================================================================================
+THREE-COLUMN EVALUATION ON FULL FROZEN CACHE (36 PRODUCTS, 108 PHOTOS)
+============================================================================================
+Metric                                 | Old Naive       | Step 6 Matcher  | Current (FIX 3)
+--------------------------------------------------------------------------------------------
+Top-1 Overall Accuracy                 | 66.7%           | 67.6%           | 59.3%
+Top-3 Overall Accuracy                 | 70.4%           | 74.1%           | 73.1%
+Top-5 Overall Accuracy                 | 71.3%           | 75.0%           | 75.0%
+Verified Photos (Count)                | 108/108           | 65/108           | 15/108
+Precision among VERIFIED photos        | 66.7% (72/108)    | 80.0% (52/65)    | 80.0% (12/15)
+Unverified Photos (Count)              | 0/108           | 43/108           | 93/108
+Precision among UNVERIFIED photos      | 0.0% (0/0)    | 48.8% (21/43)    | 55.9% (52/93)
+Average Total Seconds per Photo        | 9.40s           | 9.45s           | 9.72s
+============================================================================================
+
+============================================================================================
+PHOTOS STILL MISSED IN TOP-3 BY CURRENT MATCHER: 29 / 108
+============================================================================================
+[ 1] Product       : Adol 24 caplets
+     Target Brand  : ADOL
+     In Index?     : True (matches 3 DB rows, e.g. ['Adol 200mg Tablet', 'Adoloc 20mg Capsule', 'Adoline Gel'])
+     Got Top-3     : ['IDOPE', 'PARACETAMOL', 'RECIP']
+     File          : raw/mobile_pharma_packages/bjy2svvmn8-1/Adol 24 caplets/huawei p30 (750).jpg
+     Lines Read (13): IOPE // CAPLETS // RECEIPT // CAPLES // PARACETAMOL
+     Target Read?  : NO (Brand text not recognized in OCR lines)
+--------------------------------------------------------------------------------------------
+[ 2] Product       : Betadine 120 ml mouth wash
+     Target Brand  : BETADINE
+     In Index?     : True (matches 3 DB rows, e.g. ['Betadine 10% Ointment', 'Betadine 2% Gargle Mint', 'Betadine 10% Solution'])
+     Got Top-3     : ['SUPOL', 'ACID', 'VISELAV']
+     File          : raw/mobile_pharma_packages/bjy2svvmn8-1/Betadine 120 ml mouth wash/huawei p30 (720).jpg
+     Lines Read (13): YSEMYINOW // ONIOVIDA // INGIES // VISELOVIA // ISZINUIA
+     Target Read?  : NO (Brand text not recognized in OCR lines)
+--------------------------------------------------------------------------------------------
+[ 3] Product       : Brufen 150 ml syrup
+     Target Brand  : BRUFEN
+     In Index?     : True (matches 3 DB rows, e.g. ['Brufen 400 Tablet', 'Brufen 200 Tablet', 'Brufen 600 Tablet'])
+     Got Top-3     : ['JOY', 'ANTIPREG', 'NITUS']
+     File          : raw/mobile_pharma_packages/bjy2svvmn8-1/Brufen 150 ml syrup/huawei p30 (475).jpg
+     Lines Read (12): N3IUYS // JW 5/8W // KOLEWWEYUL-ITUY // USPUPLYC JOY CHILDREN // O
+     Target Read?  : NO (Brand text not recognized in OCR lines)
+--------------------------------------------------------------------------------------------
+[ 4] Product       : Celebrex 15 capsules
+     Target Brand  : CELEBREX
+     In Index?     : True (matches 3 DB rows, e.g. ['Celebrex 200mg Capsule', 'Celebrex 100mg Capsule', 'Celebrex 200mg Capsule'])
+     Got Top-3     : ['EBEX', 'CELEX', 'PZER']
+     File          : raw/mobile_pharma_packages/bjy2svvmn8-1/Celebrex 15 capsules/huawei cn (113).jpg
+     Lines Read (7): CELEXB // EBEX // CAPSULES // 200 MG // PHZER
+     Target Read?  : [('CELEXB', 71.42857142857143)]
+--------------------------------------------------------------------------------------------
+[ 5] Product       : Diclac 30  gm gel
+     Target Brand  : DICLAC
+     In Index?     : True (matches 3 DB rows, e.g. ['Diclac MR Tablet', 'Diclace P 100 mg/500 mg Tablet', 'Diclac P 50mg/500mg Tablet'])
+     Got Top-3     : ['COL', 'SODIUM', 'OLO']
+     File          : raw/mobile_pharma_packages/bjy2svvmn8-1/Diclac 30  gm gel/huawei p30 (451).jpg
+     Lines Read (14): DICIOC // COL // 15OLO // TISPHENIC ACID // SANDOR
+     Target Read?  : [('DICLORACIN', 75.0)]
+--------------------------------------------------------------------------------------------
+[ 6] Product       : Flagyl 20 tablets
+     Target Brand  : FLAGYL
+     In Index?     : True (matches 3 DB rows, e.g. ['Flagyl 400 Tablet', 'Flagyl Suspension', 'Flagyl 200 Tablet'])
+     Got Top-3     : ['FLYLOR', 'SONO', 'STABLETOSE']
+     File          : raw/mobile_pharma_packages/bjy2svvmn8-1/Flagyl 20 tablets/huawei p30 (56).jpg
+     Lines Read (14): FLAYLOR // METRONIDAZOLE // 500 // ANTIPROTOZOLE // SM
+     Target Read?  : [('FLAYLOR', 76.92307692307692)]
+--------------------------------------------------------------------------------------------
+[ 7] Product       : Fucidin 15 g cream
+     Target Brand  : FUCIDIN
+     In Index?     : True (matches 3 DB rows, e.g. ['Fucidin Cream', 'Fucidin H Cream', 'Fucidin Ointment'])
+     Got Top-3     : ['ETERNA', 'PRIDE', 'MUPIRONE']
+     File          : raw/mobile_pharma_packages/bjy2svvmn8-1/Fucidin 15 g cream/huawei p30 (857).jpg
+     Lines Read (14): UIPIONE // 15% WETAUS 6GL // WAYHDYNIN // TEO PHARMACEUTICAL // FISION
+     Target Read?  : NO (Brand text not recognized in OCR lines)
+--------------------------------------------------------------------------------------------
+[ 8] Product       : Fucidin 20 g cream
+     Target Brand  : FUCIDIN
+     In Index?     : True (matches 3 DB rows, e.g. ['Fucidin Cream', 'Fucidin H Cream', 'Fucidin Ointment'])
+     Got Top-3     : ['FUSIC', 'ACID', 'JOSET']
+     File          : raw/mobile_pharma_packages/bjy2svvmn8-1/Fucidin 20 g cream/huawei cn (54).jpg
+     Lines Read (14): UIPIONE // FUSIC ACID MICRONISED // %Z WEEJO 60Z // ESEQ WEESIC HEIMEUTICAL // ESN JEUTENALE JOSE
+     Target Read?  : NO (Brand text not recognized in OCR lines)
+--------------------------------------------------------------------------------------------
+[ 9] Product       : Fucidin 20 g cream
+     Target Brand  : FUCIDIN
+     In Index?     : True (matches 3 DB rows, e.g. ['Fucidin Cream', 'Fucidin H Cream', 'Fucidin Ointment'])
+     Got Top-3     : ['UCIDIN', 'FUSIDIL', 'FUSIVIC']
+     File          : raw/mobile_pharma_packages/bjy2svvmn8-1/Fucidin 20 g cream/huawei p30 (522).jpg
+     Lines Read (14): UCIDIN // TOTAL: RECEIPT FOR AN OFFER // PHARMACEUTICAL // WINAPHARMA // ANTIBIOTIC
+     Target Read?  : [('UCIDIN', 92.3076923076923), ('FUSIDIC', 71.42857142857143)]
+--------------------------------------------------------------------------------------------
+[10] Product       : Fucidin 20 g cream
+     Target Brand  : FUCIDIN
+     In Index?     : True (matches 3 DB rows, e.g. ['Fucidin Cream', 'Fucidin H Cream', 'Fucidin Ointment'])
+     Got Top-3     : ['UCIDIN', 'ACID', 'AMBRONIC']
+     File          : raw/mobile_pharma_packages/bjy2svvmn8-1/Fucidin 20 g cream/huawei p30 (523).jpg
+     Lines Read (14): EUCIDIN // MIERIDEBOOK // DICLIPHOLIC ACID // SCHEDULE BY: // AMBROLE
+     Target Read?  : [('EUCIDIN', 85.71428571428572)]
+--------------------------------------------------------------------------------------------
+[11] Product       : GTN 50 ml cream
+     Target Brand  : GTN
+     In Index?     : True (matches 3 DB rows, e.g. ['GTN Sorbitrate CR 2.6 Tablet', 'GTN Sorbitrate -CR 6.4 Tablet', 'GTN Spray'])
+     Got Top-3     : ['AGTIN', 'STAR', 'MEGA']
+     File          : raw/mobile_pharma_packages/bjy2svvmn8-1/GTN 50 ml cream/huawei cn (53).jpg
+     Lines Read (5): AG T.N. // MEGA // STAR // CREAM // 50 ML
+     Target Read?  : NO (Brand text not recognized in OCR lines)
+--------------------------------------------------------------------------------------------
+[12] Product       : GTN 50 ml cream
+     Target Brand  : GTN
+     In Index?     : True (matches 3 DB rows, e.g. ['GTN Sorbitrate CR 2.6 Tablet', 'GTN Sorbitrate -CR 6.4 Tablet', 'GTN Spray'])
+     Got Top-3     : ['MEGA', 'STAY']
+     File          : raw/mobile_pharma_packages/bjy2svvmn8-1/GTN 50 ml cream/huawei p30 (457).jpg
+     Lines Read (7): IN-N // C // MEGA // STAY // CREAM
+     Target Read?  : NO (Brand text not recognized in OCR lines)
+--------------------------------------------------------------------------------------------
+[13] Product       : Janumet 56 tablets
+     Target Brand  : JANUMET
+     In Index?     : True (matches 3 DB rows, e.g. ['Janumet 50mg/500mg Tablet', 'Janumet 50mg/1000mg Tablet', 'Janumet XR CP Tablet'])
+     Got Top-3     : ['HIGHT', 'MEDFORMIN', 'ZITHROMYCIN']
+     File          : raw/mobile_pharma_packages/bjy2svvmn8-1/Janumet 56 tablets/huawei p30 (619).jpg
+     Lines Read (14): LOUDER // 100OL // FLIPHOPOLIC // IPHEO-USHIN // MANUFUSION
+     Target Read?  : NO (Brand text not recognized in OCR lines)
+--------------------------------------------------------------------------------------------
+[14] Product       : Lactulose 120 ml syrup
+     Target Brand  : LACTULOSE
+     In Index?     : True (matches 2 DB rows, e.g. ['Lactulose Syrup for Constipation Relief | Supports Gut Health & Healthy Bowel Movement | by Tata 1mg', 'Lactulose Syrup'])
+     Got Top-3     : ['FRESENIUS', 'OLIPT', 'LIT']
+     File          : raw/mobile_pharma_packages/bjy2svvmn8-1/Lactulose 120 ml syrup/huawei cn (45).jpg
+     Lines Read (14): LACTULOSE // LIPT // PHARMACEUTICAL // SYRUP // INTERNATIONAL
+     Target Read?  : [('LACTULOSE', 100.0)]
+--------------------------------------------------------------------------------------------
+[15] Product       : Lactulose 120 ml syrup
+     Target Brand  : LACTULOSE
+     In Index?     : True (matches 2 DB rows, e.g. ['Lactulose Syrup for Constipation Relief | Supports Gut Health & Healthy Bowel Movement | by Tata 1mg', 'Lactulose Syrup'])
+     Got Top-3     : ['LACTULO', 'IROSE', 'EPTICO']
+     File          : raw/mobile_pharma_packages/bjy2svvmn8-1/Lactulose 120 ml syrup/huawei p30 (409).jpg
+     Lines Read (14): EIPICO // LACTULO // IOSE // EIPICO // PHARMACEUTICAL
+     Target Read?  : [('LACTULO', 87.5)]
+--------------------------------------------------------------------------------------------
