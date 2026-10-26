@@ -1,22 +1,32 @@
 {% load mediscan_tags %}
 
-<div class="alt-section-title">💊 Top 5 Verified Cheaper Alternatives</div>
+<div class="alt-section-title">
+  {% if result_level == 'verified' %}
+    💊 Top 5 Verified Cheaper Alternatives
+  {% else %}
+    💊 Same-Salt Options
+  {% endif %}
+</div>
 <div class="alt-section-sub">
-  Same active molecule &bull; same strength &bull; unit-price verified comparison
+  {% if result_level == 'verified' %}
+    Same active molecule &bull; same strength &bull; unit-price verified comparison
+  {% else %}
+    Same active molecule &bull; confirm brand and dosage against your packaging
+  {% endif %}
 </div>
 
 {% if alternatives %}
 
-  {% if alternatives.0.price_comparison.comparison_eligible and alternatives.0.saving_amount %}
+  {% if result_level == 'verified' and alternatives.0.price_comparison.comparison_eligible and alternatives.0.saving_amount and not alternatives.0.price_comparison.price_unverified %}
   <div class="max-savings-pill" style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border: 1px solid #a7f3d0; color: #065f46; font-weight: 600;">
     🔥 Verified Best Saving: {{ alternatives.0.saving_label }}
   </div>
   {% endif %}
 
   {% for alt in alternatives|slice:":5" %}
-  <div class="alt-card-full {% if alt.is_cheapest and alt.price_comparison.comparison_eligible %}cheapest{% endif %}">
+  <div class="alt-card-full {% if result_level == 'verified' and alt.is_cheapest and alt.price_comparison.comparison_eligible %}cheapest{% endif %}">
 
-    {% if alt.is_cheapest and alt.price_comparison.comparison_eligible %}
+    {% if result_level == 'verified' and alt.is_cheapest and alt.price_comparison.comparison_eligible %}
     <span class="cheapest-badge">CHEAPEST</span>
     {% endif %}
 
@@ -36,7 +46,7 @@
       </div>
 
       <div class="alt-price-group">
-        {% if alt.price_comparison.comparison_eligible %}
+        {% if result_level == 'verified' and alt.price_comparison.comparison_eligible %}
           <div class="alt-card-price" style="color: #059669; font-size: 1.35rem; font-weight: 700; display: flex; align-items: baseline; gap: 3px;">
             ₹ {{ alt.price_verification.unit_price_inr|floatformat:2 }}
             <span style="font-size: 0.78rem; font-weight: 500; color: #475569;">/ {{ alt.price_verification.pack_unit|default:"tablet" }}</span>
@@ -59,10 +69,12 @@
               Unlisted
             {% endif %}
           </div>
-          <div class="alt-savings-unavailable" style="font-size: 0.72rem; color: #b45309; background: #fef3c7; border: 1px solid #fde68a; padding: 3px 6px; border-radius: 4px; margin-top: 3px; line-height: 1.25;">
-            <strong>Price comparison unavailable</strong><br/>
-            Package size or price basis could not be verified.
-          </div>
+          {% if result_level == 'verified' %}
+            <div class="alt-savings-unavailable" style="font-size: 0.72rem; color: #b45309; background: #fef3c7; border: 1px solid #fde68a; padding: 3px 6px; border-radius: 4px; margin-top: 3px; line-height: 1.25;">
+              <strong>Price comparison unavailable</strong><br/>
+              {% if alt.price_comparison.price_unverified %}Price data not verified.{% else %}Package size or price basis could not be verified.{% endif %}
+            </div>
+          {% endif %}
         {% endif %}
       </div>
     </div>
@@ -86,11 +98,6 @@
 
     <!-- Trust & Verification Details -->
     <div class="alt-trust-bar">
-      {% if alt.confidence %}
-      <span class="alt-conf-pill {% if alt.confidence >= 95 %}conf-high{% elif alt.confidence >= 90 %}conf-med{% else %}conf-fair{% endif %}">
-        🛡️ {{ alt.confidence }}% Trust Confidence
-      </span>
-      {% endif %}
       <span class="alt-trust-badge">
         {{ alt.trust_label|default:"Active Molecule Match" }}
       </span>

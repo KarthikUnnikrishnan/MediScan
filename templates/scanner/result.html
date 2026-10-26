@@ -45,9 +45,11 @@
         </div>
         <div class="status-desc-text">
           {% if result_level == 'verified' %}
-            Matches the brand and the ingredient printed on the pack.
+            {{ result.message|default:"Matches the brand and the ingredient printed on the pack." }}
           {% elif result_level == 'likely' %}
-            {% if is_ingredient_match %}
+            {% if result.message %}
+              {{ result.message }}
+            {% elif is_ingredient_match %}
               Closest match by ingredient
             {% else %}
               Top candidate match — please verify details against your packaging.
@@ -266,11 +268,9 @@
             </div>
           </div>
           <div class="match-meta-bar">
-            <span class="best-match-badge">✓ Best Database Match</span>
-            <span class="confidence-indicator conf-{{ med.confidence|default:0|confidence_tier }}">
-              <span class="confidence-dot"></span>
-              <span>{{ med.confidence|default:0|confidence_percent }} Match Confidence</span>
-            </span>
+            {% if result_level == 'verified' %}
+              <span class="best-match-badge">✓ Best Database Match</span>
+            {% endif %}
           </div>
           {% endwith %}
         {% else %}
@@ -400,11 +400,9 @@
                   </div>
                 </div>
                 <div class="match-meta-bar">
-                  <span class="best-match-badge">✓ Best Database Match</span>
-                  <span class="confidence-indicator conf-{{ med_data.confidence|confidence_tier }}">
-                    <span class="confidence-dot"></span>
-                    <span>{{ med_data.confidence|confidence_percent }} Match Confidence</span>
-                  </span>
+                  {% if result_level == 'verified' %}
+                    <span class="best-match-badge">✓ Best Database Match</span>
+                  {% endif %}
                 </div>
 
                 {% if med_data.side_effects %}

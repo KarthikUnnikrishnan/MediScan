@@ -494,11 +494,7 @@
                     {{ alt.salt }}
                   </div>
                   {% endif %}
-                  {% if alt.confidence %}
                   <div class="alt-trust-inline" style="display:flex; align-items:center; gap:6px; margin-top:5px; flex-wrap:wrap;">
-                    <span class="alt-conf-pill {% if alt.confidence >= 95 %}conf-high{% elif alt.confidence >= 90 %}conf-med{% else %}conf-fair{% endif %}">
-                      🛡️ {{ alt.confidence }}% Trust Confidence
-                    </span>
                     <span class="alt-trust-badge">
                       {{ alt.trust_label|default:"Bioequivalent Match" }}
                     </span>
@@ -508,7 +504,6 @@
                     </span>
                     {% endif %}
                   </div>
-                  {% endif %}
                 </div>
               </div>
 

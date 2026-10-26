@@ -58,14 +58,8 @@ def confidence_tier(value):
 @register.filter(name='confidence_percent')
 def confidence_percent(value):
     """
-    Returns formatted percentage string e.g. '95%'.
-    If 0 or missing, defaults to '92%'.
+    Deprecated: No match percentage should be displayed in the UI.
+    Always returns empty string.
     """
-    try:
-        val = float(value)
-        if val <= 0:
-            return '92%'
-        return f"{int(round(val))}%"
-    except (ValueError, TypeError):
-        return '92%'
+    return ''
 
