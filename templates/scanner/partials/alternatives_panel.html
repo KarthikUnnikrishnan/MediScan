@@ -128,7 +128,11 @@
       <div class="alt-card-top">
         <div class="alt-rank">#{{ forloop.counter }}</div>
         <div class="alt-name-group"><div class="alt-card-name">{{ alt.name }}</div><div class="alt-card-mfr">{{ alt.manufacturer }}</div></div>
-        <div class="alt-price-group">{% if alt.price %}₹ {{ alt.price }}{% else %}Price unavailable{% endif %}</div>
+        <div class="alt-price-group">
+          {% if alt.price_per_tablet %}₹ {{ alt.price_per_tablet|floatformat:2 }} / tablet
+          {% elif alt.price %}Pack price ₹ {{ alt.price }} · unit price unavailable
+          {% else %}Price unavailable{% endif %}
+        </div>
       </div>
       <div class="alt-card-salt">{{ alt.salt }}</div>
     </div>
