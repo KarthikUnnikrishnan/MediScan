@@ -655,7 +655,7 @@ PHARMA_STOPWORDS = {
     'ALLERGY', 'COLD', 'COUGH', 'ORANGE', 'FLAVOUR', 'FLAVORED', 'BORG', 'LEI', 'CEIP',
     'LOLIG', 'TODUCE', 'TOCUCE', 'JULPHAR', 'JAMJOM', 'TOR', 'EASTED', 'SIN', 'REMO',
     'SVIAMOWING', 'IVET', 'KAR', 'YLY', 'WYONI', 'ARRIV', 'ARGICAL', 'AIR', 'VENTED',
-    '5CMX5YD', 'NAN', 'TAPE', 'OINT'
+    '5CMX5YD', 'NAN', 'TAPE', 'OINT', 'COMPOSITION'
 }
 
 COMMON_SALTS = {
@@ -736,7 +736,7 @@ def match_printed_lines(
     if brand_index is None:
         brand_index = get_brand_word_index()
 
-    full_text = " ".join(lines).upper()
+    full_text = "\n".join(lines).upper()
     pack_strengths = extract_strengths_from_text(full_text)
     detected_strengths = pack_strengths or set(re.findall(r'\b\d+(?:\.\d+)?%?\b', full_text))
     is_generic_salt = False
@@ -1030,16 +1030,43 @@ def match_printed_lines(
 
         # Case 3: 0 rows or several rows -> ONE generic card
         else:
+            # Bug 2: Check if a brand-like token was read on the pack (e.g. P-650)
+            unindexed_brand_token = None
+            for l_box in lines:
+                l_clean = l_box.strip().upper()
+                if not l_clean or len(l_clean) < 2:
+                    continue
+                if any(re.search(pat, l_clean) for pat in BOILERPLATE_BOX_PATTERNS):
+                    continue
+                if re.search(r'\b(?:DOSE|DOSES|DAILY|MAXIMUM|MAX|EVERY|HOURS?|PER\s*DAY)\b', l_clean):
+                    continue
+                # Match whole box with letters and digits (e.g. P-650) or a prominent safe brand token
+                if re.match(r'^[A-Z0-9]+(?:[- ][A-Z0-9]+)?$', l_clean):
+                    if any(c.isalpha() for c in l_clean):
+                        b_words = re.split(r'[\s\-_]+', l_clean)
+                        if not any(w.lower() in pack_salts or w.lower() in COMMON_SALTS for w in b_words):
+                            if not any(w in PHARMA_STOPWORDS or w in GRAMMAR_WORDS or w in {'LIMITED', 'LTD', 'PVT', 'PHARMA', 'TABLETS', 'TABLET', 'CAPSULES', 'CAPSULE', 'IP', 'BP', 'USP', 'COMPOSITION'} for w in b_words):
+                                if (any(c.isdigit() for c in l_clean) and any(c.isalpha() for c in l_clean)) or (len(b_words) == 1 and len(l_clean) >= 4 and _is_safe_brand_token(l_clean)):
+                                    unindexed_brand_token = l_box.strip()
+                                    break
+
+            if unindexed_brand_token:
+                brand_tag_note = f"(brand {unindexed_brand_token} not in database)"
+                msg = f"Brand {unindexed_brand_token} was read on the pack but is not in the database. Showing the generic medicine."
+            else:
+                brand_tag_note = "(brand name not readable on the pack)"
+                msg = "Active ingredient and strength matched from packaging. Brand name not readable on the pack."
+
             if pack_mfr:
                 if p_disp:
-                    generic_salt_display = f"{salt_title} {p_disp} tablets, manufactured by {pack_mfr} (brand name not readable on the pack)"
+                    generic_salt_display = f"{salt_title} {p_disp} tablets, manufactured by {pack_mfr} {brand_tag_note}"
                 else:
-                    generic_salt_display = f"{salt_title} tablets, manufactured by {pack_mfr} (brand name not readable on the pack)"
+                    generic_salt_display = f"{salt_title} tablets, manufactured by {pack_mfr} {brand_tag_note}"
             else:
                 if p_disp:
-                    generic_salt_display = f"{salt_title} {p_disp} tablets (brand name not readable on the pack)"
+                    generic_salt_display = f"{salt_title} {p_disp} tablets {brand_tag_note}"
                 else:
-                    generic_salt_display = f"{salt_title} tablets (brand name not readable on the pack)"
+                    generic_salt_display = f"{salt_title} tablets {brand_tag_note}"
 
             generic_med = {
                 "id": None,
@@ -1066,7 +1093,6 @@ def match_printed_lines(
                 "brand": 0.0, "ingredients": 95.0, "strength": 90.0 if pack_strengths else 70.0,
                 "manufacturer": 85.0 if pack_mfr else 50.0, "dosage_form": 80.0, "overall": 85.0
             }
-            msg = "Active ingredient and strength matched from packaging. Brand name not readable on the pack."
             return {
                 "success": False,
                 "status": "likely",

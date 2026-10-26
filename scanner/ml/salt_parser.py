@@ -192,48 +192,105 @@ def clean_display_ingredient(name: str) -> str:
     return clean
 
 
+_DOSAGE_LINE_RE = re.compile(
+    r'\b(?:DOSE|DOSES|DAILY|MAXIMUM|MAX|EVERY|HOURS?|PER\s*DAY)\b',
+    re.IGNORECASE
+)
+
+_DIRECT_STRENGTH_PATTERN = re.compile(
+    r'\b(?:IP|BP|USP)?\s*(\d+(?:\.\d+)?)\s*(MG|MCG|UG|µG|G|GM|ML|%|IU|UNITS?)\b',
+    re.IGNORECASE
+)
+
+_NON_BRAND_PREFIXES = {
+    'IP', 'BP', 'USP', 'MG', 'ML', 'MCG', 'TAB', 'TABS', 'TABLET', 'TABLETS',
+    'CAP', 'CAPS', 'CAPSULE', 'CAPSULES', 'NO', 'EXP', 'LOT', 'BATCH', 'FOR',
+    'OF', 'IN', 'DOSE', 'DOSES', 'EVERY', 'DAILY', 'MAX'
+}
+
+
 def extract_strengths_from_text(text: str) -> set:
     """
     Extract canonical strength tokens e.g. {'180mg'}, {'5mg'}, {'0.5%'} from text.
     Handles '180 mg', '5mg', 'IP 180 mg', '0.5% w/v', '10 mcg', '500 iu', etc.
-    Also handles hyphenated numbers when units are present on the packaging.
+    Also handles hyphenated/brand numbers (e.g. FEXOMINE-180, P-650).
+    Ignores numbers on lines containing dosage/frequency instructions (DOSE, DAILY, MAXIMUM, etc.).
+    Prefers strengths next to active salt names (e.g. "Paracetamol IP 650 mg").
+    If brand has a number ("Fexomine-180") and a strength on pack equals that number,
+    trusts it and drops other OCR strengths.
     """
     if not text:
         return set()
-    full_text = text.upper()
-    strengths = set()
 
-    # 1. Direct number + unit
-    direct_pattern = re.compile(
-        r'\b(?:IP|BP|USP)?\s*(\d+(?:\.\d+)?)\s*(MG|MCG|UG|µG|G|GM|ML|%|IU|UNITS?)\b',
-        re.IGNORECASE
-    )
-    for match in direct_pattern.finditer(full_text):
-        val = match.group(1)
-        unit = match.group(2).lower()
-        if unit in ('ug', 'µg'):
-            unit = 'mcg'
-        elif unit == 'gm':
-            unit = 'g'
-        elif unit == 'units':
-            unit = 'unit'
-        try:
-            val_f = float(val)
-            val_str = str(int(val_f)) if val_f.is_integer() else str(val_f)
-        except ValueError:
-            val_str = val
-        strengths.add(f"{val_str}{unit}")
+    raw_lines = [l.strip() for l in re.split(r'[\r\n]+', text) if l.strip()]
+    if len(raw_lines) <= 1:
+        raw_lines = [l.strip() for l in re.split(r'[\r\n;]+', text) if l.strip()]
 
-    # 2. Hyphenated numbers e.g. "FEXOMINE-180", "DOLO-650"
-    hyphen_pattern = re.compile(r'\b[A-Za-z]+-(\d{1,4})\b')
-    hyphen_nums = hyphen_pattern.findall(full_text)
-    if hyphen_nums:
-        dominant_unit = 'mg' if ('MG' in full_text or 'TABLET' in full_text or 'CAPSULE' in full_text) else None
+    all_strengths = set()
+    salt_adjacent_strengths = set()
+    brand_nums = set()
+
+    for line in raw_lines:
+        line_upper = line.upper()
+
+        # Check for brand numbers e.g. "FEXOMINE-180", "P-650", "DOLO 650", "LORINOL 10"
+        if not _DOSAGE_LINE_RE.search(line_upper):
+            for m in re.finditer(r'\b([A-Za-z0-9]+)[- ](\d{1,4})\b', line_upper):
+                word, num = m.group(1), m.group(2)
+                if word not in _NON_BRAND_PREFIXES:
+                    brand_nums.add(num)
+
+        # 1. Ignore numbers on lines that contain dosage/frequency instructions
+        if _DOSAGE_LINE_RE.search(line_upper):
+            continue
+
+        # Extract direct strengths from this line
+        line_strengths = set()
+        for match in _DIRECT_STRENGTH_PATTERN.finditer(line_upper):
+            val = match.group(1)
+            unit = match.group(2).lower()
+            if unit in ('ug', 'µg'):
+                unit = 'mcg'
+            elif unit == 'gm':
+                unit = 'g'
+            elif unit == 'units':
+                unit = 'unit'
+            try:
+                val_f = float(val)
+                val_str = str(int(val_f)) if val_f.is_integer() else str(val_f)
+            except ValueError:
+                val_str = val
+            st = f"{val_str}{unit}"
+            line_strengths.add(st)
+            all_strengths.add(st)
+
+        # Prefer strength next to salt name
+        line_lower = line.lower()
+        has_salt = any(re.search(r'\b' + re.escape(salt) + r'\b', line_lower) for salt in _KNOWN_ACTIVE_NAMES)
+        if has_salt and line_strengths:
+            salt_adjacent_strengths.update(line_strengths)
+
+    # Fallback hyphenated numbers if no direct unit strengths found
+    if not all_strengths and brand_nums:
+        dominant_unit = 'mg' if ('MG' in text.upper() or 'TABLET' in text.upper() or 'CAPSULE' in text.upper()) else None
         if dominant_unit:
-            for num in hyphen_nums:
-                strengths.add(f"{num}{dominant_unit}")
+            for b_num in brand_nums:
+                all_strengths.add(f"{b_num}{dominant_unit}")
 
-    return strengths
+    # Prefer salt-adjacent strengths if any were found
+    chosen_strengths = salt_adjacent_strengths if salt_adjacent_strengths else all_strengths
+
+    # Bug 3: If brand has a number ("Fexomine-180") and a strength on pack equals that number,
+    # trust it and drop other OCR strengths (e.g. 100mg typo).
+    if brand_nums:
+        matching_brand_strengths = {
+            s for s in chosen_strengths
+            if any(re.match(rf'^{b_num}[a-z%]+$', s) for b_num in brand_nums)
+        }
+        if matching_brand_strengths:
+            chosen_strengths = matching_brand_strengths
+
+    return chosen_strengths
 
 
 def extract_active_salt_set(salt_str: Optional[str]) -> set:
@@ -243,14 +300,17 @@ def extract_active_salt_set(salt_str: Optional[str]) -> set:
     """
     if not salt_str:
         return set()
-    parsed = parse_salt(salt_str)
+    # Filter out lines containing dosage/frequency instructions
+    clean_lines = [l for l in salt_str.splitlines() if not _DOSAGE_LINE_RE.search(l)]
+    salt_text = "\n".join(clean_lines) if clean_lines else salt_str
+    parsed = parse_salt(salt_text)
     salts = set()
     for item in parsed:
         cname = item.get("canonical_name")
-        if cname:
+        if cname and not _DOSAGE_LINE_RE.search(cname):
             salts.add(cname)
     if not salts:
-        clean = salt_str.lower()
+        clean = salt_text.lower()
         for act in _KNOWN_ACTIVE_NAMES:
             if re.search(r'\b' + re.escape(act) + r'\b', clean):
                 salts.add(act)
