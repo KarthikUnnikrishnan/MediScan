@@ -284,20 +284,19 @@ def scan_medicine_package(
             for ing in ingredients_list
         ]
 
-        if match_res.get("is_generic_salt") or verified_med.get("is_generic_salt"):
-            brand_display = ""
-            verified_med["price"] = None
-        else:
-            brand_display = verified_med.get("brand") or (verified_med.get("name", "").split()[0] if verified_med.get("name") else "Generic")
+        brand_display = verified_med.get("brand") or (verified_med.get("name", "").split()[0] if verified_med.get("name") else "Generic")
         descriptive_name = verified_med.get("detected_name") or verified_med.get("name", "Medicine")
         verified_med["detected_name"] = descriptive_name
         verified_med["brand"] = brand_display
 
         # Step 7 Result Wording
-        msg_from_matcher = match_res.get("message") or match_res.get("strength_mismatch_msg")
+        msg_from_matcher = decision.get("message") or match_res.get("strength_mismatch_msg")
         if result_level == "verified":
             level_badge = "Verified match"
             level_text = msg_from_matcher or "Matches the brand and the ingredient printed on the pack."
+        elif result_level == "composition_match":
+            level_badge = "Composition match · Read from the pack"
+            level_text = msg_from_matcher
         else:
             level_badge = "Likely match - please confirm"
             if msg_from_matcher:

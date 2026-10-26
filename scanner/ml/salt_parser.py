@@ -34,17 +34,6 @@ _SYNONYM_MAP = {
     'methylcobalamin': 'vitamin b12',
     'folic acid': 'folic acid',
     'pantoprazole sodium': 'pantoprazole',
-    'clavulanic': 'clavulanic acid',
-    'clavulanate': 'clavulanic acid',
-    'potassium clavulanate': 'clavulanic acid',
-    'betamethasone dipropionate': 'betamethasone',
-    'betamethasone valerate': 'betamethasone',
-    'povidone': 'povidone iodine',
-    'povidone lodine': 'povidone iodine',
-    'povidone-lodine': 'povidone iodine',
-    'flavonoid': 'diosmin',
-    'flavonoids': 'diosmin',
-    'flavonoid fraction': 'diosmin',
 }
 
 _KNOWN_ACTIVE_NAMES = [
@@ -53,19 +42,15 @@ _KNOWN_ACTIVE_NAMES = [
     'ascorbic acid', 'vitamin b12', 'methylcobalamin', 'cyanocobalamin',
     'folic acid', 'pantoprazole', 'rabeprazole', 'omeprazole', 'esomeprazole',
     'levocetirizine', 'cetirizine', 'fexofenadine', 'loratadine', 'desloratadine',
-    'amoxicillin', 'amoxycillin', 'clavulanic acid', 'clavulanic', 'clavulanate', 'azithromycin',
+    'amoxicillin', 'amoxycillin', 'clavulanic acid', 'clavulanate', 'azithromycin',
     'ciprofloxacin', 'ofloxacin', 'metronidazole', 'tinidazole',
     'metformin', 'glimepiride', 'gliclazide', 'vildagliptin', 'sitagliptin',
     'atorvastatin', 'rosuvastatin', 'simvastatin', 'aspirin', 'clopidogrel',
     'telmisartan', 'losartan', 'amlodipine', 'atenolol', 'metoprolol',
     'salbutamol', 'budesonide', 'formoterol', 'montelukast', 'theophylline',
     'dextromethorphan', 'chlorpheniramine', 'phenylephrine', 'ambroxol',
-    'domperidone', 'ondansetron', 'ranitidine', 'famotidine', 'dicyclomine',
-    'mefenamic acid', 'betamethasone', 'povidone iodine', 'povidone', 'iodine',
-    'celecoxib', 'miconazole', 'fusidic acid', 'fusidic', 'gentamicin',
-    'lactulose', 'terbinafine', 'acyclovir', 'mupirocin', 'prednisolone',
-    'chlorhexidine', 'picosulfate', 'flavonoid', 'hesperidin', 'diosmin',
-    'nitroglycerin', 'glyceryl trinitrate',
+    'domperidone', 'ondansetron', 'ranitidine', 'famotidine', 'dicyclomine', 'doxylamine',
+    'mefenamic acid',
 ]
 
 # Regex to capture: [Ingredient Name] ( [Strength] [Unit] )
@@ -111,15 +96,14 @@ def normalize_ingredient_name(name: str) -> str:
     
     clean = name.lower().strip()
     
-    # Remove scraped junk prefixes (including leading dots, commas, ltd., etc.)
-    clean = re.sub(r"^[\s\.\,\'\-\&]+", "", clean)
+    # Remove scraped junk prefixes
+    clean = re.sub(r"^['&][^a-zA-Z0-9]*", "", clean)
     clean = re.sub(
-        r"^.*?\b(?:ltd|limited|pvt|laboratories|biotech|lifescience|antibiotics|ayurveda)[\s\.\,]*",
+        r"^.*?\b(?:ltd|limited|pvt|laboratories|biotech|lifescience|antibiotics|ayurveda)\s*",
         "",
         clean,
         flags=re.IGNORECASE
     )
-    clean = re.sub(r"^[\s\.\,\'\-\&]+", "", clean)
 
     # Strip sub-brand marketing modifiers like "advance", "plus", "forte", etc. when prefixed to ingredient
     clean = re.sub(
@@ -166,14 +150,13 @@ def clean_display_ingredient(name: str) -> str:
     if not name:
         return ""
     clean = name.strip()
-    clean = re.sub(r"^[\s\.\,\'\-\&]+", "", clean)
+    clean = re.sub(r"^['&][^a-zA-Z0-9]*", "", clean)
     clean = re.sub(
-        r"^.*?\b(?:ltd|limited|pvt|laboratories|biotech|lifescience|antibiotics|ayurveda)[\s\.\,]*",
+        r"^.*?\b(?:ltd|limited|pvt|laboratories|biotech|lifescience|antibiotics|ayurveda)\s*",
         "",
         clean,
         flags=re.IGNORECASE
     )
-    clean = re.sub(r"^[\s\.\,\'\-\&]+", "", clean)
 
     # Strip sub-brand marketing modifiers like "advance", "plus", "forte", etc. when prefixed to ingredient
     clean = re.sub(
@@ -196,135 +179,6 @@ def clean_display_ingredient(name: str) -> str:
     clean = re.sub(r"\badd$", "", clean, flags=re.IGNORECASE)
     clean = re.sub(r"\s+", " ", clean).strip()
     return clean
-
-
-_DOSAGE_LINE_RE = re.compile(
-    r'\b(?:DOSE|DOSES|DAILY|MAXIMUM|MAX|EVERY|HOURS?|PER\s*DAY)\b',
-    re.IGNORECASE
-)
-
-_DIRECT_STRENGTH_PATTERN = re.compile(
-    r'\b(?:IP|BP|USP)?\s*(\d+(?:\.\d+)?)\s*(MG|MCG|UG|µG|G|GM|ML|IU|UNITS?|%)(?!\w)',
-    re.IGNORECASE
-)
-
-_NON_BRAND_PREFIXES = {
-    'IP', 'BP', 'USP', 'MG', 'ML', 'MCG', 'TAB', 'TABS', 'TABLET', 'TABLETS',
-    'CAP', 'CAPS', 'CAPSULE', 'CAPSULES', 'NO', 'EXP', 'LOT', 'BATCH', 'FOR',
-    'OF', 'IN', 'DOSE', 'DOSES', 'EVERY', 'DAILY', 'MAX'
-}
-
-
-def extract_strengths_from_text(text: str) -> set:
-    """
-    Extract canonical strength tokens e.g. {'180mg'}, {'5mg'}, {'0.5%'} from text.
-    Handles '180 mg', '5mg', 'IP 180 mg', '0.5% w/v', '10 mcg', '500 iu', etc.
-    Also handles hyphenated/brand numbers (e.g. FEXOMINE-180, P-650).
-    Ignores numbers on lines containing dosage/frequency instructions (DOSE, DAILY, MAXIMUM, etc.).
-    Prefers strengths next to active salt names (e.g. "Paracetamol IP 650 mg").
-    If brand has a number ("Fexomine-180") and a strength on pack equals that number,
-    trusts it and drops other OCR strengths.
-    """
-    if not text:
-        return set()
-
-    raw_lines = [l.strip() for l in re.split(r'[\r\n]+', text) if l.strip()]
-    if len(raw_lines) <= 1:
-        raw_lines = [l.strip() for l in re.split(r'[\r\n;]+', text) if l.strip()]
-
-    all_strengths = set()
-    salt_adjacent_strengths = set()
-    brand_nums = set()
-
-    for line in raw_lines:
-        line_upper = line.upper()
-
-        # Check for brand numbers e.g. "FEXOMINE-180", "P-650", "DOLO 650", "LORINOL 10"
-        if not _DOSAGE_LINE_RE.search(line_upper):
-            for m in re.finditer(r'\b([A-Za-z0-9]+)[- ](\d{1,4})\b', line_upper):
-                word, num = m.group(1), m.group(2)
-                if word not in _NON_BRAND_PREFIXES:
-                    brand_nums.add(num)
-
-        # 1. Ignore numbers on lines that contain dosage/frequency instructions
-        if _DOSAGE_LINE_RE.search(line_upper):
-            continue
-
-        # Extract direct strengths from this line
-        line_strengths = set()
-        for match in _DIRECT_STRENGTH_PATTERN.finditer(line_upper):
-            val = match.group(1)
-            unit = match.group(2).lower()
-            if unit in ('ug', 'µg'):
-                unit = 'mcg'
-            elif unit == 'gm':
-                unit = 'g'
-            elif unit == 'units':
-                unit = 'unit'
-            try:
-                val_f = float(val)
-                val_str = str(int(val_f)) if val_f.is_integer() else str(val_f)
-            except ValueError:
-                val_str = val
-            st = f"{val_str}{unit}"
-            line_strengths.add(st)
-            all_strengths.add(st)
-
-        # Prefer strength next to salt name
-        line_lower = line.lower()
-        has_salt = any(re.search(r'\b' + re.escape(salt) + r'\b', line_lower) for salt in _KNOWN_ACTIVE_NAMES)
-        if has_salt and line_strengths:
-            salt_adjacent_strengths.update(line_strengths)
-
-    # Fallback hyphenated numbers if no direct unit strengths found
-    if not all_strengths and brand_nums:
-        dominant_unit = 'mg' if ('MG' in text.upper() or 'TABLET' in text.upper() or 'CAPSULE' in text.upper()) else None
-        if dominant_unit:
-            for b_num in brand_nums:
-                all_strengths.add(f"{b_num}{dominant_unit}")
-
-    # Prefer salt-adjacent strengths if any were found
-    chosen_strengths = salt_adjacent_strengths if salt_adjacent_strengths else all_strengths
-
-    # Bug 3: If brand has a number ("Fexomine-180") and a strength on pack equals that number,
-    # trust it and drop other OCR strengths (e.g. 100mg typo).
-    if brand_nums:
-        matching_brand_strengths = {
-            s for s in chosen_strengths
-            if any(re.match(rf'^{b_num}[a-z%]+$', s) for b_num in brand_nums)
-        }
-        if matching_brand_strengths:
-            chosen_strengths = matching_brand_strengths
-
-    return chosen_strengths
-
-
-def extract_active_salt_set(salt_str: Optional[str]) -> set:
-    """
-    Extract set of normalized canonical active ingredient names from a salt string.
-    e.g. 'levocetirizine (5mg) + montelukast (10mg)' -> {'levocetirizine', 'montelukast'}
-    """
-    if not salt_str:
-        return set()
-    # Filter out lines containing dosage/frequency instructions
-    clean_lines = [l for l in salt_str.splitlines() if not _DOSAGE_LINE_RE.search(l)]
-    salt_text = "\n".join(clean_lines) if clean_lines else salt_str
-    parsed = parse_salt(salt_text)
-    salts = set()
-    known_actives_set = set(_KNOWN_ACTIVE_NAMES)
-    for item in parsed:
-        cname = item.get("canonical_name")
-        if cname and not _DOSAGE_LINE_RE.search(cname):
-            norm_cname = _SYNONYM_MAP.get(cname, cname)
-            if norm_cname in known_actives_set or any(act in norm_cname for act in _KNOWN_ACTIVE_NAMES):
-                salts.add(norm_cname)
-
-    # Always scan text for known active chemical names
-    clean = salt_text.lower()
-    for act in _KNOWN_ACTIVE_NAMES:
-        if re.search(r'\b' + re.escape(act) + r'\b', clean):
-            salts.add(_SYNONYM_MAP.get(act, act))
-    return salts
 
 
 def parse_salt(salt_str: Optional[str]) -> List[Dict[str, Any]]:
@@ -354,6 +208,9 @@ def parse_salt(salt_str: Optional[str]) -> List[Dict[str, Any]]:
         return []
 
     s = salt_str.strip()
+    # OCR commonly renders an ingredient separator as an ampersand rather
+    # than "and" (for example, "doxylamine 20 mg & pyridoxine 20 mg").
+    s = re.sub(r"\s*&\s*", " and ", s)
     if s.endswith('add'):
         s = s[:-3].strip()
 

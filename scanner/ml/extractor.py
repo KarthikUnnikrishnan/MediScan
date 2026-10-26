@@ -226,7 +226,10 @@ def extract_prominent_trade_name(text: str, manufacturer: Optional[str] = None, 
 
     # 1. Alphanumeric / hyphenated trade codes (e.g. P-650, 1-AL, PCM-650, Pan-D, Meftal-P, D-650)
     for line in lines:
-        for match in re.finditer(r'\b([A-Za-z0-9]{1,6}-[A-Za-z0-9]{1,6}(?:\s*(?:Tablets?|Capsules?|Suspension))?)\b', line, re.I):
+        # Trade names commonly have a longer word before the hyphen (e.g.
+        # Doxysela-OD); keep the whole code together rather than treating a
+        # nearby salt/strength fragment as the brand.
+        for match in re.finditer(r'\b([A-Za-z0-9]{1,20}-[A-Za-z0-9]{1,10}(?:\s*(?:Tablets?|Capsules?|Suspension))?)\b', line, re.I):
             cand = match.group(1).strip()
             if not re.match(r'^(?:mg|ml|mcg|kg|iu|ph|lic|no|lot|exp|mfg)$', cand, re.I):
                 return cand
