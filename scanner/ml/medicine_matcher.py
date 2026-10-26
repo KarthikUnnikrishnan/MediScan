@@ -911,7 +911,30 @@ def decide_result(pack: Dict[str, Any], candidates: List[Dict[str, Any]]) -> Dic
                            and not (len(pack_keys) == 1 and re.search(r"\b(?:montelukast|cetirizine|phenylephrine)\b", str(m.get("salt", "")), re.I)))
         except Exception:
             logger.debug("Composition options lookup failed", exc_info=True)
-    options.sort(key=lambda m: float(m.get("price") or float("inf")))
+    try:
+        from .price_verifier import KNOWN_BRAND_MRPS
+    except Exception:
+        KNOWN_BRAND_MRPS = {}
+    for option in options:
+        price = option.get("price")
+        form = str(option.get("dosage_form") or "tablet").lower()
+        unit_price = None
+        if price is not None and form in {"tablet", "capsule"}:
+            price = float(price)
+            if 0 < price <= 12.0:
+                unit_price = price
+            else:
+                count = re.search(r"\b(?:strip\s+of\s*)?(\d{1,3})\s*(?:tablets?|capsules?|['’]s)\b", str(option.get("name", "")), re.I)
+                if count and 1 <= int(count.group(1)) <= 200:
+                    unit_price = price / int(count.group(1))
+                else:
+                    name_key = str(option.get("name", "")).lower()
+                    brand_key = str(option.get("brand", "")).lower()
+                    known = next((v for k, v in KNOWN_BRAND_MRPS.items() if k in name_key or k in brand_key), None)
+                    if known and known[2] == "tablet":
+                        unit_price = float(known[0]) / int(known[1])
+        option["price_per_tablet"] = round(unit_price, 2) if unit_price is not None else None
+    options.sort(key=lambda m: (m.get("price_per_tablet") is None, m.get("price_per_tablet") or float("inf"), str(m.get("name", "")).lower()))
     return {"level": level, "result_level": level, "medicine": chosen, "message": message, "options": options[:5],
             "brand_read": brand, "salt_read": pack_salts, "manufacturer_read": manufacturer}
 
