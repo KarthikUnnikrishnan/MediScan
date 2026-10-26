@@ -33,7 +33,7 @@ from .extractor import (
     build_descriptive_medicine_name,
 )
 from .medicine_index import get_medicine_index
-from .medicine_matcher import match_medicine, CONFIDENCE_THRESHOLD
+from .medicine_matcher import match_medicine, CONFIDENCE_THRESHOLD, decide_result
 from .alternative_matcher import find_top_cheaper_alternatives
 from .drug_safety import get_drug_safety_info, get_cross_drug_interactions
 from .salt_parser import parse_salt
@@ -235,9 +235,10 @@ def scan_medicine_package(
                 "confidence_breakdown": confidence_breakdown,
             }
 
-        top_cand = candidates[0]
-        result_level = match_res.get("result_level", "likely")
-        status = match_res.get("status", "likely")
+        decision = decide_result({"raw_ocr": raw_ocr}, candidates)
+        top_cand = decision.get("medicine") or candidates[0]
+        result_level = decision.get("level", "likely")
+        status = "verified" if result_level == "verified" else result_level
         is_verified = (result_level == "verified")
         is_exact_brand = bool(top_cand.get("is_exact_brand"))
         salt_matched = bool(top_cand.get("salt_matched"))
@@ -338,11 +339,13 @@ def scan_medicine_package(
                 "salt_matched": salt_matched,
                 "match_type": top_cand.get("match_type", match_type),
             },
-            "candidates": [verified_med],
-            "top_candidates": [verified_med],
+            # Keep the raw database candidates available for the result view's
+            # central decision pass; never render this list as the selected medicine.
+            "candidates": candidates[:5],
+            "top_candidates": candidates[:5],
             "medicines": [verified_med],
             "ingredients": display_ingredients,
-            "alternatives": alternatives,
+            "alternatives": alternatives if is_verified else decision.get("options", []),
             "max_savings": max_savings,
             "max_savings_percent": max_savings_percent,
             "side_effects": safety_info.get("side_effects", []),
@@ -651,20 +654,18 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
         first_alts = per_medicine_results[first_key]["alternatives"] if first_key else []
 
         top_med = medicines_list[0] if medicines_list else {}
-        is_exact_brand = bool(top_med.get("is_exact_brand"))
-        salt_matched = bool(top_med.get("salt_matched"))
-        is_rule4 = is_exact_brand and salt_matched
-        result_level = "verified" if is_rule4 else "likely"
-
+        prescription_decision = decide_result({"raw_ocr": raw_ocr, "brand_read": first_key}, medicines_list)
+        top_med = prescription_decision.get("medicine") or top_med
+        result_level = prescription_decision["level"]
         return {
             "success": True,
-            "status": "verified" if is_rule4 else "likely",
+            "status": result_level,
             "result_level": result_level,
-            "level_badge": "Verified match" if is_rule4 else "Likely match - please confirm",
-            "level_text": "Matches the brand and the ingredient printed on the pack." if is_rule4 else ("Closest match by ingredient" if top_med.get("match_type") == "ingredient" else "Likely match — please confirm"),
+            "level_badge": "Verified match" if result_level == "verified" else ("Composition match · Read from the pack" if result_level == "composition_match" else "Likely match - please confirm"),
+            "level_text": prescription_decision["message"],
             "pack_warning": "Check this result against your pack before use.",
             "mode": "prescription",
-            "message": "Prescription parsed successfully.",
+            "message": prescription_decision["message"],
             "raw_ocr": raw_ocr,
             "ocr_text": raw_ocr,
             "other_text_read": other_text,
