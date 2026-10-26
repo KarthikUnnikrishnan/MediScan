@@ -133,7 +133,7 @@
         {% if med_data.top_medicine %}
         <div class="confidence-indicator conf-{{ med_data.confidence|confidence_tier }} med-sel-indicator">
           <span class="confidence-dot"></span>
-          <span>{{ med_data.confidence|confidence_percent }} Match</span>
+          <span>Matched</span>
         </div>
         {% else %}
         <div class="confidence-indicator conf-low med-sel-indicator">
@@ -166,49 +166,13 @@
         {% if medicines %}
           {% with med=medicines.0 %}
 
-          <!-- TOP 3 CANDIDATES SECTION (Shown prominently for Likely match) -->
-          {% if top_candidates and top_candidates|length > 0 %}
-          <div class="candidates-comparison-panel {% if result_level == 'likely' %}candidates-comparison-panel--likely{% endif %}">
-            <div class="cand-panel-header">
-              <span class="cand-panel-title">TOP CANDIDATES CONSIDERED (TOP {{ top_candidates|length }})</span>
-              {% if result_level == 'likely' %}
-                <span class="cand-panel-hint">Please confirm against your pack</span>
-              {% endif %}
-            </div>
-            <div class="cand-grid">
-              {% for cand in top_candidates|slice:":3" %}
-              <div class="cand-card {% if forloop.first %}cand-card--top{% endif %}">
-                <div class="cand-card-top-row">
-                  <span class="cand-rank-badge">#{{ forloop.counter }}</span>
-                  <span class="cand-score-badge">{{ cand.score|floatformat:0 }}% score</span>
-                </div>
-                <div class="cand-brand-title">{{ cand.brand|default:cand.name }}</div>
-                <div class="cand-full-name">{{ cand.name }}</div>
-                <div class="cand-salt-row">
-                  <span class="cand-salt-lbl">Salt:</span>
-                  <span class="cand-salt-txt">{{ cand.salt|default:"Not listed" }}</span>
-                </div>
-                <div class="cand-badge-row">
-                  {% if cand.match_type == 'ingredient' %}
-                    <span class="cand-tag cand-tag--ingredient">Closest match by ingredient</span>
-                  {% elif cand.is_exact_brand and cand.salt_matched %}
-                    <span class="cand-tag cand-tag--verified">Exact Brand &amp; Salt</span>
-                  {% elif cand.is_exact_brand %}
-                    <span class="cand-tag cand-tag--brand">Exact Brand</span>
-                  {% else %}
-                    <span class="cand-tag cand-tag--likely">Likely Candidate</span>
-                  {% endif %}
-                  {% if cand.price %}
-                    <span class="cand-price-val">₹ {{ cand.price }}</span>
-                  {% endif %}
-                </div>
-              </div>
-              {% endfor %}
-            </div>
+          <div class="detected-label">DETECTED MEDICINE</div>
+          {% if result_level == 'likely' and result.message %}
+          <div class="likely-mismatch-banner" style="background: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 0.65rem 0.95rem; border-radius: 6px; font-size: 0.88rem; font-weight: 500; margin-bottom: 0.85rem; display: flex; align-items: center; gap: 8px;">
+            <span>⚠️</span>
+            <span>{{ result.message }}</span>
           </div>
           {% endif %}
-
-          <div class="detected-label">DETECTED MEDICINE</div>
           <div class="detected-name">{{ med.detected_name|default:detected_name|default:med.name }}</div>
           <div class="detected-match-sub" style="margin-top: -0.4rem; margin-bottom: 0.85rem; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
             {% if med.brand and med.brand != 'Generic' and med.brand|lower not in med.detected_name|lower %}
@@ -216,7 +180,7 @@
               🏷 Scanned Brand: <strong>{{ med.brand }}</strong>
             </span>
             {% endif %}
-            {% if med.name and med.name != med.detected_name and med.name != detected_name %}
+            {% if med.name and med.name != med.detected_name and med.name != detected_name and med.brand != 'Generic' %}
             <span class="db-matched-tag" style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.78rem; font-weight: 500; color: #0369a1; background: #f0f9ff; border: 1px solid #bae6fd; padding: 3px 9px; border-radius: 6px;">
               ✓ Matched Database Record: <strong>{{ med.name }}</strong>
             </span>
@@ -307,20 +271,6 @@
                   {% if med_data.dose %}<span>Dose: <strong style="color: #1e293b;">{{ med_data.dose }}</strong></span>{% endif %}
                   {% if med_data.frequency %}<span>Frequency: <strong style="color: #1e293b;">{{ med_data.frequency }}</strong></span>{% endif %}
                   {% if med_data.duration %}<span>Duration: <strong style="color: #1e293b;">{{ med_data.duration }}</strong></span>{% endif %}
-                </div>
-              </div>
-              {% endif %}
-
-              {% if med_data.candidates and med_data.candidates|length > 1 %}
-              <div class="top-candidates-section" style="margin-bottom: 0.85rem;">
-                <div class="prop-block-label" style="font-size: 0.72rem; font-weight: 700; color: #64748b; letter-spacing: 0.05em; margin-bottom: 0.35rem;">TOP CANDIDATES CONSIDERED</div>
-                <div style="display: flex; flex-direction: column; gap: 0.35rem;">
-                  {% for cand in med_data.candidates|slice:":3" %}
-                  <div style="display: flex; justify-content: space-between; align-items: center; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.35rem 0.65rem; font-size: 0.8rem;">
-                    <span style="font-weight: 500; color: #1e293b;">{{ cand.name }}</span>
-                    <span style="font-size: 0.75rem; font-weight: 600; color: #0284c7; background: #e0f2fe; padding: 1px 6px; border-radius: 4px;">{{ cand.score }}%</span>
-                  </div>
-                  {% endfor %}
                 </div>
               </div>
               {% endif %}

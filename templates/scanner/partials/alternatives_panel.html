@@ -1,124 +1,132 @@
 {% load mediscan_tags %}
 
-<div class="alt-section-title">
-  {% if result_level == 'verified' %}
+{% if result_level == 'verified' %}
+  <div class="alt-section-title">
     💊 Top 5 Verified Cheaper Alternatives
-  {% else %}
-    💊 Same-Salt Options
-  {% endif %}
-</div>
-<div class="alt-section-sub">
-  {% if result_level == 'verified' %}
-    Same active molecule &bull; same strength &bull; unit-price verified comparison
-  {% else %}
-    Same active molecule &bull; confirm brand and dosage against your packaging
-  {% endif %}
-</div>
-
-{% if alternatives %}
-
-  {% if result_level == 'verified' and alternatives.0.price_comparison.comparison_eligible and alternatives.0.saving_amount and not alternatives.0.price_comparison.price_unverified %}
-  <div class="max-savings-pill" style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border: 1px solid #a7f3d0; color: #065f46; font-weight: 600;">
-    🔥 Verified Best Saving: {{ alternatives.0.saving_label }}
   </div>
-  {% endif %}
+  <div class="alt-section-sub">
+    Same active molecule &bull; same strength &bull; unit-price verified comparison
+  </div>
 
-  {% for alt in alternatives|slice:":5" %}
-  <div class="alt-card-full {% if result_level == 'verified' and alt.is_cheapest and alt.price_comparison.comparison_eligible %}cheapest{% endif %}">
+  {% if alternatives %}
 
-    {% if result_level == 'verified' and alt.is_cheapest and alt.price_comparison.comparison_eligible %}
-    <span class="cheapest-badge">CHEAPEST</span>
+    {% if alternatives.0.price_comparison.comparison_eligible and alternatives.0.saving_amount and not alternatives.0.price_comparison.price_unverified %}
+    <div class="max-savings-pill" style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border: 1px solid #a7f3d0; color: #065f46; font-weight: 600;">
+      🔥 Verified Best Saving: {{ alternatives.0.saving_label }}
+    </div>
     {% endif %}
 
-    <div class="alt-card-top">
-      <div class="alt-rank">#{{ forloop.counter }}</div>
-      <div class="alt-name-group">
-        <div class="alt-card-name">{{ alt.name }}</div>
-        <div class="alt-card-mfr">{{ alt.manufacturer }}</div>
-        {% if alt.price_verification.dosage_form %}
-        <div style="font-size: 0.73rem; color: #64748b; margin-top: 2px;">
-          Form: <strong>{{ alt.price_verification.dosage_form }}</strong>
-          {% if alt.price_verification.pack_quantity %}
-          &bull; Pack: {{ alt.price_verification.pack_quantity }} {{ alt.price_verification.pack_unit }}s
-          {% endif %}
-        </div>
-        {% endif %}
-      </div>
+    {% for alt in alternatives|slice:":5" %}
+    <div class="alt-card-full {% if alt.is_cheapest and alt.price_comparison.comparison_eligible %}cheapest{% endif %}">
 
-      <div class="alt-price-group">
-        {% if result_level == 'verified' and alt.price_comparison.comparison_eligible %}
-          <div class="alt-card-price" style="color: #059669; font-size: 1.35rem; font-weight: 700; display: flex; align-items: baseline; gap: 3px;">
-            ₹ {{ alt.price_verification.unit_price_inr|floatformat:2 }}
-            <span style="font-size: 0.78rem; font-weight: 500; color: #475569;">/ {{ alt.price_verification.pack_unit|default:"tablet" }}</span>
-          </div>
-          <div style="font-size: 0.74rem; color: #64748b; margin-top: 1px;">
-            ₹ {{ alt.price_verification.package_price_inr|default:alt.price|floatformat:2 }} for strip of {{ alt.price_verification.pack_quantity|default:10 }}
-          </div>
-          {% if alt.saving_amount %}
-          <div class="alt-savings">
-            {{ alt.saving_label|default:alt.price_comparison.saving_label }}
-          </div>
-          {% endif %}
-        {% else %}
-          <div class="alt-card-price">
-            {% if alt.price_verification.unit_price_inr %}
-              ₹ {{ alt.price_verification.unit_price_inr|floatformat:2 }} <span style="font-size: 0.75rem; font-weight: normal; color: #64748b;">/ {{ alt.price_verification.pack_unit|default:"tablet" }}</span>
-            {% elif alt.price %}
-              ₹ {{ alt.price }}
-            {% else %}
-              Unlisted
+      {% if alt.is_cheapest and alt.price_comparison.comparison_eligible %}
+      <span class="cheapest-badge">CHEAPEST</span>
+      {% endif %}
+
+      <div class="alt-card-top">
+        <div class="alt-rank">#{{ forloop.counter }}</div>
+        <div class="alt-name-group">
+          <div class="alt-card-name">{{ alt.name }}</div>
+          <div class="alt-card-mfr">{{ alt.manufacturer }}</div>
+          {% if alt.price_verification.dosage_form %}
+          <div style="font-size: 0.73rem; color: #64748b; margin-top: 2px;">
+            Form: <strong>{{ alt.price_verification.dosage_form }}</strong>
+            {% if alt.price_verification.pack_quantity %}
+            &bull; Pack: {{ alt.price_verification.pack_quantity }} {{ alt.price_verification.pack_unit }}s
             {% endif %}
           </div>
-          {% if result_level == 'verified' %}
+          {% endif %}
+        </div>
+
+        <div class="alt-price-group">
+          {% if alt.price_comparison.comparison_eligible %}
+            <div class="alt-card-price" style="color: #059669; font-size: 1.35rem; font-weight: 700; display: flex; align-items: baseline; gap: 3px;">
+              ₹ {{ alt.price_verification.unit_price_inr|floatformat:2 }}
+              <span style="font-size: 0.78rem; font-weight: 500; color: #475569;">/ {{ alt.price_verification.pack_unit|default:"tablet" }}</span>
+            </div>
+            <div style="font-size: 0.74rem; color: #64748b; margin-top: 1px;">
+              ₹ {{ alt.price_verification.package_price_inr|default:alt.price|floatformat:2 }} for strip of {{ alt.price_verification.pack_quantity|default:10 }}
+            </div>
+            {% if alt.saving_amount %}
+            <div class="alt-savings">
+              {{ alt.saving_label|default:alt.price_comparison.saving_label }}
+            </div>
+            {% endif %}
+          {% else %}
+            <div class="alt-card-price">
+              {% if alt.price_verification.unit_price_inr %}
+                ₹ {{ alt.price_verification.unit_price_inr|floatformat:2 }} <span style="font-size: 0.75rem; font-weight: normal; color: #64748b;">/ {{ alt.price_verification.pack_unit|default:"tablet" }}</span>
+              {% elif alt.price %}
+                ₹ {{ alt.price }}
+              {% else %}
+                Unlisted
+              {% endif %}
+            </div>
             <div class="alt-savings-unavailable" style="font-size: 0.72rem; color: #b45309; background: #fef3c7; border: 1px solid #fde68a; padding: 3px 6px; border-radius: 4px; margin-top: 3px; line-height: 1.25;">
               <strong>Price comparison unavailable</strong><br/>
               {% if alt.price_comparison.price_unverified %}Price data not verified.{% else %}Package size or price basis could not be verified.{% endif %}
             </div>
           {% endif %}
+        </div>
+      </div>
+
+      <!-- Active Chemical Salt & Molecule Match -->
+      <div class="alt-card-salt">🧪 {{ alt.salt }}</div>
+
+      <!-- Formulation Differences Warning (Section 10: e.g. DT vs regular Tablet) -->
+      {% if alt.formulation_warning or alt.price_comparison.formulation_warning %}
+      <div class="formulation-warning-pill" style="font-size: 0.74rem; color: #0369a1; background: #f0f9ff; border: 1px solid #bae6fd; padding: 4px 8px; border-radius: 6px; margin-top: 6px; line-height: 1.3;">
+        ℹ {{ alt.formulation_warning|default:alt.price_comparison.formulation_warning }}
+      </div>
+      {% endif %}
+
+      <!-- Price Type Parity Notice (Section 8: MRP vs Selling Price) -->
+      {% if alt.price_comparison.price_type_warning %}
+      <div class="price-type-warning" style="font-size: 0.73rem; color: #92400e; background: #fffbeb; border: 1px solid #fcd34d; padding: 4px 8px; border-radius: 6px; margin-top: 4px; line-height: 1.3;">
+        ⚠️ {{ alt.price_comparison.price_type_warning }}
+      </div>
+      {% endif %}
+
+      <!-- Trust & Verification Details -->
+      <div class="alt-trust-bar">
+        <span class="alt-trust-badge">
+          {{ alt.trust_label|default:"Active Molecule Match" }}
+        </span>
+        {% if alt.price_verification.source_url %}
+        <span class="alt-market-price" title="Verified against authoritative pharmacy catalogue">
+          🌐 <a href="{{ alt.price_verification.source_url }}" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">{{ alt.price_verification.source_name|default:"Verified Source" }}</a>
+        </span>
         {% endif %}
       </div>
-    </div>
 
-    <!-- Active Chemical Salt & Molecule Match -->
-    <div class="alt-card-salt">🧪 {{ alt.salt }}</div>
-
-    <!-- Formulation Differences Warning (Section 10: e.g. DT vs regular Tablet) -->
-    {% if alt.formulation_warning or alt.price_comparison.formulation_warning %}
-    <div class="formulation-warning-pill" style="font-size: 0.74rem; color: #0369a1; background: #f0f9ff; border: 1px solid #bae6fd; padding: 4px 8px; border-radius: 6px; margin-top: 6px; line-height: 1.3;">
-      ℹ {{ alt.formulation_warning|default:alt.price_comparison.formulation_warning }}
-    </div>
-    {% endif %}
-
-    <!-- Price Type Parity Notice (Section 8: MRP vs Selling Price) -->
-    {% if alt.price_comparison.price_type_warning %}
-    <div class="price-type-warning" style="font-size: 0.73rem; color: #92400e; background: #fffbeb; border: 1px solid #fcd34d; padding: 4px 8px; border-radius: 6px; margin-top: 4px; line-height: 1.3;">
-      ⚠️ {{ alt.price_comparison.price_type_warning }}
-    </div>
-    {% endif %}
-
-    <!-- Trust & Verification Details -->
-    <div class="alt-trust-bar">
-      <span class="alt-trust-badge">
-        {{ alt.trust_label|default:"Active Molecule Match" }}
-      </span>
-      {% if alt.price_verification.source_url %}
-      <span class="alt-market-price" title="Verified against authoritative pharmacy catalogue">
-        🌐 <a href="{{ alt.price_verification.source_url }}" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">{{ alt.price_verification.source_name|default:"Verified Source" }}</a>
-      </span>
+      {% if alt.trust_reason %}
+      <div class="alt-trust-reason">
+        ✓ {{ alt.trust_reason }}
+      </div>
       {% endif %}
-    </div>
 
-    {% if alt.trust_reason %}
-    <div class="alt-trust-reason">
-      ✓ {{ alt.trust_reason }}
     </div>
-    {% endif %}
+    {% endfor %}
 
-  </div>
-  {% endfor %}
+  {% else %}
+    <div class="no-alt-msg">
+      No composition-verified cheaper alternatives found in database.
+    </div>
+  {% endif %}
 
 {% else %}
-  <div class="no-alt-msg">
-    No composition-verified cheaper alternatives found in database.
+  <!-- Likely Match: No savings or alternatives displayed -->
+  <div class="alt-section-title">
+    💊 Cheaper Alternatives
+  </div>
+  <div class="alt-section-sub">
+    Available only for Verified matches
+  </div>
+  <div class="alt-unverified-notice" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem 1.25rem; text-align: center; color: #64748b; margin-top: 1rem;">
+    <div style="font-size: 1.6rem; margin-bottom: 0.5rem;">🔒</div>
+    <div style="font-weight: 600; color: #334155; margin-bottom: 0.35rem; font-size: 0.95rem;">Cheaper Alternatives Unavailable</div>
+    <div style="font-size: 0.85rem; line-height: 1.45; color: #64748b; max-width: 360px; margin: 0 auto;">
+      Cheaper bioequivalent alternatives and price savings are only calculated for Verified matches where the packaging brand, exact active salt formulation, and dosage strength are strictly confirmed.
+    </div>
   </div>
 {% endif %}
