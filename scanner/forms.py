@@ -11,9 +11,8 @@ class ScanForm(forms.Form):
     """Form for uploading a medicine image and selecting scan mode."""
 
     MODE_CHOICES = [
-        ('auto',             'Auto Detect'),
-        ('medicine_package', 'Medicine Box / Strip'),
-        ('prescription',     "Doctor's Prescription"),
+        ('medicine_package', 'Printed Labels'),
+        ('prescription',     'Handwritten Labels'),
     ]
 
     ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp', 'bmp'}
@@ -22,8 +21,7 @@ class ScanForm(forms.Form):
     image = forms.ImageField(
         label='Upload Image',
         help_text=(
-            'Upload a photo of a medicine box, strip, '
-            'or doctor\'s prescription'
+            'Choose the label type that matches your image'
         ),
         required=True,
     )

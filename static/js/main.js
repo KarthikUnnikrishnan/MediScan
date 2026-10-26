@@ -446,10 +446,10 @@
       overlay.style.display = 'flex';
 
       const steps = [
-        { t: 'Uploading scan media…', d: 'Buffering high-resolution image for neural inspection', p: '25%' },
-        { t: 'Detecting strip contours…', d: 'YOLOv8 segmenting blister packaging and text boundaries', p: '50%' },
-        { t: 'Reading prescription typography…', d: 'TrOCR vision transformer recognizing printed & cursive text', p: '75%' },
-        { t: 'Verifying active pharmacology…', d: 'Extracting chemical salts, calculating generic savings and interactions', p: '92%' }
+        { t: 'Uploading image', d: 'Buffering high-resolution image for neural inspection', p: '25%' },
+        { t: 'Finding text regions', d: 'Locating readable text in the image', p: '50%' },
+        { t: 'Reading image text', d: 'OCR is reading the selected image', p: '75%' },
+        { t: 'Matching medicine details', d: 'Checking ingredients, alternatives, and safety information', p: '92%' }
       ];
 
       let idx = 0;
@@ -564,18 +564,7 @@
       });
     });
 
-    document.querySelectorAll('input[name="mode"]').forEach(function (radio) {
-      radio.addEventListener('change', function () {
-        var hint = document.getElementById('modeHint');
-        if (!hint) return;
-        if (this.value === 'auto') {
-          hint.textContent = '💡 Use Prescription mode for doctor handwritten notes — Auto may misread them';
-          hint.classList.add('visible');
-        } else {
-          hint.classList.remove('visible');
-        }
-      });
-    });
+
   }
 
   /* ── DOM BOOTSTRAP ──────────────────────────────────────────────────────── */
@@ -669,50 +658,3 @@ document.addEventListener('keydown', function(e) {
     selectMedicine(cards[newIndex].dataset.medKey);
   }
 });
-
-/* ── Auto-select prescription mode when file looks like
-      a document (tall aspect ratio) ── */
-function checkImageForPrescription(file) {
-  var url = URL.createObjectURL(file);
-  var img = new Image();
-  img.onload = function() {
-    var ratio = img.height / img.width;
-    // Portrait + tall → likely prescription
-    if (ratio > 1.2) {
-      var rxRadio = document.getElementById('mode_rx');
-      if (rxRadio) {
-        rxRadio.checked = true;
-        rxRadio.dispatchEvent(new Event('change', { bubbles: true }));
-        // Trigger visual update
-        document.querySelectorAll('.mode-tile')
-          .forEach(function(t) { t.classList.remove('auto-suggested'); });
-        var rxLabel = document.querySelector('label[for="mode_rx"]');
-        if (rxLabel) {
-          rxLabel.classList.add('auto-suggested');
-        }
-        // Show suggestion message
-        var hint = document.getElementById('modeHint');
-        if (hint) {
-          hint.textContent =
-            '📋 Portrait image detected — switched to Prescription mode. '
-            + 'Change above if this is a medicine box photo.';
-          hint.classList.add('visible');
-        }
-      }
-    }
-    URL.revokeObjectURL(url);
-  };
-  img.src = url;
-}
-
-/* Hook into file selection */
-var imageInput = document.getElementById('imageInput') || document.getElementById('id_image');
-if (imageInput) {
-  imageInput.addEventListener('change', function(e) {
-    if (e.target.files && e.target.files[0]) {
-      checkImageForPrescription(e.target.files[0]);
-    }
-  });
-}
-
-

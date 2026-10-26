@@ -24,7 +24,7 @@
 
       <!-- Description Subtitle -->
       <p class="hero-desc">
-        Upload a photo of your medicine strip or prescription. MediScan identifies medicines, finds affordable alternatives, checks interactions, and reveals side effects.
+        Upload an image and choose the label type. MediScan reads medicine details and shows available alternatives and safety information.
       </p>
 
       <!-- Trust Badges Row matching reference image -->
@@ -113,10 +113,7 @@
                     <path d="m8.5 8.5 7 7"></path>
                   </svg>
                 </span>
-                <span class="mode-tile-name">Medicine Strip</span>
-                <span class="mode-tile-desc">
-                  Box, blister pack or label
-                </span>
+                <span class="mode-tile-name">Printed Labels</span>
               </label>
 
               <input type="radio" name="mode" id="mode_rx"
@@ -130,19 +127,13 @@
                     <line x1="9" y1="16" x2="13" y2="16"></line>
                   </svg>
                 </span>
-                <span class="mode-tile-name">Prescription</span>
-                <span class="mode-tile-desc">
-                  Doctor's Rx — handwritten
-                </span>
-                <span class="mode-tile-badge">
-                  Multiple drugs
-                </span>
+                <span class="mode-tile-name">Handwritten Labels</span>
               </label>
 
             </div>
 
             <div class="mode-hint" id="modeHint">
-              💡 Select <strong>Medicine Strip</strong> for packaged tablets/bottles, or <strong>Prescription</strong> for doctor handwritten notes.
+              Choose the label type that matches your image.
             </div>
           </div>
 
@@ -328,8 +319,8 @@
           <h2 class="result-banner-title">Scan Analysis Complete</h2>
           <div class="result-banner-pills">
             <span class="result-pill-mode">
-              {% if mode == 'medicine_package' %}Medicine Strip Analysis
-              {% elif mode == 'prescription' %}Prescription Analysis
+              {% if mode == 'medicine_package' %}Printed Label Analysis
+              {% elif mode == 'prescription' %}Handwritten Label Analysis
               {% else %}Auto Scan{% endif %}
             </span>
             {% if timestamp %}
@@ -588,7 +579,7 @@
         </div>
         <h3 class="step-heading">Upload or Photograph</h3>
         <p class="step-text">
-          Snap a blister strip, medicine box packaging, or a handwritten doctor's prescription from your phone or webcam.
+          Upload a clear image of the label you want to analyze.
         </p>
         <div class="step-card-footer">
           <span class="step-chip">Multi-Angle Vision</span>
@@ -605,10 +596,10 @@
         </div>
         <h3 class="step-heading">Dual Neural Pipeline</h3>
         <p class="step-text">
-          YOLOv8 isolates strip boundaries, eliminates foil glare, while Hugging Face TrOCR decodes printed typography and cursive script.
+          Text detection finds readable regions, then separate TrOCR models read printed packaging and handwritten notes.
         </p>
         <div class="step-card-footer">
-          <span class="step-chip">YOLOv8 + TrOCR</span>
+          <span class="step-chip">OCR + medicine matching</span>
         </div>
       </div>
 
@@ -715,9 +706,9 @@
       <!-- Bento 3: Cursive Handwriting OCR -->
       <div class="bento-card">
         <div class="bento-tag">Vision Transformer</div>
-        <h3 class="bento-heading">Prescription Cursive Decipherer</h3>
+        <h3 class="bento-heading">Handwritten Label Reader</h3>
         <p class="bento-body">
-          Doctor handwriting can be challenging to decipher. Fine-tuned Vision Encoder-Decoder models (TrOCR) transform handwritten scripts into verified dosage schedules.
+          Handwriting can be difficult to read. A separate TrOCR model reads handwritten medicine names and instructions for review.
         </p>
 
         <div class="ocr-sample-card">
@@ -809,8 +800,8 @@
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M3 7V5a2 2 0 0 1 2-2h2"></path><path d="M17 3h2a2 2 0 0 1 2 2v2"></path><path d="M21 17v2a2 2 0 0 1-2 2h-2"></path><path d="M7 21H5a2 2 0 0 1-2-2v-2"></path></svg>
             </div>
             <div class="spec-desc">
-              <strong>YOLOv8 Vision Model</strong>
-              <p>Detects packaging contours and segments high-contrast OCR bounding boxes in milliseconds.</p>
+              <strong>Text Region Detection</strong>
+              <p>Finds text regions so the OCR models can read the selected image.</p>
             </div>
           </div>
 
@@ -845,7 +836,7 @@
             </svg>
           </div>
           <h3 class="shield-title">Local-First Architecture</h3>
-          <p class="shield-sub">Your prescriptions and health records never leave this machine. No accounts, no data selling, no remote tracking.</p>
+          <p class="shield-sub">Your handwritten notes and health records stay on this machine. No accounts, no data selling, no remote tracking.</p>
           <div class="shield-badges">
             <span class="s-badge">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:6px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
@@ -914,7 +905,7 @@
         </button>
         <div class="faq-collapse-body">
           <p>
-            No. MediScan executes entirely on your host environment with zero cloud telemetry. Your prescription photos, detected medication names, and saved scan history remain strictly within your local machine.
+            No. MediScan executes entirely on your host environment with zero cloud telemetry. Your uploaded photos, detected medication names, and saved scan history remain within this local app.
           </p>
         </div>
       </div>
@@ -922,12 +913,12 @@
       <!-- FAQ 4 -->
       <div class="faq-card">
         <button type="button" class="faq-toggle" aria-expanded="false">
-          <span class="faq-question-text">What should I do if a medicine strip is not recognized?</span>
+          <span class="faq-question-text">What should I do if a printed label is not recognized?</span>
           <span class="faq-chevron-icon">&plus;</span>
         </button>
         <div class="faq-collapse-body">
           <p>
-            Ensure your photo has good lighting and minimal specular glare on the aluminum blister foil. Make sure the printed medicine brand or active salt name is clearly visible and in focus. You can also explicitly toggle the "Medicine Strip" or "Prescription" mode on the scanner card.
+            Use a clear, well-lit photo and keep the printed medicine name or active ingredient in focus. Select Printed Labels or Handwritten Labels yourself before analyzing.
           </p>
         </div>
       </div>
@@ -940,7 +931,7 @@
         </button>
         <div class="faq-collapse-body">
           <p>
-            Yes. When a multi-drug prescription or consecutive scans are analyzed, MediScan checks every pair of active salts against a verified contraindications database to highlight potential high-severity or moderate-severity interactions.
+            Yes. When multiple medicines are read together or across scans, MediScan checks every pair of active salts against a verified contraindications database to highlight potential high-severity or moderate-severity interactions.
           </p>
         </div>
       </div>

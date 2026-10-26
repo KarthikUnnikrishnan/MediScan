@@ -4255,13 +4255,14 @@ img {
   text-align: center;
   border: 1.5px solid #e2e8f0;
   border-radius: 10px;
-  padding: 0.55rem 0.35rem;
+  min-height: 88px;
+  padding: 0.65rem 0.5rem;
   cursor: pointer !important;
   user-select: none !important;
   transition: all 0.18s ease;
   position: relative;
   background: #fff;
-  gap: 2px;
+  gap: 4px;
 }
 
 .mode-tile * {
@@ -4283,12 +4284,12 @@ input[type=radio]:checked+.mode-tile {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 9px;
   background: rgba(45, 106, 79, 0.08);
   color: #2d6a4f;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   transition: all 0.2s ease;
 }
 
@@ -4303,7 +4304,7 @@ input[type=radio]:checked+.mode-tile .mode-tile-icon-svg {
 }
 
 .mode-tile-name {
-  font-size: 0.74rem;
+  font-size: 0.88rem;
   font-weight: 700;
   color: #111;
 }

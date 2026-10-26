@@ -1,134 +1,75 @@
-# MediScan 🌿 — AI-Powered Medicine Strip & Prescription Scanner
+# MediScan
 
-MediScan is a full-stack Django application that leverages computer vision (YOLOv8) and deep learning OCR (TrOCR) to scan medicine packaging and handwritten or printed prescriptions. It extracts active salts, matches brand and generic medicines against comprehensive databases, computes cost-saving generic alternatives, and performs automated drug-drug cross-interaction safety analysis.
+MediScan is a local Django application for reading medicine information from two kinds of images. The scan mode is selected by the user and does not change automatically based on image shape.
 
----
+## Scan modes
 
-## 🚀 Key Features
+- **Printed Labels** reads printed text using EasyOCR text-region detection and the printed TrOCR model.
+- **Handwritten Labels** reads handwriting with a separate OCR pipeline.
 
-1. **Dual Scanning Modes**:
-   - **Mode 1 (Medicine Package / Strip)**: Detects blister pack/box boundaries using a custom YOLOv8 detector, crops the label, runs TrOCR text recognition, and matches active pharmaceutical ingredients.
-   - **Mode 2 (Prescription / Multi-medicine)**: Performs full-document OCR, extracts multiple medicine names, looks up their clinical profiles, and conducts automated cross-interaction conflict checking.
-2. **Generic Alternatives & Price Comparison**: Identifies matching formulations and calculates cost-saving alternative brands (often saving 40%–80%).
-3. **Safety & Side Effects Database**: Fetches MedDRA-standardized side effects, occurrence frequencies, and high-risk drug interaction warnings.
-4. **Modern UI/UX**: Responsive glassmorphism interface featuring Google Fonts (`Fraunces` & `Plus Jakarta Sans`), live camera capture, drag-and-drop file upload, interactive results view, and client-side scan history drawer.
+Both modes match recognized medicine names and ingredients against the local medicine database. Printed-label results distinguish **Verified**, **Likely**, and **Composition match** outcomes. The result page can show ingredients, manufacturer, safety information, and available same-composition alternatives. Verified price comparisons are shown only when the price and package basis can be compared.
 
----
+## How scanning works
 
-## 📁 Repository Structure
+1. The user selects Printed Labels or Handwritten Labels and uploads an image.
+2. Django saves the upload under `media/uploads/` and calls the selected scan pipeline.
+3. OCR reads text regions. The medicine parser extracts names, active ingredients, and strengths.
+4. The matcher compares the read brand and exact active-ingredient composition against the local index and SQLite database.
+5. Django stores the result in the session and renders the report page.
+
+The printed and handwritten recognizers are loaded once and reused. When started with Django's development server, MediScan warms the printed recognizer in the background. The first startup can take longer while the local model loads; later scans reuse it.
+
+## Main project files
 
 ```text
-MediScan/
-├── manage.py                     # Django management CLI script
-├── requirements.txt              # Python project dependencies
-├── .env                          # Local environment configuration
-├── .gitignore                    # Git exclude rules (weights, venv, pycache)
-│
-├── mediscan/                     # Root Django project configuration
-│   ├── __init__.py
-│   ├── settings.py               # Django settings, app configs, media/static paths
-│   ├── urls.py                   # Master URL dispatching
-│   └── wsgi.py                   # WSGI application entry point
-│
-├── scanner/                      # Core scanner application
-│   ├── apps.py                   # App configuration
-│   ├── forms.py                  # ScanForm validation (image files, scan mode)
-│   ├── models.py                 # (Optional persistent records)
-│   ├── urls.py                   # Routes: index, scan AJAX endpoint, result redirect
-│   ├── views.py                  # HTTP request handlers & session storage
-│   ├── ml/                       # Modular 100% Offline Machine Learning Package
-│   │   ├── __init__.py           # Pipeline orchestrator & quality heuristics
-│   │   ├── vision.py             # YOLOv8 strip detector & TrOCR inference
-│   │   ├── salt_parser.py        # Salt composition & strength extraction
-│   │   ├── extractor.py          # Context-aware structured NLP extractor
-│   │   ├── medicine_index.py     # 503k+ Medicine fast search cache
-│   │   ├── medicine_matcher.py   # Multi-tier candidate verification & confidence
-│   │   ├── alternative_matcher.py# Cheaper bioequivalent alternatives & trust tiers
-│   │   ├── price_verifier.py     # Unit price normalizer & persistent price cache
-│   │   └── drug_safety.py        # MedDRA side effects & drug-drug cross-interactions
-│   └── templatetags/             # Custom Django template filters
-│       └── mediscan_tags.py      # Math & formatting template tags
-│
-├── OVERALL_WORKING_AND_ARCHITECTURE.md # Full architecture & roadmap guide for AI/Teams
-├── templates/                    # HTML UI templates
-│   ├── base.html                 # Main layout, nav, camera modal, history drawer, footer
-│   └── scanner/
-│       ├── index.html            # Hero, scan card, sample tests, bento features, FAQ
-│       └── result.html           # Scan analysis report view
-│
-├── static/                       # Custom static assets
-│   ├── css/
-│   │   └── main.css              # Master styling design system (glassmorphic, responsive)
-│   └── js/
-│       └── main.js               # Client interactivity (camera, drag & drop, history)
-│
-├── Datasets/                     # Dataset discovery & download documentation
-│   └── Model1_Strip_OCR_Roboflow/
-│       ├── discovery_report.txt
-│       └── download_report.txt
-│
-└── saved_models/                 # Model checkpoints & configuration
-    ├── strip_detector.pt         # (Excluded from code zip due to binary size)
-    ├── drugs.sqlite              # (Excluded from code zip due to binary size)
-    ├── medicines.sqlite          # (Excluded from code zip due to binary size)
-    └── strip_ocr_finetuned/      # Fine-tuned TrOCR model configuration & tokenizer
-        ├── config.json
-        ├── generation_config.json
-        ├── tokenizer_config.json
-        ├── preprocessor_config.json
-        ├── special_tokens_map.json
-        └── eval_report.txt
+mediscan/                  Django project settings and URL configuration
+scanner/views.py            Upload, scan, session, and result views
+scanner/ml/                 OCR, text extraction, matching, alternatives, and safety lookup
+scanner/ml/printed_trocr.py Printed-label OCR
+scanner/ml/handwritten_trocr.py Handwritten-note OCR
+scanner/ml/medicine_matcher.py Brand/composition decisions and alternatives
+scanner/ml/medicine_index.py Local medicine database and search index
+templates/scanner/          Upload and report pages
+static/                     CSS, JavaScript, and image assets
+saved_models/               Local OCR models, databases, and generated index
+media/uploads/              Temporary uploaded scans
+test_images/                Local sample images
+tools/                      Regression, evaluation, and development utilities
 ```
 
----
+Model weights, local medicine databases, and generated index files are not all committed to Git. The local environment needs the files configured in `mediscan/settings.py`, including:
 
-## 🧠 Machine Learning & Data Pipeline (`scanner/ml/`)
+- `saved_models/modelA_printed_ocr/` for printed labels
+- `saved_models/modelB_handwritten_ocr/` for handwritten notes
+- `saved_models/medicines.sqlite` and `saved_models/drugs.sqlite`
+- `saved_models/medicine_index.pkl` (built or loaded by the medicine index)
 
-1. **Object Detection**:
-   - Model: Custom fine-tuned YOLOv8 (`strip_detector.pt`)
-   - Function: Locates medicine strips, blister packs, and bottles in cluttered backgrounds.
-2. **Text Recognition (OCR)**:
-   - Model: Fine-tuned `microsoft/trocr-base-stage1` (`strip_ocr_finetuned/`)
-   - Preprocessing: Grayscale / contrast enhancement, image resizing to 384×384.
-3. **Fuzzy String Matching & Entity Extraction**:
-   - Compares recognized text against drug names and salt formulations using `difflib.get_close_matches` and regex normalization.
-4. **Knowledge Base / SQLite Schema**:
-   - `medicines.sqlite`: Table `medicines(id, name, salt, manufacturer, price, source)`
-   - `drugs.sqlite`: Tables `drug_interactions(drug1, drug2, description)`, `side_effects(...)`, `se_frequency(...)`, `drug_stitch_map(...)`.
+The optional package-cropping setting is `USE_STRIP_CROP`; it is disabled by default.
 
----
+## Setup
 
-## 🛠️ Installation & Setup
+Use Python 3.11 and install the dependencies in `requirements.txt` in an environment compatible with the installed PyTorch build. Provide the local model and database files listed above, then configure `.env` from `.env.example`.
 
-1. **Clone repository & enter directory**:
-   ```bash
-   cd MediScan
-   ```
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+```
 
-2. **Set up Python Virtual Environment**:
-   ```bash
-   python -m venv venv
-   # Windows:
-   .\venv\Scripts\activate
-   # Linux/macOS:
-   source venv/bin/activate
-   ```
+Open `http://127.0.0.1:8000/`. On first launch, allow the OCR model warm-up to finish before scanning. The local development server prints its runtime diagnostics during startup.
 
-3. **Install Dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+## Checks and sample images
 
-4. **Environment Variables**:
-   Configure `.env`:
-   ```env
-   SECRET_KEY=your-secure-secret-key
-   DEBUG=True
-   ```
+```powershell
+python manage.py check
+python manage.py test scanner.tests
+python tools/test_live_regression.py
+```
 
-5. **Run Migrations & Start Server**:
-   ```bash
-   python manage.py migrate
-   python manage.py runserver
-   ```
-   Access the application at `http://127.0.0.1:8000`.
+`tools/test_live_regression.py` uploads the regression photos through Django's test client and checks the rendered result page. The test images are under `test_images/` and `tools/test_photos/`. These checks require the local models and medicine databases.
+
+## Local data and privacy
+
+Scans run using local models and databases. Uploaded images are stored under `media/uploads/`; the upload handler removes older upload files during later uploads. Keep `.env`, local databases, model weights, and user images private.

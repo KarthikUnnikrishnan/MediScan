@@ -145,8 +145,10 @@ def scan_medicine_package(
             if (time.time() - t_start) >= TIME_BUDGET_SEC:
                 break
             rot_img = target_img.rotate(angle, expand=True) if angle != 0 else target_img
+            t_ocr = time.perf_counter()
             lines = rec_a.read_lines(rot_img, beams=1)
             res = match_printed_lines(lines)
+            orientation_sec = time.perf_counter() - t_ocr
 
             top_cand = res.get("candidates") and res["candidates"][0]
             top_score = top_cand.get("score", 0.0) if top_cand else 0.0
@@ -155,6 +157,12 @@ def scan_medicine_package(
             max_matching_tokens = max(max_matching_tokens, n_tokens)
 
             is_confident = top_conf and (n_tokens >= 2)
+            has_usable_text = n_tokens >= 2
+            logger.info(
+                "Package OCR angle=%d took %.2fs; lines=%d, matched_tokens=%d, candidate=%s",
+                angle, orientation_sec, len(lines), n_tokens,
+                top_cand.get("name") if top_cand else "none",
+            )
             rot_candidates.append({
                 "angle": angle,
                 "lines": lines,
@@ -163,20 +171,23 @@ def scan_medicine_package(
                 "is_confident": is_confident
             })
 
-            if is_confident:
+            if is_confident or has_usable_text:
                 chosen_angle = angle
                 chosen_res = res
                 chosen_lines = lines
                 break
 
-        # Phase 2: Only try 90/270 if the first two give no confident result and fewer than 2 tokens match known words
-        if chosen_res is None and max_matching_tokens < 2 and ((time.time() - t_start) < TIME_BUDGET_SEC):
+        # Sideways fallback is expensive. Use it only when neither normal nor
+        # upside-down OCR recognized any indexed brand/salt token.
+        if chosen_res is None and max_matching_tokens == 0 and ((time.time() - t_start) < TIME_BUDGET_SEC):
             for angle in [90, 270]:
                 if (time.time() - t_start) >= TIME_BUDGET_SEC:
                     break
                 rot_img = target_img.rotate(angle, expand=True)
+                t_ocr = time.perf_counter()
                 lines = rec_a.read_lines(rot_img, beams=1)
                 res = match_printed_lines(lines)
+                orientation_sec = time.perf_counter() - t_ocr
 
                 top_cand = res.get("candidates") and res["candidates"][0]
                 top_score = top_cand.get("score", 0.0) if top_cand else 0.0
@@ -184,6 +195,11 @@ def scan_medicine_package(
                 n_tokens = res.get("n_matching_tokens", 0)
 
                 is_confident = top_conf and (n_tokens >= 2)
+                logger.info(
+                    "Package OCR angle=%d took %.2fs; lines=%d, matched_tokens=%d, candidate=%s",
+                    angle, orientation_sec, len(lines), n_tokens,
+                    top_cand.get("name") if top_cand else "none",
+                )
                 rot_candidates.append({
                     "angle": angle,
                     "lines": lines,
@@ -192,7 +208,7 @@ def scan_medicine_package(
                     "is_confident": is_confident
                 })
 
-                if is_confident:
+                if is_confident or n_tokens >= 2:
                     chosen_angle = angle
                     chosen_res = res
                     chosen_lines = lines
