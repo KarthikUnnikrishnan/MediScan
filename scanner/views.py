@@ -146,9 +146,16 @@ def result(request):
     status = scan_result.get('status', '')
     error_reason = scan_result.get('error_reason') or (scan_result.get('error') if status == 'error' else '')
 
-    decision_candidates = candidates or medicines or ([scan_result.get('medicine')] if scan_result.get('medicine') else [])
+    decision_candidates = (
+        scan_result.get('decision_candidates') if scan_result.get('mode') == 'prescription'
+        else candidates or medicines or ([scan_result.get('medicine')] if scan_result.get('medicine') else [])
+    )
     if decision_candidates:
-        view_decision = decide_result({"raw_ocr": scan_result.get('raw_ocr')}, decision_candidates)
+        if scan_result.get('mode') == 'prescription':
+            decision_pack = {"brand_read": scan_result.get('decision_brand', '')}
+        else:
+            decision_pack = {"raw_ocr": scan_result.get('raw_ocr')}
+        view_decision = decide_result(decision_pack, decision_candidates)
         scan_result['medicine'] = view_decision.get('medicine') or scan_result.get('medicine')
         scan_result['result_level'] = view_decision['level']
         scan_result['message'] = view_decision['message']

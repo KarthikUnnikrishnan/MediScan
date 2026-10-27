@@ -210,7 +210,7 @@
         </div>
         <div class="metric-content">
           <div class="metric-label">Medicine Details</div>
-          <p class="metric-desc">Uses, side effects, precautions and manufacturer info.</p>
+          <p class="metric-desc">Composition, manufacturer and recorded side effects when available.</p>
         </div>
       </div>
 
@@ -225,7 +225,7 @@
         </div>
         <div class="metric-content">
           <div class="metric-label">Cheaper Alternatives</div>
-          <p class="metric-desc">Find affordable generic options.</p>
+          <p class="metric-desc">Compare same-composition options when the catalog has a match.</p>
         </div>
       </div>
 
@@ -238,7 +238,7 @@
         </div>
         <div class="metric-content">
           <div class="metric-label">Interaction Check</div>
-          <p class="metric-desc">Check for potential drug interactions.</p>
+          <p class="metric-desc">Look up potential interactions recorded in the safety database.</p>
         </div>
       </div>
 
@@ -253,7 +253,7 @@
         </div>
         <div class="metric-content">
           <div class="metric-label">Evidence Based</div>
-          <p class="metric-desc">Information from trusted medical sources.</p>
+          <p class="metric-desc">Details come from local medicine and safety datasets; coverage varies.</p>
         </div>
       </div>
 
@@ -655,8 +655,8 @@
             </div>
             <div class="metric-divider"></div>
             <div class="metric-item">
-              <span class="metric-value">100%</span>
-              <span class="metric-label">Bioequivalent Salt Purity</span>
+              <span class="metric-value">Same</span>
+              <span class="metric-label">Composition filters applied</span>
             </div>
           </div>
         </div>
@@ -664,17 +664,17 @@
         <div class="bento-visual">
           <div class="price-comparison-mockup">
             <div class="compare-row brand-row">
-              <div class="compare-name">Brand Name Medicine</div>
-              <div class="compare-price">&#8377; 145.00</div>
+              <div class="compare-name">Scanned medicine</div>
+              <div class="compare-price">Catalog price</div>
             </div>
             <div class="compare-row generic-row">
-              <div class="compare-badge">Identical Salt</div>
-              <div class="compare-name">Generic Bioequivalent</div>
-              <div class="compare-price green">&#8377; 32.50</div>
+              <div class="compare-badge">Same composition</div>
+              <div class="compare-name">Alternative listing</div>
+              <div class="compare-price green">Compare unit price</div>
             </div>
             <div class="savings-tag-pill">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline><polyline points="17 18 23 18 23 12"></polyline></svg>
-              Instant 77% Cost Reduction
+              Savings shown only when pack and price data are comparable
             </div>
           </div>
         </div>
@@ -685,20 +685,20 @@
         <div class="bento-tag tag-hazard">Hazard Prevention</div>
         <h3 class="bento-heading">Cross-Interaction Shield</h3>
         <p class="bento-body">
-          Mixing common over-the-counter painkillers with daily prescriptions can cause gastric hemorrhage or cardiac strain. MediScan cross-queries every recognized compound.
+          For recognized ingredients, the local safety database can list recorded interaction pairs. Review any result with a doctor or pharmacist.
         </p>
 
         <div class="hazard-sim-card">
           <div class="hazard-sim-header">
-            <span class="sim-badge-alert">Contraindication Alert</span>
+            <span class="sim-badge-alert">Example database lookup</span>
           </div>
           <div class="hazard-sim-pair">
-            <span class="drug-chip">Aspirin</span>
+            <span class="drug-chip">Ingredient A</span>
             <span class="plus-chip">+</span>
-            <span class="drug-chip">Ibuprofen</span>
+            <span class="drug-chip">Ingredient B</span>
           </div>
           <div class="hazard-sim-advice">
-            Concurrent NSAID usage significantly escalates gastric ulceration risk. Consult your physician.
+            Interaction details appear on a scan only when the local database contains a matching record.
           </div>
         </div>
       </div>
@@ -718,7 +718,7 @@
             <span class="check-mark">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:2px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
             </span>
-            <strong>Amoxicillin 500mg</strong> &bull; Twice daily after food
+          <strong>Medicine name</strong> &bull; OCR text for review
           </div>
         </div>
       </div>
@@ -726,25 +726,25 @@
       <!-- Bento 4: Dosage Clarity Guide -->
       <div class="bento-card">
         <div class="bento-tag">Patient Adherence</div>
-        <h3 class="bento-heading">Dosage Timing &amp; Food Guide</h3>
+        <h3 class="bento-heading">Instructions Read from the Image</h3>
         <p class="bento-body">
-          Clear morning, afternoon, and evening administration instructions prevent accidental missed doses or dangerous gastrointestinal irritation.
+          Handwritten instructions are shown as recognized text for review. MediScan does not generate a dose or meal schedule.
         </p>
 
         <div class="timing-chips-row">
           <div class="timing-chip">
             <span class="timing-time">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
-              Morning
+              OCR text
             </span>
-            <span class="timing-desc">With Breakfast</span>
+            <span class="timing-desc">Read from image</span>
           </div>
           <div class="timing-chip">
             <span class="timing-time">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-              Night
+              Review
             </span>
-            <span class="timing-desc">Before Bed</span>
+            <span class="timing-desc">Confirm with clinician</span>
           </div>
         </div>
       </div>
@@ -754,23 +754,23 @@
         <div class="bento-tag">Clinical Safety</div>
         <h3 class="bento-heading">Side Effects &amp; Risk Insights</h3>
         <p class="bento-body">
-          Proactively surface frequent adverse reactions, contraindications, and vital safety precautions before starting any new therapy.
+          Recorded side-effect and interaction entries can be shown when available. Uses and precautions are not included in the current local catalog.
         </p>
 
         <div class="timing-chips-row">
           <div class="timing-chip">
             <span class="timing-time">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-              Safety Profile
+              Side effects
             </span>
-            <span class="timing-desc">Mild Reactions &bull; Rare (&lt;5%)</span>
+            <span class="timing-desc">Recorded entries, if available</span>
           </div>
           <div class="timing-chip">
             <span class="timing-time">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-              Precautions
+              Uses &amp; precautions
             </span>
-            <span class="timing-desc">Take with water &bull; No alcohol</span>
+            <span class="timing-desc">Not in current catalog</span>
           </div>
         </div>
       </div>

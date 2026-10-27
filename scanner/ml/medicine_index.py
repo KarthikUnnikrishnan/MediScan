@@ -307,7 +307,10 @@ class BrandWordIndex:
             for mid, name, salt in cur.fetchall():
                 if not name:
                     continue
-                first_w = re.split(r'[\s\-_]+', name.strip())[0]
+                # Keep hyphenated trade names whole (for example Meftal-P).
+                # Splitting on hyphens turned that brand into the ambiguous
+                # prefix "Meftal" and caused unrelated variants to win.
+                first_w = re.split(r'\s+', name.strip())[0]
                 norm = re.sub(r'[^A-Z0-9]', '', first_w.upper())
                 if len(norm) >= 2:
                     raw_brand_map.setdefault(norm, []).append(mid)

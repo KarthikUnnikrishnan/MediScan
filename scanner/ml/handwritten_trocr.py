@@ -52,7 +52,10 @@ except Exception:
 
 def is_name_or_header_line(text: str) -> bool:
     """Never match words that are the doctor's or patient's name line (containing Name/Dr/Mr/Ms)."""
-    return bool(re.search(r"\b(dr|doctor|mr|ms|mrs|miss|name|patient)\b", text, re.I))
+    return bool(re.search(
+        r"\b(dr|doctor|mr|ms|mrs|miss|name|patient|refill|label|signature|"
+        r"generic\s+if\s+available|dea|license)\b", text, re.I
+    ))
 
 
 def group_into_lines(boxes, tol=0.55):
@@ -73,20 +76,37 @@ def group_into_lines(boxes, tol=0.55):
     return [sorted(L["idx"], key=lambda i: boxes[i][0]) for L in lines]
 
 
-def parse_line(words: List[str], matcher: Optional[Callable] = None, min_score=80.0):
+def parse_line(words: List[str], matcher: Optional[Callable] = None, min_score=80.0,
+               ocr_confidence=None, word_confidences=None):
     """words: the words of one line, left to right. matcher(text) -> list of candidates [{'name':..., 'score': 0-100, ...}] (best first).
     Enforces Precision Gate: a line is a medicine ONLY if
       (a) the matched word has >= 4 letters and score >= 85, AND
       (b) the same line has at least one supporting item: a form word (tab, cap, syp, syr, inj, drops, oint, cream),
           OR a dose with unit (mg, ml, mcg, gm, iu, %), OR a frequency (1+0+1, 1-0-1, OD, BD, TDS, HS, SOS), OR a duration (5 days, x 3d)
-      ... OR score >= 95 with the word >= 5 letters and not in the stop list.
+      ... and the candidate must have a strong brand score.
     Also never match words that are the doctor's or patient's name line (containing Name/Dr/Mr/Ms).
     Everything else is shown only as 'other text read' (no database lookup, no alternatives, no safety data)."""
-    toks = [w.strip() for w in words if w and w.strip()]
+    # A detector crop can contain an entire phrase, not just one handwritten
+    # word. Flatten those crops before parsing dosage/form tokens, otherwise
+    # "Lipitor 10 mg" is sent to the brand matcher as one malformed brand.
+    toks, token_confidences = [], []
+    for index, word in enumerate(words):
+        if not word or not word.strip():
+            continue
+        pieces = [piece for piece in re.split(r"\s+", word.strip()) if piece]
+        toks.extend(pieces)
+        confidence = word_confidences[index] if word_confidences and index < len(word_confidences) else ocr_confidence
+        token_confidences.extend([confidence] * len(pieces))
     line_text = " ".join(toks)
 
     # B2: Never match words that are the doctor's or patient's name line
     if is_name_or_header_line(line_text):
+        return dict(read="", candidates=[], form=None, dose=None, frequency=None, duration=None, text=line_text, is_medicine=False)
+    # Clinical history and symptoms are not medicine-name evidence. This also
+    # prevents a symptom phrase such as "giddiness, restlessness" from
+    # accidentally matching a similarly spelled database brand.
+    if re.search(r"\b(c\s*/\s*o|complaints?|giddiness|restlessness|hypoglyc\w*|"
+                 r"clinical\s+description|diagnosis|history)\b", line_text, re.I):
         return dict(read="", candidates=[], form=None, dose=None, frequency=None, duration=None, text=line_text, is_medicine=False)
 
     form = dose = freq = duration = None
@@ -97,6 +117,7 @@ def parse_line(words: List[str], matcher: Optional[Callable] = None, min_score=8
     while i < len(toks):
         w = toks[i]; lw = w.lower().strip(".,:;/"); nxt = toks[i + 1].lower().strip(".,:;/") if i + 1 < len(toks) else ""
         if lw in FORMS: form = form or w.strip(".,:;/")
+        elif re.fullmatch(r"tab[a-z]{1,2}", lw): form = form or "tab"  # OCR often reads "tab x" as one token
         elif lw == "x": pass                                                    # filler in "x 5 days"
         elif RE_FREQ.match(w.replace(" ", "")) or RE_FREQ.match(lw): freq = freq or w
         elif RE_DURATION.match(lw): duration = duration or w
@@ -118,19 +139,98 @@ def parse_line(words: List[str], matcher: Optional[Callable] = None, min_score=8
 
     has_supporting = bool(has_form or has_dose_with_unit or has_freq or has_duration)
 
+    def requested_form_key(value):
+        value = str(value or "").lower().strip(".,:;/")
+        aliases = {
+            "tab": "tablet", "tabs": "tablet", "tablet": "tablet", "tablets": "tablet",
+            "cap": "capsule", "caps": "capsule", "capsule": "capsule", "capsules": "capsule",
+            "syp": "syrup", "syr": "syrup", "syrup": "syrup",
+            "susp": "suspension", "suspension": "suspension",
+            "inj": "injection", "injection": "injection",
+            "drop": "drops", "drops": "drops", "oint": "ointment", "cream": "cream",
+            "gel": "gel", "lotion": "lotion", "solution": "solution",
+        }
+        return aliases.get(value, value)
+
+    def candidate_form_key(candidate):
+        value = str(candidate.get("dosage_form") or candidate.get("name") or "").lower()
+        for key, pattern in (
+            ("tablet", r"\btablets?\b"), ("capsule", r"\bcapsules?\b"),
+            ("syrup", r"\bsyrup\b"), ("suspension", r"\bsuspension\b"),
+            ("injection", r"\binjection\b"), ("drops", r"\bdrops?\b"),
+            ("ointment", r"\bointment\b"), ("cream", r"\bcream\b"),
+            ("gel", r"\bgel\b"), ("lotion", r"\blotion\b"),
+            ("solution", r"\bsolution\b"),
+        ):
+            if re.search(pattern, value):
+                return key
+        return ""
+
+    expected_form = requested_form_key(form)
+    strength_match = re.search(r"\b(\d+(?:\.\d+)?)\s*(mg|mcg|gm|g|iu)\b", line_text, re.I)
+    ratio_match = re.search(r"\b(\d+(?:\.\d+)?)\s*/\s*(\d+(?:\.\d+)?)\b", line_text)
+
+    def candidate_matches_strength(candidate):
+        candidate_text = f"{candidate.get('name', '')} {candidate.get('salt', '')}"
+        if ratio_match:
+            numerator, denominator = ratio_match.groups()
+            # Syrup strengths are commonly written as 250/5 on prescriptions
+            # while the catalogue stores 250mg/5ml or the active 250mg only.
+            if expected_form in {"syrup", "suspension"}:
+                has_numerator = bool(re.search(rf"\b{re.escape(numerator)}\s*mg\b", candidate_text, re.I))
+                candidate_ratio = re.search(r"\b(\d+(?:\.\d+)?)\s*mg\s*/\s*(\d+(?:\.\d+)?)\s*ml\b", candidate_text, re.I)
+                if candidate_ratio:
+                    return has_numerator and candidate_ratio.groups() == (numerator, denominator)
+                return has_numerator
+        if strength_match:
+            amount, unit = strength_match.groups()
+            # Do not mistake the prescribed liquid volume (e.g. 4 ml) for the
+            # product strength when no explicit composition ratio was read.
+            if expected_form in {"syrup", "suspension"} and unit.lower() == "ml":
+                return True
+            pattern = rf"\b{re.escape(amount)}\s*{re.escape(unit)}\b"
+            candidate_has_strength = bool(re.search(r"\b\d+(?:\.\d+)?\s*(?:mg|mcg|gm|g|iu)\b", candidate_text, re.I))
+            return not candidate_has_strength or bool(re.search(pattern, candidate_text, re.I))
+        return True
+
     best = None
     for k, (i, w) in enumerate(rest):                        # try single words and neighbour pairs ("Napa Extra")
         for text in (w, f"{w} {rest[k+1][1]}" if k + 1 < len(rest) else None):
             if not text or len(text) < 3 or matcher is None: continue
             clean_str = re.sub(r"[\.,:;/\-\s]", "", text).lower()
             if clean_str in RX_STOP_WORDS: continue
-            # If line has no supporting items, medicine can only qualify if word >= 5 letters and score >= 95
+            # Without supporting evidence, skip short fragments that are
+            # unlikely to be complete medicine names.
             clean_alnum = re.sub(r"[^A-Za-z0-9]", "", text)
             if not has_supporting and len(clean_alnum) < 5:
                 continue
             c = matcher(text) or []
+            if expected_form:
+                c = [candidate for candidate in c
+                     if candidate_form_key(candidate) == expected_form
+                     or (expected_form == "syrup" and candidate_form_key(candidate) == "suspension")]
+            c = [candidate for candidate in c if candidate_matches_strength(candidate)]
+            matched_indexes = [i]
+            if " " in text and k + 1 < len(rest):
+                matched_indexes.append(rest[k + 1][0])
+            available_confidences = [token_confidences[j] for j in matched_indexes
+                                     if j < len(token_confidences) and token_confidences[j] is not None]
+            brand_ocr_confidence = min(available_confidences) if available_confidences else ocr_confidence
+            # Favor precision by default. When TrOCR itself is confident and
+            # the written dosage form and any explicit strength both agree,
+            # allow a single strong-in-context fuzzy brand candidate through.
+            strong_ocr_context = bool(expected_form and (word_confidences or ocr_confidence is not None))
+            min_brand_score = max(95.0, float(min_score))
+            contextual_candidate = False
+            if strong_ocr_context:
+                contextual_confidence = brand_ocr_confidence is not None and float(brand_ocr_confidence) >= 0.82
+                brand_names = {str(x.get("brand") or x.get("name", "")).lower() for x in c}
+                if contextual_confidence and len(brand_names) == 1:
+                    min_brand_score = max(80.0, float(min_score))
+                    contextual_candidate = True
+            c = [candidate for candidate in c if float(candidate.get("score", 0)) >= min_brand_score]
             if c and (best is None or c[0].get("score", 0) > best["cands"][0].get("score", 0)):
-                best = dict(read=text, cands=c)
+                best = dict(read=text, cands=c, contextual_candidate=contextual_candidate)
 
     is_medicine = False
     cands = []
@@ -142,12 +242,10 @@ def parse_line(words: List[str], matcher: Optional[Callable] = None, min_score=8
         word_len = len(clean_word)
         clean_lower = clean_word.lower()
 
-        # Gate (a): matched word has >= 4 letters and score >= 85, AND line has supporting item
-        cond_a = (word_len >= 4 and score >= 85.0 and has_supporting and clean_lower not in RX_STOP_WORDS)
-        # Gate (b): score >= 95 with word >= 5 letters and not in stop list
-        cond_b = (score >= 95.0 and word_len >= 5 and clean_lower not in RX_STOP_WORDS)
-
-        if cond_a or cond_b:
+        # Require both strong brand evidence and a form/dose/frequency signal.
+        strong_brand = score >= 95.0 or (best.get("contextual_candidate") and score >= max(80.0, float(min_score)))
+        cond_a = (word_len >= 4 and strong_brand and has_supporting and clean_lower not in RX_STOP_WORDS)
+        if cond_a:
             is_medicine = True
             cands = best["cands"][:3]
             read = cand_word
@@ -156,7 +254,7 @@ def parse_line(words: List[str], matcher: Optional[Callable] = None, min_score=8
         read = best["read"] if best else (rest[0][1] if rest else (toks[0] if toks else ""))
         cands = []
 
-    return dict(read=read, candidates=cands, form=form, dose=dose, frequency=freq, duration=duration, text=line_text, is_medicine=is_medicine)
+    return dict(read=read, candidates=cands, form=form, dose=dose, strength_read=(strength_match.group(0) if strength_match else (ratio_match.group(0) if ratio_match else None)), frequency=freq, duration=duration, text=line_text, is_medicine=is_medicine)
 
 
 class HandwrittenTrOCR:
@@ -235,7 +333,10 @@ class HandwrittenTrOCR:
             if not words: continue
             line_str = " ".join(w["text"] for w in words)
             lines.append(dict(text=line_str, words=words))
-            p = parse_line([w["text"] for w in words], matcher=matcher, min_score=min_score)
+            line_ocr_confidence = min(w["conf"] for w in words)
+            p = parse_line([w["text"] for w in words], matcher=matcher, min_score=min_score,
+                           ocr_confidence=line_ocr_confidence,
+                           word_confidences=[w["conf"] for w in words])
             p["line"] = len(lines) - 1
             p["confidence"] = round(min(w["conf"] for w in words), 3)
             if p.get("is_medicine"):

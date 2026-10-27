@@ -511,7 +511,7 @@ def match_word(text: str) -> List[Dict[str, Any]]:
 
     if exact_match:
         seen_brands.add(clean)
-        mids = brand_index.brand_to_ids.get(clean, [])[:3]
+        mids = brand_index.brand_to_ids.get(clean, [])[:15]
         rows = brand_index.get_medicines_by_ids(mids)
         for r in rows:
             candidates.append({
@@ -668,9 +668,16 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
         first_key = next(iter(per_medicine_results.keys())) if per_medicine_results else ""
         first_alts = per_medicine_results[first_key]["alternatives"] if first_key else []
 
-        top_med = medicines_list[0] if medicines_list else {}
-        prescription_decision = decide_result({"raw_ocr": raw_ocr, "brand_read": first_key}, medicines_list)
-        top_med = prescription_decision.get("medicine") or top_med
+        # Make the page-level decision from the first recognized medicine line
+        # only. Re-matching a whole prescription lets unrelated instructions
+        # such as "Refill times" override the actual medicine name.
+        first_entry = per_medicine_results.get(first_key, {})
+        first_line_candidates = first_entry.get("candidates", [])
+        prescription_decision = decide_result(
+            {"brand_read": first_entry.get("read", first_key)},
+            first_line_candidates,
+        )
+        top_med = prescription_decision.get("medicine") or (medicines_list[0] if medicines_list else {})
         result_level = prescription_decision["level"]
         return {
             "success": True,
@@ -685,9 +692,11 @@ def scan_prescription(image_pil) -> Dict[str, Any]:
             "ocr_text": raw_ocr,
             "other_text_read": other_text,
             "detected_name": first_key,
-            "medicine": medicines_list[0] if medicines_list else None,
+            "medicine": top_med or None,
             "medicines": medicines_list,
-            "candidates": medicines_list[:3],
+            "candidates": first_line_candidates[:3],
+            "decision_brand": first_entry.get("read", first_key),
+            "decision_candidates": first_line_candidates[:3],
             "alternatives": first_alts,
             "cross_interactions": cross_interactions,
             "per_medicine_results": per_medicine_results,

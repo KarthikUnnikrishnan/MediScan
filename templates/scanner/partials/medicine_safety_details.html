@@ -1,0 +1,39 @@
+<section class="medicine-safety-details" style="margin-top: 1rem; padding-top: 0.85rem; border-top: 1px solid #e2e8f0;">
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem;">
+    <section style="padding: 0.8rem; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc;">
+      <h4 style="margin: 0 0 0.35rem; font-size: 0.85rem; color: #334155;">Recorded side effects</h4>
+      {% if side_effects %}
+      <div style="display: flex; flex-wrap: wrap; gap: 0.35rem;">
+        {% for effect in side_effects|slice:":5" %}
+        <span style="font-size: 0.75rem; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; padding: 0.2rem 0.55rem; border-radius: 9999px;">{{ effect.name }}{% if effect.frequency %} ({{ effect.frequency }}){% endif %}</span>
+        {% endfor %}
+      </div>
+      <p style="margin: 0.5rem 0 0; color: #64748b; font-size: 0.74rem;">Local database records may be incomplete and do not predict what an individual will experience.</p>
+      {% else %}
+      <p style="margin: 0; color: #64748b; font-size: 0.78rem;">No side-effect entries found in the local safety database.</p>
+      {% endif %}
+    </section>
+    <section style="padding: 0.8rem; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc;">
+      <h4 style="margin: 0 0 0.35rem; font-size: 0.85rem; color: #334155;">Uses</h4>
+      <p style="margin: 0; color: #64748b; font-size: 0.78rem;">Indications are not included in the current local medicine catalog.</p>
+    </section>
+    <section style="padding: 0.8rem; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc;">
+      <h4 style="margin: 0 0 0.35rem; font-size: 0.85rem; color: #334155;">Precautions</h4>
+      <p style="margin: 0; color: #64748b; font-size: 0.78rem;">Medicine-specific precautions are not available in the current catalog. Ask a doctor or pharmacist.</p>
+    </section>
+  </div>
+  <section style="margin-top: 0.75rem; padding: 0.8rem; border: 1px solid #bae6fd; border-radius: 10px; background: #f0f9ff;">
+    <h4 style="margin: 0 0 0.35rem; font-size: 0.85rem; color: #075985;">Interaction check</h4>
+    {% if interactions %}
+    <ul style="margin: 0; padding-left: 1.15rem; color: #334155; font-size: 0.78rem;">
+      {% for interaction in interactions|slice:":5" %}
+      <li style="margin-top: 0.25rem;"><strong>{{ interaction.drug1 }} + {{ interaction.drug2 }}</strong>{% if interaction.severity %} ({{ interaction.severity|title }}){% endif %}: {{ interaction.description }}</li>
+      {% endfor %}
+    </ul>
+    <p style="margin: 0.5rem 0 0; color: #64748b; font-size: 0.74rem;">Database records are not a complete interaction check. Confirm any result with a healthcare professional.</p>
+    {% else %}
+    <p style="margin: 0; color: #64748b; font-size: 0.78rem;">No matching interaction entry was found. This does not confirm that no interactions exist.</p>
+    {% endif %}
+  </section>
+  <p style="margin: 0.65rem 0 0; color: #64748b; font-size: 0.74rem;">Medicine details come from local catalog datasets; safety records are supplied by a separate local database. Source coverage varies by medicine.</p>
+</section>
