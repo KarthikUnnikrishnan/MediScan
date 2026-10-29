@@ -60,7 +60,15 @@ class PrintedTrOCR:
         """photo: PIL image or path. Returns a list of text lines (UPPERCASE) for the existing parser/matcher."""
         import time
         img = photo if isinstance(photo, Image.Image) else Image.open(photo)
-        img = img.convert("RGB"); W, H = img.size
+        img = img.convert("RGB")
+
+        # EasyOCR's detector works on the full image, while TrOCR resizes every
+        # detected crop to its fixed model input size. Very large phone images
+        # therefore add detector cost without giving TrOCR more useful detail.
+        max_side = 2400 if self.dev == "cpu" else 3200
+        if max(img.size) > max_side:
+            img.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
+        W, H = img.size
 
         t0 = time.time()
         raw_boxes = self.find_boxes(img)
@@ -78,9 +86,11 @@ class PrintedTrOCR:
         if not valid_boxes and raw_boxes:
             valid_boxes = raw_boxes
 
-        # Sort by area (largest first) and keep at most 14 boxes
+        # Keep more regions when GPU inference is available. On CPU, a smaller
+        # batch avoids minutes of autoregressive decoding on dense packaging.
         valid_boxes.sort(key=lambda b: (b[2] - b[0]) * (b[3] - b[1]), reverse=True)
-        selected_boxes = valid_boxes[:14]
+        max_boxes = 8 if self.dev == "cpu" else 14
+        selected_boxes = valid_boxes[:max_boxes]
 
         crops = [img.crop((max(0, x0 - self.pad), max(0, y0 - self.pad), min(W, x1 + self.pad), min(H, y1 + self.pad)))
                  for x0, y0, x1, y1 in selected_boxes]

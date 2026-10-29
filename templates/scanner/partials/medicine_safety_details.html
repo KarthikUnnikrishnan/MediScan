@@ -1,5 +1,5 @@
 <section class="medicine-safety-details" style="margin-top: 1rem; padding-top: 0.85rem; border-top: 1px solid #e2e8f0;">
-  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem;">
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); align-items: start; gap: 0.75rem;">
     <section style="padding: 0.8rem; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc;">
       <h4 style="margin: 0 0 0.35rem; font-size: 0.85rem; color: #334155;">Recorded side effects</h4>
       {% if side_effects %}
@@ -12,10 +12,6 @@
       {% else %}
       <p style="margin: 0; color: #64748b; font-size: 0.78rem;">No side-effect entries found in the local safety database.</p>
       {% endif %}
-    </section>
-    <section style="padding: 0.8rem; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc;">
-      <h4 style="margin: 0 0 0.35rem; font-size: 0.85rem; color: #334155;">Uses</h4>
-      <p style="margin: 0; color: #64748b; font-size: 0.78rem;">Indications are not included in the current local medicine catalog.</p>
     </section>
     <section style="padding: 0.8rem; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc;">
       <h4 style="margin: 0 0 0.35rem; font-size: 0.85rem; color: #334155;">Precautions</h4>

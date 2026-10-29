@@ -44,6 +44,12 @@ class ScannerConfig(AppConfig):
             if missing_pkgs:
                 print(f"[MediScan ERROR] Missing required package(s): {', '.join(missing_pkgs)}")
                 print(f'[MediScan FIX] Run: "{sys.executable}" -m pip install {" ".join(missing_pkgs)}')
+            elif 'torch' in versions and cuda_str == 'False':
+                print(
+                    '[MediScan PERFORMANCE] CUDA is unavailable in this Python environment; '
+                    'printed OCR will run on CPU and may be slow. Use a CUDA-enabled PyTorch '
+                    'environment on machines with a supported NVIDIA GPU.'
+                )
 
             def _warmup_all():
                 try:
